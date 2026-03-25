@@ -1,9 +1,4 @@
 <?php
-
-/**
- * OLFU Queue Management System - Admin Dashboard
- */
-
 require_once 'config/config.php';
 require_once 'includes/db.php';
 require_once 'includes/auth.php';
@@ -20,7 +15,6 @@ $queueSummary   = getTodayQueueSummary($db);
 $queueByOffice  = getQueueByOffice($db);
 $queueTrendData = getQueueTrendData($db);
 
-// Only pass chart data if arrays are valid and non-empty
 $hasOfficeData = is_array($queueByOffice) && array_sum(array_column($queueByOffice, 'count')) > 0;
 $hasTrendData  = is_array($queueTrendData) && array_sum(array_column($queueTrendData, 'count')) > 0;
 
@@ -37,7 +31,7 @@ $currentTime = date('l, F j, Y \a\t g:i A');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard — OLFU QMS</title>
+    <title>Dashboard</title>
     <link rel="shortcut icon" href="img/olfu-logo.png" type="image/x-icon">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -58,7 +52,6 @@ $currentTime = date('l, F j, Y \a\t g:i A');
 
         <div class="dashboard-body">
 
-            <!-- Top Header -->
             <header class="dashboard-header">
                 <div class="header-left">
                     <h2 class="header-page-title">
@@ -67,17 +60,14 @@ $currentTime = date('l, F j, Y \a\t g:i A');
                 </div>
                 <div class="header-right">
                     <div class="header-timestamp">
-                        <i class="fas fa-clock"></i>
                         <?php echo $currentTime; ?>
                     </div>
                 </div>
             </header>
 
-            <!-- Main Content -->
             <main class="dashboard-main">
                 <div class="dashboard-content">
 
-                    <!-- Queue Summary -->
                     <h2 class="section-title">
                         <i class="fas fa-layer-group"></i> Queue Summary — Today
                     </h2>
@@ -105,14 +95,12 @@ $currentTime = date('l, F j, Y \a\t g:i A');
                         </div>
                     </div>
 
-                    <!-- Analytics -->
                     <h2 class="section-title">
                         <i class="fas fa-chart-bar"></i> Analytics
                     </h2>
 
                     <div class="charts-grid">
 
-                        <!-- Office Distribution -->
                         <div class="chart-container">
                             <h3 class="chart-title">
                                 <i class="fas fa-building"></i> Queue by Office
@@ -131,7 +119,6 @@ $currentTime = date('l, F j, Y \a\t g:i A');
                             </div>
                         </div>
 
-                        <!-- Peak Hours Trend -->
                         <div class="chart-container">
                             <h3 class="chart-title">
                                 <i class="fas fa-chart-line"></i> Peak Hours Trend
@@ -152,12 +139,12 @@ $currentTime = date('l, F j, Y \a\t g:i A');
 
                     </div>
 
-                </div><!-- /.dashboard-content -->
+                </div>
             </main>
 
-        </div><!-- /.dashboard-body -->
+        </div>
 
-    </div><!-- /.dashboard-container -->
+    </div>
 
     <script>
         Chart.defaults.font.family = "'DM Sans', sans-serif";

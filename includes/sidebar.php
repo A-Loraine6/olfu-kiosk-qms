@@ -1,25 +1,21 @@
 <?php
-// Sidebar for Admin Dashboard
 $currentUser = getCurrentUser();
 $currentPage = basename($_SERVER['PHP_SELF']);
 ?>
 
 <aside class="dashboard-sidebar">
 
-    <!-- Brand -->
     <div class="sidebar-brand">
         <div class="logo">
             <img src="img/olfu-logo.png" alt="OLFU Logo">
         </div>
         <div class="sidebar-title">
             <h1><?php echo APP_NAME; ?></h1>
-            <p>Admin Dashboard</p>
         </div>
     </div>
 
     <div class="sidebar-divider"></div>
 
-    <!-- Navigation -->
     <nav class="sidebar-nav">
         <p class="nav-label">Navigation</p>
         <ul>
@@ -61,7 +57,6 @@ $currentPage = basename($_SERVER['PHP_SELF']);
             </li>
         </ul>
 
-        <!-- User info / Logout -->
         <ul class="sidebar-bottom-nav">
             <div class="sidebar-user">
                 <div class="sidebar-user-avatar">
