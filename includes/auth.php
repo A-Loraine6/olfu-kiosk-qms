@@ -1,25 +1,14 @@
 <?php
-
-/**
- * OLFU Queue Management System - Authentication Functions
- * Secured: bcrypt hashing, prepared statements, CSRF, rate limiting, session hardening
- */
-
 session_name(SESSION_NAME);
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
-    'secure'   => true,       // HTTPS only — set to false during local HTTP dev
-    'httponly' => true,       // No JS access to the session cookie
+    'secure'   => true,
+    'httponly' => true,
     'samesite' => 'Strict',
 ]);
 session_start();
 
-// ─── CSRF ────────────────────────────────────────────────────────────────────
-
-/**
- * Generate (or return existing) CSRF token for the current session.
- */
 function getCsrfToken(): string
 {
     if (empty($_SESSION['csrf_token'])) {
@@ -28,22 +17,13 @@ function getCsrfToken(): string
     return $_SESSION['csrf_token'];
 }
 
-/**
- * Verify submitted CSRF token against session token.
- * Uses hash_equals to prevent timing attacks.
- */
 function verifyCsrfToken(string $submitted): bool
 {
     $stored = $_SESSION['csrf_token'] ?? '';
     return $stored !== '' && hash_equals($stored, $submitted);
 }
 
-// ─── SESSION HARDENING ───────────────────────────────────────────────────────
 
-/**
- * Bind session to a browser fingerprint (User-Agent + IP).
- * Mismatches indicate potential session hijacking — session is destroyed.
- */
 function bindSessionFingerprint(): bool
 {
     $fp = hash('sha256', ($_SERVER['HTTP_USER_AGENT'] ?? '') . ($_SERVER['REMOTE_ADDR'] ?? ''));
@@ -60,12 +40,6 @@ function bindSessionFingerprint(): bool
     return $valid;
 }
 
-// ─── CORE AUTH ───────────────────────────────────────────────────────────────
-
-/**
- * Validate login inputs before hitting the database.
- * Returns an error string, or empty string if valid.
- */
 function validateLoginInputs(string $csrf, string $email, string $password, $db): string
 {
     if (!verifyCsrfToken($csrf)) {
@@ -79,11 +53,6 @@ function validateLoginInputs(string $csrf, string $email, string $password, $db)
     return '';
 }
 
-/**
- * Attempt to log in with email + password.
- *
- * @return array{success: bool, message: string}
- */
 function login($db, string $email, string $password, string $csrf): array
 {
     $inputError = validateLoginInputs($csrf, $email, $password, $db);
@@ -100,9 +69,6 @@ function login($db, string $email, string $password, string $csrf): array
     return ['success' => true, 'message' => ''];
 }
 
-/**
- * Fetch a user row by email. Returns assoc array or null.
- */
 function fetchUserByEmail($db, string $email): ?array
 {
     $stmt = $db->prepare(
@@ -121,9 +87,6 @@ function fetchUserByEmail($db, string $email): ?array
     return $user ?: null;
 }
 
-/**
- * Upgrade the stored hash if the algorithm or cost has changed.
- */
 function rehashPasswordIfNeeded($db, array $user, string $plainPassword): void
 {
     $algo    = (int) PASSWORD_HASH_ALGO;
@@ -142,12 +105,9 @@ function rehashPasswordIfNeeded($db, array $user, string $plainPassword): void
     }
 }
 
-/**
- * Write session variables and harden the session after a successful login.
- */
 function establishSession(array $user): void
 {
-    session_regenerate_id(true); // Prevent session fixation
+    session_regenerate_id(true);
 
     $_SESSION['user_id']    = $user['id'];
     $_SESSION['full_name']  = $user['full_name'];
@@ -157,15 +117,10 @@ function establishSession(array $user): void
 
     bindSessionFingerprint();
 
-    // Rotate CSRF token after login
     unset($_SESSION['csrf_token']);
     getCsrfToken();
 }
 
-/**
- * Validate registration inputs.
- * Returns an error string, or empty string if valid.
- */
 function validateRegistrationInputs(
     string $csrf,
     string $full_name,
@@ -200,11 +155,6 @@ function validateRegistrationInputs(
     return '';
 }
 
-/**
- * Register a new user account.
- *
- * @return array{success: bool, message: string}
- */
 function register($db, string $full_name, string $email, string $password, string $confirm_password, string $csrf): array
 {
     $full_name = trim($full_name);
@@ -223,10 +173,6 @@ function register($db, string $full_name, string $email, string $password, strin
     return ['success' => true, 'message' => 'Account created! You can now sign in.'];
 }
 
-/**
- * Check for duplicate email and insert the new user row.
- * Returns an error string on failure, or empty string on success.
- */
 function insertNewUser($db, string $full_name, string $email, string $password): string
 {
     $checkStmt = $db->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
@@ -260,11 +206,6 @@ function insertNewUser($db, string $full_name, string $email, string $password):
     return $ok ? '' : 'Registration failed. Please try again.';
 }
 
-// ─── SESSION HELPERS ─────────────────────────────────────────────────────────
-
-/**
- * Destroy the current session completely and clear the cookie.
- */
 function logout(): void
 {
     $_SESSION = [];
@@ -285,9 +226,6 @@ function logout(): void
     session_destroy();
 }
 
-/**
- * Returns true when a valid, non-expired session exists.
- */
 function isLoggedIn(): bool
 {
     if (empty($_SESSION['user_id'])) {
@@ -295,7 +233,7 @@ function isLoggedIn(): bool
     }
 
     if (!bindSessionFingerprint()) {
-        return false; // Fingerprint mismatch — session destroyed inside bindSessionFingerprint()
+        return false;
     }
 
     $timeout  = (int) SESSION_TIMEOUT;
@@ -306,15 +244,10 @@ function isLoggedIn(): bool
         return false;
     }
 
-    $_SESSION['login_time'] = time(); // Rolling activity window
+    $_SESSION['login_time'] = time();
     return true;
 }
 
-/**
- * Return the current user array, or null if not logged in.
- *
- * @return array{id:int,full_name:string,email:string,role:string}|null
- */
 function getCurrentUser(): ?array
 {
     if (!isLoggedIn()) {
@@ -329,26 +262,23 @@ function getCurrentUser(): ?array
     ];
 }
 
-function checkSessionTimeout() {
+function checkSessionTimeout()
+{
     if (!isset($_SESSION['last_activity'])) {
         $_SESSION['last_activity'] = time();
         return true;
     }
 
-    // Check against the SESSION_TIMEOUT constant from config.php
     if ((time() - $_SESSION['last_activity']) > SESSION_TIMEOUT) {
         session_unset();
         session_destroy();
         return false;
     }
 
-    $_SESSION['last_activity'] = time(); // reset activity time
+    $_SESSION['last_activity'] = time();
     return true;
 }
 
-/**
- * Hash a plaintext password using bcrypt (cost 12 by default).
- */
 function hashPassword(string $password): string
 {
     $algo    = defined('PASSWORD_HASH_ALGO')    ? (int) PASSWORD_HASH_ALGO    : PASSWORD_BCRYPT;
@@ -356,4 +286,3 @@ function hashPassword(string $password): string
 
     return password_hash($password, $algo, $options);
 }
-

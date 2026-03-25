@@ -1,9 +1,4 @@
 <?php
-
-/**
- * OLFU Queue Management System - Database Connection
- */
-
 class Database
 {
     private $conn;
@@ -51,5 +46,4 @@ class Database
     }
 }
 
-// Create global database instance
 $db = new Database();
