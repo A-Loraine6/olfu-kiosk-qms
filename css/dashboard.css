@@ -380,7 +380,7 @@ body {
 .card {
   background: var(--surface);
   border-radius: var(--radius-lg);
-  padding: 22px 24px;
+  padding: 16px 18px;
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card);
   position: relative;
@@ -436,7 +436,6 @@ body {
   align-items: center;
   justify-content: center;
   font-size: 17px;
-  margin-bottom: 16px;
 }
 
 .card-queued .card-icon {
@@ -452,17 +451,23 @@ body {
   color: #e07b1a;
 }
 
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
 .card-label {
   font-size: 10.5px;
   font-weight: 600;
   color: var(--text-3);
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  margin-bottom: 6px;
 }
 
 .card-value {
-  font-size: 44px;
+  font-size: 2rem;
   font-weight: 600;
   color: var(--text-1);
   line-height: 1;

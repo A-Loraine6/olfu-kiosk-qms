@@ -5,8 +5,8 @@ require_once 'includes/auth.php';
 require_once 'includes/queue_functions.php';
 
 
-if (!isLoggedIn() || !checkSessionTimeout()) {
-    header('Location: login.php');
+if (!isLoggedIn()) {
+    header('Location: ' . BASE_URL . 'login.php');
     exit;
 }
 
@@ -59,7 +59,7 @@ $currentTime = date('l, F j, Y \a\t g:i A');
                     </h2>
                 </div>
                 <div class="header-right">
-                    <div class="header-timestamp">
+                    <div class="header-timestamp" id="currentTime">
                         <?php echo $currentTime; ?>
                     </div>
                 </div>
@@ -74,22 +74,29 @@ $currentTime = date('l, F j, Y \a\t g:i A');
 
                     <div class="summary-cards">
                         <div class="card card-queued">
-                            <div class="card-icon"><i class="fas fa-users"></i></div>
-                            <div class="card-label">Total Queued</div>
+                            <div class="card-header">
+                                <div class="card-icon"><i class="fas fa-users"></i></div>
+                                <div class="card-label">Total Queued</div>
+                            </div>
+
                             <div class="card-value"><?php echo intval($queueSummary['total_queued']); ?></div>
                             <div class="card-description">Students currently in queue</div>
                         </div>
 
                         <div class="card card-served">
-                            <div class="card-icon"><i class="fas fa-check-circle"></i></div>
-                            <div class="card-label">Total Served</div>
+                            <div class="card-header">
+                                <div class="card-icon"><i class="fas fa-check-circle"></i></div>
+                                <div class="card-label">Total Served</div>
+                            </div>
                             <div class="card-value"><?php echo intval($queueSummary['total_served']); ?></div>
                             <div class="card-description">Students processed today</div>
                         </div>
 
                         <div class="card card-skipped">
-                            <div class="card-icon"><i class="fas fa-ban"></i></div>
-                            <div class="card-label">Total Skipped</div>
+                            <div class="card-header">
+                                <div class="card-icon"><i class="fas fa-ban"></i></div>
+                                <div class="card-label">Total Skipped</div>
+                            </div>
                             <div class="card-value"><?php echo intval($queueSummary['total_skipped']); ?></div>
                             <div class="card-description">Skipped tickets today</div>
                         </div>
@@ -147,6 +154,33 @@ $currentTime = date('l, F j, Y \a\t g:i A');
     </div>
 
     <script>
+        function updateTime() {
+            const now = new Date();
+
+            const dayName = now.toLocaleDateString('en-PH', {
+                weekday: 'long',
+                timeZone: 'Asia/Manila'
+            });
+            const monthDayYear = now.toLocaleDateString('en-PH', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                timeZone: 'Asia/Manila'
+            });
+
+            const timeString = now.toLocaleTimeString('en-PH', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Manila'
+            });
+
+            document.getElementById('currentTime').textContent = `${dayName}, ${monthDayYear} at ${timeString}`;
+        }
+
+        updateTime();
+        setInterval(updateTime, 1000);
+
         Chart.defaults.font.family = "'DM Sans', sans-serif";
         Chart.defaults.color = '#7a9387';
 
