@@ -13,6 +13,7 @@ https://git-scm.com/
 Open **Git Bash** and go to your `htdocs` folder (inside your XAMPP directory):  
 
 change d to c if your xampp is in c drive.
+
 `cd /d/xampp/htdocs`
 `git clone https://github.com/A-Loraine6/olfu-kiosk-qms.git`  
 
