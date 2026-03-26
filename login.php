@@ -51,7 +51,6 @@ $csrf_token = getCsrfToken();
                 <img src="img/olfu-logo.png" alt="OLFU">
                 <span>Our Lady of Fatima University</span>
             </div>
-<!-- bjhfdbjds -->
             <div class="brand-body">
                 <h2 class="brand-headline">
                     Queue Management<br><em>System</em>
