@@ -109,11 +109,12 @@ function establishSession(array $user): void
 {
     session_regenerate_id(true);
 
-    $_SESSION['user_id']    = $user['id'];
-    $_SESSION['full_name']  = $user['full_name'];
-    $_SESSION['email']      = $user['email'];
-    $_SESSION['role']       = $user['role'];
-    $_SESSION['login_time'] = time();
+    $_SESSION['user_id']         = $user['id'];
+    $_SESSION['full_name']       = $user['full_name'];
+    $_SESSION['email']           = $user['email'];
+    $_SESSION['role']            = $user['role'];
+    $_SESSION['login_time']      = time();
+    $_SESSION['last_activity']   = time();
 
     bindSessionFingerprint();
 
@@ -236,15 +237,18 @@ function isLoggedIn(): bool
         return false;
     }
 
-    $timeout  = (int) SESSION_TIMEOUT;
-    $timedOut = isset($_SESSION['login_time']) && (time() - $_SESSION['login_time']) > $timeout;
+    $absoluteTimeout = (int) SESSION_TIMEOUT;
+    $absoluteTimedOut = isset($_SESSION['login_time']) && (time() - $_SESSION['login_time']) > $absoluteTimeout;
 
-    if ($timedOut) {
+    $inactivityTimeout = (int) SESSION_TIMEOUT;
+    $inactivityTimedOut = isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > $inactivityTimeout;
+
+    if ($absoluteTimedOut || $inactivityTimedOut) {
         logout();
         return false;
     }
 
-    $_SESSION['login_time'] = time();
+    $_SESSION['last_activity'] = time();
     return true;
 }
 
@@ -260,23 +264,6 @@ function getCurrentUser(): ?array
         'email'     => $_SESSION['email'],
         'role'      => $_SESSION['role'],
     ];
-}
-
-function checkSessionTimeout()
-{
-    if (!isset($_SESSION['last_activity'])) {
-        $_SESSION['last_activity'] = time();
-        return true;
-    }
-
-    if ((time() - $_SESSION['last_activity']) > SESSION_TIMEOUT) {
-        session_unset();
-        session_destroy();
-        return false;
-    }
-
-    $_SESSION['last_activity'] = time();
-    return true;
 }
 
 function hashPassword(string $password): string
