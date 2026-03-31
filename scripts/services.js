@@ -1,0 +1,342 @@
+const AJAX_URL = "api/service_actions.php";
+
+async function ajax(payload) {
+  const res = await fetch(AJAX_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      ...payload,
+      csrf_token: CSRF_TOKEN,
+    }),
+  });
+  return res.json();
+}
+
+function showToast(message, type = "success") {
+  const container = document.getElementById("toast-container");
+  const toast = document.createElement("div");
+  const icon = type === "success" ? "fa-check-circle" : "fa-exclamation-circle";
+
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `
+            <i class="fas ${icon}"></i>
+            <span>${message}</span>
+            <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
+        `;
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("show"));
+  setTimeout(() => {
+    toast.style.transition = "opacity 0.4s, transform 0.4s";
+    toast.style.opacity = "0";
+    toast.style.transform = "translateX(100%)";
+    setTimeout(() => toast.remove(), 400);
+  }, 4000);
+}
+
+function updateStats(data) {
+  if (data.totalServices !== undefined)
+    document.getElementById("stat-total").textContent = data.totalServices;
+  if (data.activeServices !== undefined)
+    document.getElementById("stat-active").textContent = data.activeServices;
+  if (data.inactiveServices !== undefined)
+    document.getElementById("stat-inactive").textContent =
+      data.inactiveServices;
+}
+
+function updateTable(html) {
+  const tbody = document.getElementById("servicesTableBody");
+  tbody.innerHTML = html;
+  updateResultCount();
+}
+
+function setTableLoading(on) {
+  document.getElementById("tableLoading").style.display = on ? "flex" : "none";
+}
+
+function updateResultCount() {
+  const rows = document.querySelectorAll(
+    "#servicesTableBody tr:not(.empty-row)",
+  );
+  const empty = document.querySelector("#servicesTableBody .empty-state");
+  const el = document.getElementById("resultCount");
+  if (empty) {
+    el.textContent = "";
+  } else {
+    el.textContent = `${rows.length} result${rows.length !== 1 ? "s" : ""}`;
+  }
+}
+
+let searchDebounce;
+
+function applyFilters() {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(fetchFilteredRows, 0);
+}
+
+document.getElementById("searchInput").addEventListener("input", function () {
+  const clearBtn = document.getElementById("searchClear");
+  clearBtn.style.opacity = this.value ? "1" : "0";
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(fetchFilteredRows, 280);
+});
+
+function clearSearch() {
+  document.getElementById("searchInput").value = "";
+  document.getElementById("searchClear").style.opacity = "0";
+  fetchFilteredRows();
+}
+
+async function fetchFilteredRows() {
+  setTableLoading(true);
+  const data = await ajax({
+    action: "get_services",
+    search: document.getElementById("searchInput").value,
+    office: document.getElementById("filterOffice").value,
+    status: document.getElementById("filterStatus").value,
+  });
+  setTableLoading(false);
+  if (data.success) {
+    updateTable(data.html);
+  }
+}
+
+async function toggleQueueMode(officeId, btn) {
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+  const data = await ajax({
+    action: "toggle_queue_mode",
+    office_id: officeId,
+  });
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-exchange-alt"></i>';
+
+  if (data.success) {
+    const isServiceBased = data.message.includes("Service-Based");
+    const label = document.getElementById(`office-mode-label-${officeId}`);
+    const desc = document.getElementById(`office-mode-desc-${officeId}`);
+
+    label.textContent = isServiceBased ? "Service-Based" : "Unified";
+    label.className =
+      "queue-mode-value " + (isServiceBased ? "mode-service" : "mode-unified");
+    desc.textContent = isServiceBased
+      ? "Kiosk shows service selection before issuing a number."
+      : "Kiosk issues a number directly without service selection.";
+
+    showToast(data.message, "success");
+  } else {
+    showToast(data.message, "error");
+  }
+}
+
+function openModal(id) {
+  document.getElementById(id).style.display = "flex";
+}
+
+function closeModal(id) {
+  document.getElementById(id).style.display = "none";
+}
+
+document.querySelectorAll(".modal").forEach((m) => {
+  m.addEventListener("click", (e) => {
+    if (e.target === m) closeModal(m.id);
+  });
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    document.querySelectorAll(".modal").forEach((m) => {
+      if (m.style.display === "flex") closeModal(m.id);
+    });
+  }
+});
+
+document.addEventListener("click", function (e) {
+  document.querySelectorAll(".dropdown.active").forEach((d) => {
+    if (!d.contains(e.target)) d.classList.remove("active");
+  });
+  const toggle = e.target.closest(".dropdown-toggle");
+  if (toggle) {
+    toggle.closest(".dropdown").classList.toggle("active");
+    e.stopPropagation();
+  }
+});
+
+document
+  .getElementById("servicesTableBody")
+  .addEventListener("click", function (e) {
+    const toggle = e.target.closest(".dropdown-toggle");
+    if (toggle) {
+      document.querySelectorAll(".dropdown.active").forEach((d) => {
+        if (!d.contains(toggle)) d.classList.remove("active");
+      });
+      toggle.closest(".dropdown").classList.toggle("active");
+      e.stopPropagation();
+    }
+  });
+
+function openEditServiceModal(svc) {
+  document.getElementById("edit_service_id").value = svc.id;
+  document.getElementById("edit_name").value = svc.name;
+  document.getElementById("edit_office").value = svc.office_id;
+  document.getElementById("edit_category").value = svc.category || "";
+  document.getElementById("edit_description").value = svc.description || "";
+  openModal("editServiceModal");
+}
+
+function openToggleModal(id, isActive) {
+  document.getElementById("toggle_service_id").value = id;
+  const title = document.getElementById("toggleModalTitle");
+  const body = document.getElementById("toggleModalBody");
+  const btn = document.getElementById("toggleSubmitBtn");
+
+  if (isActive) {
+    title.textContent = "Deactivate Service";
+    body.textContent =
+      "Deactivate this service? It will be hidden from the kiosk.";
+    btn.textContent = "Deactivate";
+    btn.className = "btn-warning";
+  } else {
+    title.textContent = "Activate Service";
+    body.textContent =
+      "Activate this service? It will become visible on the kiosk.";
+    btn.textContent = "Activate";
+    btn.className = "btn-primary";
+  }
+  openModal("toggleServiceModal");
+}
+
+function openDeleteModal(id) {
+  document.getElementById("delete_service_id").value = id;
+  openModal("deleteServiceModal");
+}
+
+function setBtnLoading(btnId, loading, defaultHtml) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.innerHTML = loading
+    ? '<i class="fas fa-spinner fa-spin"></i> Please wait…'
+    : defaultHtml;
+}
+
+async function submitAddService() {
+  setBtnLoading(
+    "addServiceBtn",
+    true,
+    '<i class="fas fa-plus"></i> Add Service',
+  );
+  const data = await ajax({
+    action: "add_service",
+    name: document.getElementById("add_name").value,
+    office_id: document.getElementById("add_office").value,
+    category: document.getElementById("add_category").value,
+    description: document.getElementById("add_description").value,
+  });
+  setBtnLoading(
+    "addServiceBtn",
+    false,
+    '<i class="fas fa-plus"></i> Add Service',
+  );
+
+  if (data.success) {
+    closeModal("addServiceModal");
+    ["add_name", "add_description"].forEach(
+      (id) => (document.getElementById(id).value = ""),
+    );
+    document.getElementById("add_office").selectedIndex = 0;
+    document.getElementById("add_category").selectedIndex = 0;
+
+    updateTable(data.tableHtml);
+    updateStats(data);
+    showToast(data.message, "success");
+  } else {
+    showToast(data.message, "error");
+  }
+}
+
+async function submitEditService() {
+  setBtnLoading(
+    "editServiceBtn",
+    true,
+    '<i class="fas fa-save"></i> Save Changes',
+  );
+  const data = await ajax({
+    action: "edit_service",
+    service_id: document.getElementById("edit_service_id").value,
+    name: document.getElementById("edit_name").value,
+    office_id: document.getElementById("edit_office").value,
+    category: document.getElementById("edit_category").value,
+    description: document.getElementById("edit_description").value,
+  });
+  setBtnLoading(
+    "editServiceBtn",
+    false,
+    '<i class="fas fa-save"></i> Save Changes',
+  );
+
+  if (data.success) {
+    closeModal("editServiceModal");
+    updateTable(data.tableHtml);
+    updateStats(data);
+    showToast(data.message, "success");
+  } else {
+    showToast(data.message, "error");
+  }
+}
+
+async function submitToggleService() {
+  setBtnLoading(
+    "toggleSubmitBtn",
+    true,
+    document.getElementById("toggleSubmitBtn").textContent,
+  );
+  const data = await ajax({
+    action: "toggle_service",
+    service_id: document.getElementById("toggle_service_id").value,
+  });
+  setBtnLoading(
+    "toggleSubmitBtn",
+    false,
+    document.getElementById("toggleSubmitBtn").textContent,
+  );
+
+  if (data.success) {
+    closeModal("toggleServiceModal");
+    updateTable(data.tableHtml);
+    updateStats(data);
+    showToast(data.message, "success");
+  } else {
+    showToast(data.message, "error");
+  }
+}
+
+async function submitDeleteService() {
+  setBtnLoading(
+    "deleteServiceBtn",
+    true,
+    '<i class="fas fa-trash"></i> Delete',
+  );
+  const data = await ajax({
+    action: "delete_service",
+    service_id: document.getElementById("delete_service_id").value,
+  });
+  setBtnLoading(
+    "deleteServiceBtn",
+    false,
+    '<i class="fas fa-trash"></i> Delete',
+  );
+
+  if (data.success) {
+    closeModal("deleteServiceModal");
+    updateTable(data.tableHtml);
+    updateStats(data);
+    showToast(data.message, "success");
+  } else {
+    showToast(data.message, "error");
+  }
+}
+
+updateResultCount();
