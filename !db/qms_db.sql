@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 26, 2026 at 11:50 AM
+-- Generation Time: Apr 01, 2026 at 07:55 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -53,7 +53,31 @@ INSERT INTO `activity_logs` (`id`, `user_id`, `activity_type`, `entity_type`, `e
 (5, 1, 'STAFF_DEACTIVATE', 'USER', 2, NULL, NULL, '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-25 06:44:37'),
 (6, 1, 'STAFF_EDIT', 'USER', 2, '{\"full_name\":\"Liezel Mae Torres\",\"email\":\"liezelmaetorres@gmail.com\",\"office\":\"Accounting\"}', '{\"full_name\":\"Liezel Mae Torres\",\"email\":\"liezelmaetorres@gmail.com\",\"office\":\"Admissions\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-26 02:55:13'),
 (7, 1, 'STAFF_EDIT', 'USER', 2, '{\"full_name\":\"Liezel Mae Torres\",\"email\":\"liezelmaetorres@gmail.com\",\"office\":\"Admissions\"}', '{\"full_name\":\"Liezel Mae Torres\",\"email\":\"liezelmaetorres@gmail.com\",\"office\":\"Accounting\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-26 02:55:21'),
-(8, 1, 'STAFF_ACTIVATE', 'USER', 2, NULL, NULL, '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-26 02:55:24');
+(8, 1, 'STAFF_ACTIVATE', 'USER', 2, NULL, NULL, '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-26 02:55:24'),
+(9, 1, 'OFFICE_QUEUE_MODE_TOGGLE', 'OFFICE', 2, '{\"queue_mode\":\"service-based\"}', '{\"queue_mode\":\"unified\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-30 23:47:34'),
+(10, 1, 'OFFICE_QUEUE_MODE_TOGGLE', 'OFFICE', 2, '{\"queue_mode\":\"unified\"}', '{\"queue_mode\":\"service-based\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-30 23:47:36'),
+(11, 1, 'SERVICE_EDIT', 'SERVICE', 4, '{\"name\":\"Balance Inquiry\",\"category\":\"regular\",\"description\":\"Balance inquiries\",\"office\":\"Accounting\"}', '{\"name\":\"Balance Inquiry\",\"category\":\"regular\",\"description\":\"Balance inquiries\",\"office\":\"Admissions\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-30 23:49:50'),
+(12, 1, 'SERVICE_EDIT', 'SERVICE', 4, '{\"name\":\"Balance Inquiry\",\"category\":\"regular\",\"description\":\"Balance inquiries\",\"office\":\"Admissions\"}', '{\"name\":\"Balance Inquiry\",\"category\":\"regular\",\"description\":\"Balance inquiries\",\"office\":\"Accounting\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-30 23:50:20');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `kiosk_settings`
+--
+
+CREATE TABLE `kiosk_settings` (
+  `id` int(11) NOT NULL,
+  `kiosk_enabled` tinyint(1) NOT NULL DEFAULT 1,
+  `idle_timeout` smallint(6) NOT NULL DEFAULT 60,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `kiosk_settings`
+--
+
+INSERT INTO `kiosk_settings` (`id`, `kiosk_enabled`, `idle_timeout`, `updated_at`) VALUES
+(1, 1, 60, '2026-04-01 05:13:19');
 
 -- --------------------------------------------------------
 
@@ -68,17 +92,27 @@ CREATE TABLE `offices` (
   `description` text DEFAULT NULL,
   `window_count` int(11) DEFAULT 1,
   `queue_mode` enum('unified','service-based') DEFAULT 'unified',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `open_time` time NOT NULL DEFAULT '08:00:00',
+  `close_time` time NOT NULL DEFAULT '17:00:00',
+  `break_start` time DEFAULT NULL,
+  `break_end` time DEFAULT NULL,
+  `queue_cutoff` time DEFAULT NULL,
+  `queue_prefix` varchar(10) NOT NULL DEFAULT '',
+  `queue_start_num` smallint(4) NOT NULL DEFAULT 1,
+  `daily_reset` tinyint(1) NOT NULL DEFAULT 1,
+  `max_queue_limit` smallint(4) NOT NULL DEFAULT 0,
+  `auto_close` tinyint(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `offices`
 --
 
-INSERT INTO `offices` (`id`, `name`, `code`, `description`, `window_count`, `queue_mode`, `created_at`) VALUES
-(1, 'Registrar', 'REG', 'Registrar Office', 9, 'unified', '2026-03-25 08:03:37'),
-(2, 'Accounting', 'ACC', 'Accounting Office', 10, 'service-based', '2026-03-25 08:03:37'),
-(3, 'Admissions', 'ADM', 'Admissions Office', 5, 'unified', '2026-03-25 08:03:37');
+INSERT INTO `offices` (`id`, `name`, `code`, `description`, `window_count`, `queue_mode`, `created_at`, `open_time`, `close_time`, `break_start`, `break_end`, `queue_cutoff`, `queue_prefix`, `queue_start_num`, `daily_reset`, `max_queue_limit`, `auto_close`) VALUES
+(1, 'Registrar', 'REG', 'Registrar Office', 9, 'unified', '2026-03-25 08:03:37', '08:00:00', '17:00:00', NULL, NULL, NULL, 'REG', 1, 1, 0, 1),
+(2, 'Accounting', 'ACC', 'Accounting Office', 10, 'service-based', '2026-03-25 08:03:37', '08:00:00', '17:00:00', NULL, NULL, NULL, 'ACC', 1, 1, 0, 1),
+(3, 'Admissions', 'ADM', 'Admissions Office', 5, 'unified', '2026-03-25 08:03:37', '08:00:00', '17:00:00', NULL, NULL, NULL, 'ADM', 1, 1, 0, 1);
 
 -- --------------------------------------------------------
 
@@ -123,6 +157,9 @@ CREATE TABLE `transaction_types` (
   `name` varchar(100) NOT NULL,
   `category` enum('simple','regular','complicated') NOT NULL,
   `description` text DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `is_deleted` tinyint(1) NOT NULL DEFAULT 0,
+  `office_id` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -130,15 +167,15 @@ CREATE TABLE `transaction_types` (
 -- Dumping data for table `transaction_types`
 --
 
-INSERT INTO `transaction_types` (`id`, `name`, `category`, `description`, `created_at`) VALUES
-(1, 'Online Payment Validation', 'simple', 'Online payment validation / push', '2026-03-25 08:02:05'),
-(2, 'Miscellaneous Fee', 'simple', 'Miscellaneous fee payments', '2026-03-25 08:02:05'),
-(3, 'Tuition Fee', 'regular', 'Tuition fee payments', '2026-03-25 08:02:05'),
-(4, 'Balance Inquiry', 'regular', 'Balance inquiries', '2026-03-25 08:02:05'),
-(5, 'Promissory Note', 'complicated', 'Promissory notes', '2026-03-25 08:02:05'),
-(6, 'Payment Issue', 'complicated', 'Payment issues (e.g., wrong posting in system)', '2026-03-25 08:02:05'),
-(7, 'Incomplete Requirements', 'complicated', 'Incomplete requirements', '2026-03-25 08:02:05'),
-(8, 'System Discrepancy', 'complicated', 'System discrepancies (AIMS issues)', '2026-03-25 08:02:05');
+INSERT INTO `transaction_types` (`id`, `name`, `category`, `description`, `is_active`, `is_deleted`, `office_id`, `created_at`) VALUES
+(1, 'Online Payment Validation', 'simple', 'Online payment validation / push', 1, 0, 2, '2026-03-25 08:02:05'),
+(2, 'Miscellaneous Fee', 'simple', 'Miscellaneous fee payments', 1, 0, 2, '2026-03-25 08:02:05'),
+(3, 'Tuition Fee', 'regular', 'Tuition fee payments', 1, 0, 2, '2026-03-25 08:02:05'),
+(4, 'Balance Inquiry', 'regular', 'Balance inquiries', 1, 0, 2, '2026-03-25 08:02:05'),
+(5, 'Promissory Note', 'complicated', 'Promissory notes', 1, 0, 2, '2026-03-25 08:02:05'),
+(6, 'Payment Issue', 'complicated', 'Payment issues (e.g., wrong posting in system)', 1, 0, 2, '2026-03-25 08:02:05'),
+(7, 'Incomplete Requirements', 'complicated', 'Incomplete requirements', 1, 0, 2, '2026-03-25 08:02:05'),
+(8, 'System Discrepancy', 'complicated', 'System discrepancies (AIMS issues)', 1, 0, 2, '2026-03-25 08:02:05');
 
 -- --------------------------------------------------------
 
@@ -185,6 +222,12 @@ ALTER TABLE `activity_logs`
   ADD KEY `idx_entity` (`entity_type`,`entity_id`);
 
 --
+-- Indexes for table `kiosk_settings`
+--
+ALTER TABLE `kiosk_settings`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `offices`
 --
 ALTER TABLE `offices`
@@ -214,7 +257,8 @@ ALTER TABLE `tickets`
 -- Indexes for table `transaction_types`
 --
 ALTER TABLE `transaction_types`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_tt_office` (`office_id`);
 
 --
 -- Indexes for table `users`
@@ -232,7 +276,13 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `activity_logs`
 --
 ALTER TABLE `activity_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+
+--
+-- AUTO_INCREMENT for table `kiosk_settings`
+--
+ALTER TABLE `kiosk_settings`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `offices`
@@ -279,6 +329,12 @@ ALTER TABLE `sessions`
 --
 ALTER TABLE `tickets`
   ADD CONSTRAINT `tickets_ibfk_1` FOREIGN KEY (`office_id`) REFERENCES `offices` (`id`);
+
+--
+-- Constraints for table `transaction_types`
+--
+ALTER TABLE `transaction_types`
+  ADD CONSTRAINT `fk_tt_office` FOREIGN KEY (`office_id`) REFERENCES `offices` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `users`
