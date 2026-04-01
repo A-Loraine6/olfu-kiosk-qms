@@ -1,4 +1,5 @@
 const AJAX_URL = "api/service_actions.php";
+let currentRequest = 0;
 
 async function ajax(payload) {
   const res = await fetch(AJAX_URL, {
@@ -47,12 +48,30 @@ function updateStats(data) {
 
 function updateTable(html) {
   const tbody = document.getElementById("servicesTableBody");
-  tbody.innerHTML = html;
-  updateResultCount();
+
+  tbody.style.transition = "opacity 0.2s ease";
+  tbody.style.opacity = "0";
+
+  setTimeout(() => {
+    tbody.innerHTML = html;
+
+    tbody.style.opacity = "1";
+
+    updateResultCount();
+  }, 150);
 }
 
 function setTableLoading(on) {
-  document.getElementById("tableLoading").style.display = on ? "flex" : "none";
+  const el = document.getElementById("tableLoading");
+  el.style.transition = "opacity 0.2s ease";
+
+  if (on) {
+    el.style.display = "flex";
+    requestAnimationFrame(() => (el.style.opacity = "1"));
+  } else {
+    el.style.opacity = "0";
+    setTimeout(() => (el.style.display = "none"), 200);
+  }
 }
 
 function updateResultCount() {
@@ -72,7 +91,7 @@ let searchDebounce;
 
 function applyFilters() {
   clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(fetchFilteredRows, 0);
+  searchDebounce = setTimeout(fetchFilteredRows, 250);
 }
 
 document.getElementById("searchInput").addEventListener("input", function () {
@@ -89,14 +108,21 @@ function clearSearch() {
 }
 
 async function fetchFilteredRows() {
+  const requestId = ++currentRequest;
+
   setTableLoading(true);
+
   const data = await ajax({
     action: "get_services",
     search: document.getElementById("searchInput").value,
     office: document.getElementById("filterOffice").value,
     status: document.getElementById("filterStatus").value,
   });
+
+  if (requestId !== currentRequest) return;
+
   setTableLoading(false);
+
   if (data.success) {
     updateTable(data.html);
   }
@@ -153,29 +179,46 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-document.addEventListener("click", function (e) {
+function positionDropdown(toggle) {
+  const menu = toggle.closest(".dropdown").querySelector(".dropdown-menu");
+  const rect = toggle.getBoundingClientRect();
+  const items = menu.querySelectorAll("button").length;
+  const menuH = items * 41 + 16;
+  const spaceBelow = window.innerHeight - rect.bottom;
+  const openUp = spaceBelow < menuH;
+
+  menu.style.position = "fixed";
+  menu.style.right = window.innerWidth - rect.right + "px";
+  menu.style.minWidth = "160px";
+  menu.style.top = openUp ? "auto" : rect.bottom + 4 + "px";
+  menu.style.bottom = openUp
+    ? window.innerHeight - rect.top + 4 + "px"
+    : "auto";
+}
+
+function closeAllDropdowns() {
   document.querySelectorAll(".dropdown.active").forEach((d) => {
-    if (!d.contains(e.target)) d.classList.remove("active");
+    d.classList.remove("active");
   });
+}
+
+document.addEventListener("click", function (e) {
   const toggle = e.target.closest(".dropdown-toggle");
   if (toggle) {
-    toggle.closest(".dropdown").classList.toggle("active");
+    const dropdown = toggle.closest(".dropdown");
+    const isAlreadyOn = dropdown.classList.contains("active");
+    closeAllDropdowns();
+    if (!isAlreadyOn) {
+      dropdown.classList.add("active");
+    }
     e.stopPropagation();
+    return;
   }
+  closeAllDropdowns();
 });
 
-document
-  .getElementById("servicesTableBody")
-  .addEventListener("click", function (e) {
-    const toggle = e.target.closest(".dropdown-toggle");
-    if (toggle) {
-      document.querySelectorAll(".dropdown.active").forEach((d) => {
-        if (!d.contains(toggle)) d.classList.remove("active");
-      });
-      toggle.closest(".dropdown").classList.toggle("active");
-      e.stopPropagation();
-    }
-  });
+window.addEventListener("scroll", closeAllDropdowns, true);
+window.addEventListener("resize", closeAllDropdowns);
 
 function openEditServiceModal(svc) {
   document.getElementById("edit_service_id").value = svc.id;
