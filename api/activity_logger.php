@@ -14,6 +14,20 @@ function logActivity(
 ): bool {
     if (!$user = getCurrentUser()) return false;
 
+    if ($before_values !== null && $after_values !== null) {
+        $hasChanges = false;
+        foreach ($after_values as $key => $newVal) {
+            $oldVal = $before_values[$key] ?? null;
+            if ($oldVal != $newVal) {
+                $hasChanges = true;
+                break;
+            }
+        }
+        if (!$hasChanges) {
+            return true;
+        }
+    }
+
     $user_id    = $user['id'];
     $ip_address = $_SERVER['REMOTE_ADDR']      ?? '0.0.0.0';
     $user_agent = $_SERVER['HTTP_USER_AGENT']   ?? '';
@@ -34,7 +48,7 @@ function logActivity(
     }
 
     $stmt->bind_param(
-        'issiisssss',
+        'ississssss',
         $user_id,
         $activity_type,
         $entity_type,
@@ -229,7 +243,7 @@ function formatActivityLog(array $log): array
         'STAFF_DELETE'             => 'Delete Staff',
         'STAFF_ACTIVATE'           => 'Activate Staff',
         'STAFF_DEACTIVATE'         => 'Deactivate Staff',
-        'PASSWORD_RESET'           => 'Password Reset',
+        'PASSWORD_RESET'           => 'Staff Password Reset',
         'ROLE_CHANGE'              => 'Role Change',
         'OFFICE_ASSIGN'            => 'Office Assignment',
 
@@ -242,6 +256,9 @@ function formatActivityLog(array $log): array
         'SETTINGS_SCHEDULE_UPDATE' => 'Update Office Schedule',
         'SETTINGS_QUEUE_UPDATE'    => 'Update Queue Configuration',
         'SETTINGS_KIOSK_UPDATE'    => 'Update Kiosk Settings',
+
+        'PASSWORD_CHANGE'          => 'Password Changed',
+        'PROFILE_UPDATE'           => 'Profile Updated',
     ];
 
     return [
