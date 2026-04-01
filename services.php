@@ -54,7 +54,6 @@ function getCategoryColor(?string $cat): string
 
         <div class="services-body">
 
-            <!-- ── Header ── -->
             <header class="dashboard-header">
                 <div class="header-left">
                     <h2 class="header-page-title">
@@ -71,7 +70,6 @@ function getCategoryColor(?string $cat): string
             <div class="dashboard-main">
                 <div class="dashboard-content">
 
-                    <!-- ── Summary Cards ── -->
                     <h2 class="section-title"><i class="fas fa-concierge-bell"></i> Service Overview</h2>
                     <div class="summary-cards">
                         <div class="card card-total-services">
@@ -100,7 +98,6 @@ function getCategoryColor(?string $cat): string
                         </div>
                     </div>
 
-                    <!-- ── Office Queue Mode ── -->
                     <h2 class="section-title"><i class="fas fa-building"></i> Office Queue Mode</h2>
                     <div class="office-mode-grid">
                         <?php foreach ($offices as $office): ?>
@@ -147,11 +144,9 @@ function getCategoryColor(?string $cat): string
                         <?php endforeach; ?>
                     </div>
 
-                    <!-- ── All Services Table ── -->
                     <h2 class="section-title"><i class="fas fa-th-list"></i> All Services</h2>
                     <div class="services-table-section">
                         <div class="services-table-toolbar">
-                            <!-- Search -->
                             <div class="search-wrap">
                                 <i class="fas fa-search search-icon"></i>
                                 <input type="text" id="searchInput" class="filter-input search-input"
@@ -162,7 +157,6 @@ function getCategoryColor(?string $cat): string
                                 </button>
                             </div>
 
-                            <!-- Filters -->
                             <div class="filter-group">
                                 <select id="filterOffice" class="filter-select" onchange="applyFilters()">
                                     <option value="">All Offices</option>
@@ -178,9 +172,6 @@ function getCategoryColor(?string $cat): string
                                     <option value="inactive">Inactive</option>
                                 </select>
                             </div>
-
-                            <!-- Result count -->
-                            <span class="result-count" id="resultCount"></span>
                         </div>
 
                         <table class="services-table">
@@ -258,57 +249,57 @@ function getCategoryColor(?string $cat): string
                             </tbody>
                         </table>
 
-                        <!-- Loading overlay -->
                         <div class="table-loading" id="tableLoading">
                             <div class="table-spinner"></div>
                         </div>
-                    </div><!-- /services-table-section -->
+                    </div>
 
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Toast container -->
     <div id="toast-container"></div>
 
-    <!-- ══════════════════════════════════════════════════════════
-     MODALS
-     ══════════════════════════════════════════════════════════ -->
-
-    <!-- Add Service -->
     <div id="addServiceModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h2><i class="fas fa-plus-circle"></i> Add New Service</h2>
                 <button class="modal-close" onclick="closeModal('addServiceModal')">&times;</button>
             </div>
+
             <div class="form-group">
                 <label for="add_name">Service Name <span class="required">*</span></label>
-                <input type="text" id="add_name" placeholder="e.g. Enrollment, Transcript Request">
+                <input type="text" id="add_name" placeholder="Enter service name">
             </div>
+
             <div class="form-group">
                 <label for="add_office">Assigned Office <span class="required">*</span></label>
                 <select id="add_office">
-                    <option value="" disabled selected>Select Office</option>
+                    <option value="" disabled selected>Select office</option>
                     <?php foreach ($offices as $o): ?>
-                        <option value="<?php echo $o['id']; ?>"><?php echo htmlspecialchars($o['name']); ?></option>
+                        <option value="<?php echo $o['id']; ?>">
+                            <?php echo htmlspecialchars($o['name']); ?>
+                        </option>
                     <?php endforeach; ?>
                 </select>
             </div>
+
             <div class="form-group">
-                <label for="add_category">Category <span class="optional">(optional — Accounting only)</span></label>
+                <label for="add_category">Category</label>
                 <select id="add_category">
-                    <option value="">No Category</option>
+                    <option value="">No category</option>
                     <option value="simple">Simple</option>
                     <option value="regular">Regular</option>
                     <option value="complicated">Complicated</option>
                 </select>
             </div>
+
             <div class="form-group">
                 <label for="add_description">Description <span class="optional">(optional)</span></label>
-                <textarea id="add_description" placeholder="Brief description of this service…"></textarea>
+                <textarea id="add_description" placeholder="Enter description"></textarea>
             </div>
+
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal('addServiceModal')">Cancel</button>
                 <button type="button" class="btn-primary" id="addServiceBtn" onclick="submitAddService()">
@@ -318,7 +309,6 @@ function getCategoryColor(?string $cat): string
         </div>
     </div>
 
-    <!-- Edit Service -->
     <div id="editServiceModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -340,7 +330,7 @@ function getCategoryColor(?string $cat): string
                 </select>
             </div>
             <div class="form-group">
-                <label for="edit_category">Category <span class="optional">(optional — Accounting only)</span></label>
+                <label for="edit_category">Category</label>
                 <select id="edit_category">
                     <option value="">No Category</option>
                     <option value="simple">Simple</option>
@@ -361,7 +351,6 @@ function getCategoryColor(?string $cat): string
         </div>
     </div>
 
-    <!-- Toggle Active / Inactive -->
     <div id="toggleServiceModal" class="modal">
         <div class="modal-content modal-sm">
             <div class="modal-header">
@@ -379,7 +368,6 @@ function getCategoryColor(?string $cat): string
         </div>
     </div>
 
-    <!-- Delete Service -->
     <div id="deleteServiceModal" class="modal">
         <div class="modal-content modal-sm">
             <div class="modal-header">

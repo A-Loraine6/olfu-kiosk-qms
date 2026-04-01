@@ -1,4 +1,8 @@
 <?php
+
+require_once __DIR__ . '/activity_logger.php';
+
+
 function serviceResponse(bool $success, string $message, array $extra = []): array
 {
     return array_merge(['success' => $success, 'message' => $message], $extra);
@@ -71,6 +75,16 @@ function toggleOfficeQueueMode(mysqli $conn, int $officeId): array
         return serviceResponse(false, 'Failed to update queue mode.');
     }
 
+    logActivity(
+        $conn,
+        'OFFICE_QUEUE_MODE_TOGGLE',
+        'OFFICE',
+        $officeId,
+        "Queue mode switched to $newMode for {$office['name']}",
+        ['queue_mode' => $office['queue_mode']],
+        ['queue_mode' => $newMode]
+    );
+
     $label = $newMode === 'service-based' ? 'Service-Based' : 'Unified';
     return serviceResponse(true, "Queue mode switched to {$label} for \"{$office['name']}\".");
 }
@@ -103,9 +117,6 @@ function getAllServicesWithOffice(mysqli $conn): array
     return $rows;
 }
 
-/**
- * Single non-deleted service by ID.
- */
 function getServiceById(mysqli $conn, int $serviceId): ?array
 {
     $stmt = $conn->prepare(
@@ -138,9 +149,6 @@ function validateCategory(?string $category): ?string
     return in_array($cat, $allowed, true) ? $cat : null;
 }
 
-/**
- * Duplicate name check — ignores soft-deleted rows.
- */
 function serviceNameExistsForOffice(
     mysqli $conn,
     string $name,
@@ -162,13 +170,8 @@ function serviceNameExistsForOffice(
     return $found;
 }
 
-function addService(
-    mysqli  $conn,
-    string  $name,
-    mixed   $officeId,
-    ?string $category,
-    string  $description
-): array {
+function addService(mysqli $conn, string $name, mixed $officeId, ?string $category, string $description): array
+{
     $name        = cleanStr($name);
     $officeId    = (int) $officeId;
     $category    = validateCategory($category);
@@ -190,10 +193,7 @@ function addService(
     }
 
     if (serviceNameExistsForOffice($conn, $name, $officeId)) {
-        return serviceResponse(
-            false,
-            "A service named \"{$name}\" already exists for {$office['name']}."
-        );
+        return serviceResponse(false, "A service named \"{$name}\" already exists for {$office['name']}.");
     }
 
     $stmt = $conn->prepare(
@@ -206,23 +206,28 @@ function addService(
 
     $stmt->bind_param('sssi', $name, $category, $description, $officeId);
     $ok = $stmt->execute();
+    $newId = $stmt->insert_id;
     $stmt->close();
 
     if (!$ok) {
         return serviceResponse(false, 'Failed to add service. Please try again.');
     }
 
-    return serviceResponse(true, "Service \"{$name}\" has been added successfully.");
+    logActivity(
+        $conn,
+        'SERVICE_ADD',
+        'SERVICE',
+        $newId,
+        "Added new service \"$name\" for {$office['name']}",
+        null,
+        ['name' => $name, 'category' => $category, 'description' => $description, 'office' => $office['name']]
+    );
+
+    return serviceResponse(true, "Service \"{$name}\" has been added successfully.", ['service_id' => $newId]);
 }
 
-function updateService(
-    mysqli  $conn,
-    int     $serviceId,
-    string  $name,
-    mixed   $officeId,
-    ?string $category,
-    string  $description
-): array {
+function updateService(mysqli $conn, int $serviceId, string $name, mixed $officeId, ?string $category, string $description): array
+{
     $name        = cleanStr($name);
     $officeId    = (int) $officeId;
     $category    = validateCategory($category);
@@ -242,111 +247,104 @@ function updateService(
     }
 
     $service = getServiceById($conn, $serviceId);
-    if (!$service) {
-        return serviceResponse(false, 'Service not found.');
-    }
+    if (!$service) return serviceResponse(false, 'Service not found.');
 
     $office = getOfficeById($conn, $officeId);
-    if (!$office) {
-        return serviceResponse(false, 'Selected office does not exist.');
-    }
+    if (!$office) return serviceResponse(false, 'Selected office does not exist.');
 
     if (serviceNameExistsForOffice($conn, $name, $officeId, $serviceId)) {
-        return serviceResponse(
-            false,
-            "A service named \"{$name}\" already exists for {$office['name']}."
-        );
+        return serviceResponse(false, "A service named \"{$name}\" already exists for {$office['name']}.");
     }
+
+    $before = [
+        'name'        => $service['name'],
+        'category'    => $service['category'],
+        'description' => $service['description'],
+        'office'      => $service['office_name']
+    ];
 
     $stmt = $conn->prepare(
         "UPDATE transaction_types
          SET name = ?, category = ?, description = ?, office_id = ?
          WHERE id = ? AND is_deleted = 0"
     );
-    if (!$stmt) {
-        return serviceResponse(false, 'Database error: ' . $conn->error);
-    }
+    if (!$stmt) return serviceResponse(false, 'Database error: ' . $conn->error);
 
     $stmt->bind_param('sssii', $name, $category, $description, $officeId, $serviceId);
     $ok = $stmt->execute();
     $stmt->close();
 
-    if (!$ok) {
-        return serviceResponse(false, 'Failed to update service. Please try again.');
-    }
+    if (!$ok) return serviceResponse(false, 'Failed to update service. Please try again.');
 
-    return serviceResponse(true, "Service \"{$name}\" has been updated successfully.");
+    $after = ['name' => $name, 'category' => $category, 'description' => $description, 'office' => $office['name']];
+    logActivity($conn, 'SERVICE_EDIT', 'SERVICE', $serviceId, "Updated service \"$name\"", $before, $after);
+
+    return serviceResponse(true, "Service \"$name\" has been updated successfully.");
 }
 
 function toggleServiceStatus(mysqli $conn, int $serviceId): array
 {
-    if ($serviceId <= 0) {
-        return serviceResponse(false, 'Invalid service.');
-    }
+    if ($serviceId <= 0) return serviceResponse(false, 'Invalid service.');
 
     $service = getServiceById($conn, $serviceId);
-    if (!$service) {
-        return serviceResponse(false, 'Service not found.');
-    }
+    if (!$service) return serviceResponse(false, 'Service not found.');
 
     $newStatus = $service['is_active'] ? 0 : 1;
-    $label     = $newStatus ? 'activated' : 'deactivated';
+    $label = $newStatus ? 'activated' : 'deactivated';
 
     $stmt = $conn->prepare(
         "UPDATE transaction_types SET is_active = ? WHERE id = ? AND is_deleted = 0"
     );
-    if (!$stmt) {
-        return serviceResponse(false, 'Database error: ' . $conn->error);
-    }
+    if (!$stmt) return serviceResponse(false, 'Database error: ' . $conn->error);
 
     $stmt->bind_param('ii', $newStatus, $serviceId);
     $ok = $stmt->execute();
     $stmt->close();
 
-    if (!$ok) {
-        return serviceResponse(false, 'Failed to update service status.');
-    }
+    if (!$ok) return serviceResponse(false, 'Failed to update service status.');
 
-    return serviceResponse(
-        true,
-        "Service \"{$service['name']}\" has been {$label}."
+    logActivity(
+        $conn,
+        'SERVICE_TOGGLE_STATUS',
+        'SERVICE',
+        $serviceId,
+        "Service \"{$service['name']}\" has been $label",
+        ['is_active' => $service['is_active']],
+        ['is_active' => $newStatus]
     );
+
+    return serviceResponse(true, "Service \"{$service['name']}\" has been {$label}.");
 }
 
-/**
- * Soft-delete: marks is_deleted = 1 and deactivates the service.
- * The row stays in the database for audit/history purposes.
- */
 function deleteService(mysqli $conn, int $serviceId): array
 {
-    if ($serviceId <= 0) {
-        return serviceResponse(false, 'Invalid service.');
-    }
+    if ($serviceId <= 0) return serviceResponse(false, 'Invalid service.');
 
     $service = getServiceById($conn, $serviceId);
-    if (!$service) {
-        return serviceResponse(false, 'Service not found.');
-    }
+    if (!$service) return serviceResponse(false, 'Service not found.');
 
     $stmt = $conn->prepare(
         "UPDATE transaction_types SET is_deleted = 1, is_active = 0 WHERE id = ?"
     );
-    if (!$stmt) {
-        return serviceResponse(false, 'Database error: ' . $conn->error);
-    }
+    if (!$stmt) return serviceResponse(false, 'Database error: ' . $conn->error);
 
     $stmt->bind_param('i', $serviceId);
     $ok = $stmt->execute();
     $stmt->close();
 
-    if (!$ok) {
-        return serviceResponse(false, 'Failed to delete service. Please try again.');
-    }
+    if (!$ok) return serviceResponse(false, 'Failed to delete service. Please try again.');
 
-    return serviceResponse(
-        true,
-        "Service \"{$service['name']}\" has been deleted."
+    logActivity(
+        $conn,
+        'SERVICE_DELETE',
+        'SERVICE',
+        $serviceId,
+        "Deleted service \"{$service['name']}\"",
+        ['name' => $service['name'], 'office' => $service['office_name']],
+        null
     );
+
+    return serviceResponse(true, "Service \"{$service['name']}\" has been deleted.");
 }
 
 function getTotalServiceCount(mysqli $conn): int
