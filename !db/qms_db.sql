@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 01, 2026 at 07:55 AM
+-- Generation Time: Apr 01, 2026 at 01:35 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -57,7 +57,15 @@ INSERT INTO `activity_logs` (`id`, `user_id`, `activity_type`, `entity_type`, `e
 (9, 1, 'OFFICE_QUEUE_MODE_TOGGLE', 'OFFICE', 2, '{\"queue_mode\":\"service-based\"}', '{\"queue_mode\":\"unified\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-30 23:47:34'),
 (10, 1, 'OFFICE_QUEUE_MODE_TOGGLE', 'OFFICE', 2, '{\"queue_mode\":\"unified\"}', '{\"queue_mode\":\"service-based\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-30 23:47:36'),
 (11, 1, 'SERVICE_EDIT', 'SERVICE', 4, '{\"name\":\"Balance Inquiry\",\"category\":\"regular\",\"description\":\"Balance inquiries\",\"office\":\"Accounting\"}', '{\"name\":\"Balance Inquiry\",\"category\":\"regular\",\"description\":\"Balance inquiries\",\"office\":\"Admissions\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-30 23:49:50'),
-(12, 1, 'SERVICE_EDIT', 'SERVICE', 4, '{\"name\":\"Balance Inquiry\",\"category\":\"regular\",\"description\":\"Balance inquiries\",\"office\":\"Admissions\"}', '{\"name\":\"Balance Inquiry\",\"category\":\"regular\",\"description\":\"Balance inquiries\",\"office\":\"Accounting\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-30 23:50:20');
+(12, 1, 'SERVICE_EDIT', 'SERVICE', 4, '{\"name\":\"Balance Inquiry\",\"category\":\"regular\",\"description\":\"Balance inquiries\",\"office\":\"Admissions\"}', '{\"name\":\"Balance Inquiry\",\"category\":\"regular\",\"description\":\"Balance inquiries\",\"office\":\"Accounting\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-30 23:50:20'),
+(13, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 2, '{\"open_time\":\"08:00\",\"close_time\":\"17:00\",\"break_start\":\"\",\"break_end\":\"\",\"queue_cutoff\":\"\"}', '{\"open_time\":\"09:00\",\"close_time\":\"17:00\",\"break_start\":\"\",\"break_end\":\"\",\"queue_cutoff\":\"\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-31 23:57:06'),
+(14, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 2, '{\"open_time\":\"09:00\",\"close_time\":\"17:00\",\"break_start\":\"\",\"break_end\":\"\",\"queue_cutoff\":\"\"}', '{\"open_time\":\"08:00\",\"close_time\":\"17:00\",\"break_start\":\"\",\"break_end\":\"\",\"queue_cutoff\":\"\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-31 23:57:24'),
+(15, 1, 'STAFF_EDIT', 'USER', 2, '{\"full_name\":{\"from\":\"Liezel Mae Torres\",\"to\":\"Liezel Mae Torress\"}}', NULL, '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-01 05:21:34'),
+(16, 1, 'STAFF_EDIT', 'USER', 2, '{\"full_name\":\"Liezel Mae Torress\"}', '{\"full_name\":\"Liezel Mae Torres\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-01 05:26:14'),
+(17, 1, 'STAFF_EDIT', 'USER', 2, '{\"email\":\"liezelmaetorres@gmail.com\"}', '{\"email\":\"liezelmaetorres@gmail.comm\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-01 05:26:28'),
+(18, 1, 'STAFF_DEACTIVATE', 'USER', 2, '{\"is_active\":true}', '{\"is_active\":false}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-01 05:26:39'),
+(19, 1, 'STAFF_ACTIVATE', 'USER', 2, '{\"is_active\":false}', '{\"is_active\":true}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-01 05:26:47'),
+(20, 1, 'STAFF_EDIT', 'USER', 2, '{\"email\":\"liezelmaetorres@gmail.comm\"}', '{\"email\":\"liezelmaetorres@gmail.com\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-01 05:26:50');
 
 -- --------------------------------------------------------
 
@@ -276,7 +284,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `activity_logs`
 --
 ALTER TABLE `activity_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `kiosk_settings`

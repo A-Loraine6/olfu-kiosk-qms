@@ -6,13 +6,25 @@ function settingsResponse(bool $success, string $message): array
     return ['success' => $success, 'message' => $message];
 }
 
+function diffSnapshot(array $before, array $after): array
+{
+    $changedBefore = [];
+    $changedAfter  = [];
+    foreach ($after as $key => $newVal) {
+        $oldVal = $before[$key] ?? null;
+        if ($oldVal != $newVal) {
+            $changedBefore[$key] = $oldVal;
+            $changedAfter[$key]  = $newVal;
+        }
+    }
+    return [$changedBefore, $changedAfter];
+}
+
 function normaliseTime(string $t): string
 {
     $t = trim($t);
     if ($t === '') return '';
-    if (preg_match('/^(\d{2}:\d{2})(:\d{2})?$/', $t, $m)) {
-        return $m[1];
-    }
+    if (preg_match('/^(\d{2}:\d{2})(:\d{2})?$/', $t, $m)) return $m[1];
     return '';
 }
 
@@ -32,8 +44,7 @@ function getAllOffices(mysqli $conn): array
                    open_time, close_time, break_start, break_end,
                    queue_cutoff, queue_prefix, queue_start_num,
                    daily_reset, max_queue_limit, auto_close
-            FROM offices
-            ORDER BY name ASC";
+            FROM offices ORDER BY name ASC";
 
     $res = $conn->query($sql);
     if (!$res) return [];
@@ -129,11 +140,7 @@ function saveOfficeSchedule(
 
     $stmt = $conn->prepare(
         "UPDATE offices
-         SET open_time    = ?,
-             close_time   = ?,
-             break_start  = ?,
-             break_end    = ?,
-             queue_cutoff = ?
+         SET open_time = ?, close_time = ?, break_start = ?, break_end = ?, queue_cutoff = ?
          WHERE id = ?"
     );
     if (!$stmt) return settingsResponse(false, 'Database error: ' . $conn->error);
@@ -144,27 +151,22 @@ function saveOfficeSchedule(
 
     if (!$ok) return settingsResponse(false, 'Failed to save schedule. Please try again.');
 
-    logActivity(
-        $conn,
-        'SETTINGS_SCHEDULE_UPDATE',
-        'OFFICE',
-        $officeId,
-        "Updated office schedule for \"{$office['name']}\"",
-        [
-            'open_time'    => $office['open_time'],
-            'close_time'   => $office['close_time'],
-            'break_start'  => $office['break_start'],
-            'break_end'    => $office['break_end'],
-            'queue_cutoff' => $office['queue_cutoff'],
-        ],
-        [
-            'open_time'    => $open,
-            'close_time'   => $close,
-            'break_start'  => $bsNull ?? '',
-            'break_end'    => $beNull ?? '',
-            'queue_cutoff' => $coNull ?? '',
-        ]
+    [$before, $after] = diffSnapshot(
+        ['open_time' => $office['open_time'], 'close_time' => $office['close_time'], 'break_start' => $office['break_start'], 'break_end' => $office['break_end'], 'queue_cutoff' => $office['queue_cutoff']],
+        ['open_time' => $open,                'close_time' => $close,                'break_start' => $bsNull ?? '',           'break_end' => $beNull ?? '',           'queue_cutoff' => $coNull ?? '']
     );
+
+    if (!empty($before)) {
+        logActivity(
+            $conn,
+            'SETTINGS_SCHEDULE_UPDATE',
+            'OFFICE',
+            $officeId,
+            "Updated office schedule for \"{$office['name']}\"",
+            $before,
+            $after
+        );
+    }
 
     return settingsResponse(true, 'Schedule settings saved successfully.');
 }
@@ -185,26 +187,19 @@ function saveQueueConfig(
 
     $prefix = strtoupper(trim(strip_tags($prefix)));
 
-    if ($prefix !== '' && !preg_match('/^[A-Z0-9\-]{1,10}$/', $prefix)) {
+    if ($prefix !== '' && !preg_match('/^[A-Z0-9\-]{1,10}$/', $prefix))
         return settingsResponse(false, 'Prefix must be 1–10 uppercase letters, digits, or hyphens.');
-    }
-    if ($startNum < 1 || $startNum > 9999) {
+    if ($startNum < 1 || $startNum > 9999)
         return settingsResponse(false, 'Starting number must be between 1 and 9999.');
-    }
-    if ($maxLimit < 0 || $maxLimit > 9999) {
+    if ($maxLimit < 0 || $maxLimit > 9999)
         return settingsResponse(false, 'Max limit must be between 0 (unlimited) and 9999.');
-    }
 
     $dailyResetInt = $dailyReset ? 1 : 0;
     $autoCloseInt  = $autoClose  ? 1 : 0;
 
     $stmt = $conn->prepare(
         "UPDATE offices
-         SET queue_prefix    = ?,
-             queue_start_num = ?,
-             daily_reset     = ?,
-             max_queue_limit = ?,
-             auto_close      = ?
+         SET queue_prefix = ?, queue_start_num = ?, daily_reset = ?, max_queue_limit = ?, auto_close = ?
          WHERE id = ?"
     );
     if (!$stmt) return settingsResponse(false, 'Database error: ' . $conn->error);
@@ -215,27 +210,22 @@ function saveQueueConfig(
 
     if (!$ok) return settingsResponse(false, 'Failed to save queue config. Please try again.');
 
-    logActivity(
-        $conn,
-        'SETTINGS_QUEUE_UPDATE',
-        'OFFICE',
-        $officeId,
-        "Updated queue configuration for \"{$office['name']}\"",
-        [
-            'queue_prefix'    => $office['queue_prefix'],
-            'queue_start_num' => $office['queue_start_num'],
-            'daily_reset'     => $office['daily_reset'],
-            'max_queue_limit' => $office['max_queue_limit'],
-            'auto_close'      => $office['auto_close'],
-        ],
-        [
-            'queue_prefix'    => $prefix,
-            'queue_start_num' => $startNum,
-            'daily_reset'     => (bool) $dailyResetInt,
-            'max_queue_limit' => $maxLimit,
-            'auto_close'      => (bool) $autoCloseInt,
-        ]
+    [$before, $after] = diffSnapshot(
+        ['queue_prefix' => $office['queue_prefix'], 'queue_start_num' => $office['queue_start_num'], 'daily_reset' => $office['daily_reset'], 'max_queue_limit' => $office['max_queue_limit'], 'auto_close' => $office['auto_close']],
+        ['queue_prefix' => $prefix,                 'queue_start_num' => $startNum,                  'daily_reset' => (bool) $dailyResetInt,   'max_queue_limit' => $maxLimit,                  'auto_close' => (bool) $autoCloseInt]
     );
+
+    if (!empty($before)) {
+        logActivity(
+            $conn,
+            'SETTINGS_QUEUE_UPDATE',
+            'OFFICE',
+            $officeId,
+            "Updated queue configuration for \"{$office['name']}\"",
+            $before,
+            $after
+        );
+    }
 
     return settingsResponse(true, 'Queue configuration saved successfully.');
 }
@@ -256,12 +246,10 @@ function getKioskSettings(mysqli $conn): array
 
 function saveKioskSettings(mysqli $conn, bool $enabled, int $idleTimeout): array
 {
-    if ($idleTimeout < 10 || $idleTimeout > 600) {
+    if ($idleTimeout < 10 || $idleTimeout > 600)
         return settingsResponse(false, 'Idle timeout must be between 10 and 600 seconds.');
-    }
 
-    $before = getKioskSettings($conn);
-
+    $snapshot   = getKioskSettings($conn);
     $enabledInt = $enabled ? 1 : 0;
 
     $stmt = $conn->prepare(
@@ -275,21 +263,22 @@ function saveKioskSettings(mysqli $conn, bool $enabled, int $idleTimeout): array
 
     if (!$ok) return settingsResponse(false, 'Failed to save kiosk settings. Please try again.');
 
-    logActivity(
-        $conn,
-        'SETTINGS_KIOSK_UPDATE',
-        'KIOSK',
-        1,
-        'Updated kiosk settings',
-        [
-            'kiosk_enabled' => $before['kiosk_enabled'],
-            'idle_timeout'  => $before['idle_timeout'],
-        ],
-        [
-            'kiosk_enabled' => $enabled,
-            'idle_timeout'  => $idleTimeout,
-        ]
+    [$before, $after] = diffSnapshot(
+        $snapshot,
+        ['kiosk_enabled' => $enabled, 'idle_timeout' => $idleTimeout]
     );
+
+    if (!empty($before)) {
+        logActivity(
+            $conn,
+            'SETTINGS_KIOSK_UPDATE',
+            'KIOSK',
+            1,
+            'Updated kiosk settings',
+            $before,
+            $after
+        );
+    }
 
     return settingsResponse(true, 'Kiosk settings saved successfully.');
 }

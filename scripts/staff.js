@@ -50,12 +50,12 @@ function updateTable(html) {
 
     tbody.style.opacity = "1";
 
-    updateResultCount();
   }, 150);
 }
 
 function setTableLoading(on) {
   const el = document.getElementById("tableLoading");
+  if (!el) return;
   el.style.transition = "opacity 0.2s ease";
 
   if (on) {
@@ -65,15 +65,6 @@ function setTableLoading(on) {
     el.style.opacity = "0";
     setTimeout(() => (el.style.display = "none"), 200);
   }
-}
-
-function updateResultCount() {
-  const rows = document.querySelectorAll("#staffTableBody tr:not(.empty-row)");
-  const empty = document.querySelector("#staffTableBody .empty-state");
-  const el = document.getElementById("resultCount");
-  el.textContent = empty
-    ? ""
-    : `${rows.length} result${rows.length !== 1 ? "s" : ""}`;
 }
 
 let searchDebounce;
@@ -117,11 +108,19 @@ async function fetchFilteredRows() {
 }
 
 function openModal(id) {
-  document.getElementById(id).style.display = "flex";
+  const modal = document.getElementById(id);
+  modal.style.display = "flex";
+  requestAnimationFrame(() => {
+    modal.classList.add("show");
+  });
 }
 
 function closeModal(id) {
-  document.getElementById(id).style.display = "none";
+  const modal = document.getElementById(id);
+  modal.classList.remove("show");
+  setTimeout(() => {
+    modal.style.display = "none";
+  }, 300);
 }
 
 document.querySelectorAll(".modal").forEach((m) => {
@@ -132,8 +131,8 @@ document.querySelectorAll(".modal").forEach((m) => {
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
-    document.querySelectorAll(".modal").forEach((m) => {
-      if (m.style.display === "flex") closeModal(m.id);
+    document.querySelectorAll(".modal.show").forEach((m) => {
+      closeModal(m.id);
     });
   }
 });
@@ -375,4 +374,3 @@ async function submitDeleteStaff() {
   }
 }
 
-updateResultCount();
