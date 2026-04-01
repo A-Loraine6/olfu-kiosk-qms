@@ -516,28 +516,7 @@
   box-shadow: 0 4px 14px rgba(0, 139, 67, 0.3);
 }
 
-.btn-outline {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 10px 20px;
-  background: transparent;
-  color: var(--text-2);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  font-size: 13.5px;
-  font-weight: 500;
-  font-family: var(--font);
-  cursor: pointer;
-  transition:
-    background var(--t) var(--ease),
-    border-color var(--t) var(--ease);
-}
 
-.btn-outline:hover {
-  background: var(--bg);
-  border-color: var(--text-3);
-}
 
 .btn-danger {
   display: inline-flex;

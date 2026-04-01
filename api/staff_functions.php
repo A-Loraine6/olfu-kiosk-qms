@@ -133,7 +133,7 @@ function addStaff($db, string $full_name, string $email, string $password, strin
         'STAFF_ADD',
         'USER',
         $new_id,
-        "Added new staff member: $full_name ($email)",
+        "Added new staff member: $full_name)",
         null,
         ['full_name' => $full_name, 'email' => $email, 'role' => $role, 'office' => $office]
     );
