@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 01, 2026 at 01:35 PM
+-- Generation Time: Apr 04, 2026 at 07:20 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -46,26 +46,15 @@ CREATE TABLE `activity_logs` (
 --
 
 INSERT INTO `activity_logs` (`id`, `user_id`, `activity_type`, `entity_type`, `entity_id`, `old_value`, `new_value`, `description`, `ip_address`, `user_agent`, `timestamp`) VALUES
-(1, 1, 'STAFF_DELETE', 'USER', 2, '{\"id\":2,\"full_name\":\"Liezel Mae Torres\",\"email\":\"liezelmaetorres@gmail.com\",\"office_id\":2,\"office\":\"Accounting\",\"is_active\":1,\"created_at\":\"2026-03-25 13:35:57\",\"created_by\":1}', NULL, '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-25 06:36:52'),
-(2, 1, 'STAFF_EDIT', 'USER', 2, '{\"full_name\":\"Liezel Mae Torres\",\"email\":\"liezelmaetorres@gmail.com\",\"role\":null,\"office\":\"Accounting\"}', '{\"full_name\":\"Liezel Mae Torres\",\"email\":\"liezelmaetorres@gmail.coms\",\"role\":\"staff\",\"office\":\"Accounting\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-25 06:37:50'),
-(3, 1, 'STAFF_EDIT', 'USER', 2, '{\"full_name\":\"Liezel Mae Torres\",\"email\":\"liezelmaetorres@gmail.coms\",\"office\":\"Accounting\"}', '{\"full_name\":\"Liezel Mae Torres\",\"email\":\"liezelmaetorres@gmail.com\",\"office\":\"Accounting\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-25 06:39:11'),
-(4, 1, 'PASSWORD_RESET', 'USER', 2, NULL, NULL, '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-25 06:42:50'),
-(5, 1, 'STAFF_DEACTIVATE', 'USER', 2, NULL, NULL, '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-25 06:44:37'),
-(6, 1, 'STAFF_EDIT', 'USER', 2, '{\"full_name\":\"Liezel Mae Torres\",\"email\":\"liezelmaetorres@gmail.com\",\"office\":\"Accounting\"}', '{\"full_name\":\"Liezel Mae Torres\",\"email\":\"liezelmaetorres@gmail.com\",\"office\":\"Admissions\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-26 02:55:13'),
-(7, 1, 'STAFF_EDIT', 'USER', 2, '{\"full_name\":\"Liezel Mae Torres\",\"email\":\"liezelmaetorres@gmail.com\",\"office\":\"Admissions\"}', '{\"full_name\":\"Liezel Mae Torres\",\"email\":\"liezelmaetorres@gmail.com\",\"office\":\"Accounting\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-26 02:55:21'),
-(8, 1, 'STAFF_ACTIVATE', 'USER', 2, NULL, NULL, '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-26 02:55:24'),
-(9, 1, 'OFFICE_QUEUE_MODE_TOGGLE', 'OFFICE', 2, '{\"queue_mode\":\"service-based\"}', '{\"queue_mode\":\"unified\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-30 23:47:34'),
-(10, 1, 'OFFICE_QUEUE_MODE_TOGGLE', 'OFFICE', 2, '{\"queue_mode\":\"unified\"}', '{\"queue_mode\":\"service-based\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-30 23:47:36'),
-(11, 1, 'SERVICE_EDIT', 'SERVICE', 4, '{\"name\":\"Balance Inquiry\",\"category\":\"regular\",\"description\":\"Balance inquiries\",\"office\":\"Accounting\"}', '{\"name\":\"Balance Inquiry\",\"category\":\"regular\",\"description\":\"Balance inquiries\",\"office\":\"Admissions\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-30 23:49:50'),
-(12, 1, 'SERVICE_EDIT', 'SERVICE', 4, '{\"name\":\"Balance Inquiry\",\"category\":\"regular\",\"description\":\"Balance inquiries\",\"office\":\"Admissions\"}', '{\"name\":\"Balance Inquiry\",\"category\":\"regular\",\"description\":\"Balance inquiries\",\"office\":\"Accounting\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-30 23:50:20'),
-(13, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 2, '{\"open_time\":\"08:00\",\"close_time\":\"17:00\",\"break_start\":\"\",\"break_end\":\"\",\"queue_cutoff\":\"\"}', '{\"open_time\":\"09:00\",\"close_time\":\"17:00\",\"break_start\":\"\",\"break_end\":\"\",\"queue_cutoff\":\"\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-31 23:57:06'),
-(14, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 2, '{\"open_time\":\"09:00\",\"close_time\":\"17:00\",\"break_start\":\"\",\"break_end\":\"\",\"queue_cutoff\":\"\"}', '{\"open_time\":\"08:00\",\"close_time\":\"17:00\",\"break_start\":\"\",\"break_end\":\"\",\"queue_cutoff\":\"\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-03-31 23:57:24'),
-(15, 1, 'STAFF_EDIT', 'USER', 2, '{\"full_name\":{\"from\":\"Liezel Mae Torres\",\"to\":\"Liezel Mae Torress\"}}', NULL, '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-01 05:21:34'),
-(16, 1, 'STAFF_EDIT', 'USER', 2, '{\"full_name\":\"Liezel Mae Torress\"}', '{\"full_name\":\"Liezel Mae Torres\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-01 05:26:14'),
-(17, 1, 'STAFF_EDIT', 'USER', 2, '{\"email\":\"liezelmaetorres@gmail.com\"}', '{\"email\":\"liezelmaetorres@gmail.comm\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-01 05:26:28'),
-(18, 1, 'STAFF_DEACTIVATE', 'USER', 2, '{\"is_active\":true}', '{\"is_active\":false}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-01 05:26:39'),
-(19, 1, 'STAFF_ACTIVATE', 'USER', 2, '{\"is_active\":false}', '{\"is_active\":true}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-01 05:26:47'),
-(20, 1, 'STAFF_EDIT', 'USER', 2, '{\"email\":\"liezelmaetorres@gmail.comm\"}', '{\"email\":\"liezelmaetorres@gmail.com\"}', '0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-01 05:26:50');
+(30, 1, 'STAFF_EDIT', 'USER', 2, '{\"full_name\":\"Liezel Mae Torres\"}', '{\"full_name\":\"Liezel Mae Torress\"}', 'Updated staff member: Liezel Mae Torress', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-01 07:00:54'),
+(31, 1, 'STAFF_EDIT', 'USER', 2, '{\"full_name\":\"Liezel Mae Torress\"}', '{\"full_name\":\"Liezel Mae Torres\"}', 'Updated staff member: Liezel Mae Torres', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-01 07:06:17'),
+(32, 1, 'SERVICE_EDIT', 'SERVICE', 4, '{\"name\":\"Balance Inquiry\"}', '{\"name\":\"Balance Inquirys\"}', 'Updated service \"Balance Inquirys\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-01 07:19:27'),
+(33, 1, 'SERVICE_EDIT', 'SERVICE', 4, '{\"name\":\"Balance Inquirys\",\"office\":\"Accounting\"}', '{\"name\":\"Balance Inquiry\",\"office\":\"Admissions\"}', 'Updated service \"Balance Inquiry\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-01 07:19:39'),
+(34, 1, 'SERVICE_EDIT', 'SERVICE', 4, '{\"office\":\"Admissions\"}', '{\"office\":\"Accounting\"}', 'Updated service \"Balance Inquiry\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-01 07:19:55'),
+(35, 1, 'STAFF_DEACTIVATE', 'USER', 2, '{\"is_active\":true}', '{\"is_active\":false}', 'Deactivated staff account: Liezel Mae Torres', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-03 22:12:12'),
+(36, 1, 'STAFF_ACTIVATE', 'USER', 2, '{\"is_active\":false}', '{\"is_active\":true}', 'Activated staff account: Liezel Mae Torres', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-03 22:12:16'),
+(37, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 2, '{\"open_time\":\"08:00\"}', '{\"open_time\":\"10:00\"}', 'Updated office schedule for \"Accounting\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-03 22:14:53'),
+(38, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 2, '{\"open_time\":\"10:00\"}', '{\"open_time\":\"08:00\"}', 'Updated office schedule for \"Accounting\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-03 22:15:09');
 
 -- --------------------------------------------------------
 
@@ -213,7 +202,7 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`id`, `full_name`, `email`, `password`, `role`, `office_id`, `created_at`, `is_active`, `last_activity`, `password_reset_token`, `password_reset_expires`, `created_by`, `is_deleted`) VALUES
 (1, 'Angel Loraine Reobilo', 'reobiloangel6@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$WlJwTFZiUlhoTWs4dkVFSg$2xXzhMVRqKcqr5WpRJb2a3z2vTz7rlE+fUTVoUA0eLY', 'admin', NULL, '2026-03-25 08:45:08', 1, NULL, NULL, NULL, NULL, 0),
-(2, 'Liezel Mae Torres', 'liezelmaetorres@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$d2Vwa05va2NHYzQ0dlhBNg$xiu80MYOMAU0PECsTSqf6+bpUGFG88Y2QdKnZE4QyzA', 'staff', 2, '2026-03-25 05:35:57', 1, NULL, NULL, NULL, 1, 0);
+(2, 'Liezel Mae Torres', 'liezelmaetorres@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$UEd4UzJMNENnenVtTVNRZA$AoDiFTuK4jK0AJoqaOpmAyky5Ocqj09r1HC/f5Q/4dc', 'staff', 2, '2026-03-25 05:35:57', 1, NULL, NULL, NULL, 1, 0);
 
 --
 -- Indexes for dumped tables
@@ -284,7 +273,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `activity_logs`
 --
 ALTER TABLE `activity_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
 -- AUTO_INCREMENT for table `kiosk_settings`

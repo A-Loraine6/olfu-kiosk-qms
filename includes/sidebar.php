@@ -1,6 +1,7 @@
 <?php
 $currentUser = getCurrentUser();
 $currentPage = basename($_SERVER['PHP_SELF']);
+$isStaff = isset($currentUser['role']) && $currentUser['role'] === 'staff';
 ?>
 
 <aside class="dashboard-sidebar">
@@ -25,30 +26,46 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                     <span>Dashboard</span>
                 </a>
             </li>
-            <li>
-                <a href="reports.php" class="<?php echo $currentPage === 'reports.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Reports</span>
-                </a>
-            </li>
-            <li>
-                <a href="staff.php" class="<?php echo $currentPage === 'staff.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-users"></i>
-                    <span>Staff Management</span>
-                </a>
-            </li>
+
+            <?php if ($isStaff): ?>
+                <li>
+                    <a href="queue.php" class="<?php echo $currentPage === 'queue.php' ? 'active' : ''; ?>">
+                        <i class="fas fa-list-ol"></i>
+                        <span>Queue / Transactions</span>
+                    </a>
+                </li>
+            <?php endif; ?>
+
             <li>
                 <a href="services.php" class="<?php echo $currentPage === 'services.php' ? 'active' : ''; ?>">
                     <i class="fas fa-concierge-bell"></i>
-                    <span>Service Management</span>
+                    <span><?php echo $isStaff ? 'My Services' : 'Service Management'; ?></span>
                 </a>
             </li>
+
             <li>
-                <a href="settings.php" class="<?php echo $currentPage === 'settings.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-cog"></i>
-                    <span>System Settings</span>
+                <a href="reports.php" class="<?php echo $currentPage === 'reports.php' ? 'active' : ''; ?>">
+                    <i class="fas fa-chart-line"></i>
+                    <span><?php echo $isStaff ? 'My Metrics' : 'Reports & Analytics'; ?></span>
                 </a>
             </li>
+
+            <?php if (!$isStaff): ?>
+                <li>
+                    <a href="staff.php" class="<?php echo $currentPage === 'staff.php' ? 'active' : ''; ?>">
+                        <i class="fas fa-users"></i>
+                        <span>Staff Management</span>
+                    </a>
+                </li>
+
+                <li>
+                    <a href="settings.php" class="<?php echo $currentPage === 'settings.php' ? 'active' : ''; ?>">
+                        <i class="fas fa-cog"></i>
+                        <span>System Settings</span>
+                    </a>
+                </li>
+            <?php endif; ?>
+
             <li>
                 <a href="profile.php" class="<?php echo $currentPage === 'profile.php' ? 'active' : ''; ?>">
                     <i class="fas fa-user-circle"></i>

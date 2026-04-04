@@ -153,3 +153,77 @@ function hasQueueData($db)
 
     return false;
 }
+
+function getOfficeQueueSummary($db, $office_id)
+{
+    $today     = date('Y-m-d');
+    $office_id = (int)$office_id;
+
+    $summary = array(
+        'waiting'  => 0,
+        'served'   => 0,
+        'skipped'  => 0,
+    );
+
+    $query = "SELECT COUNT(*) as count FROM tickets
+              WHERE DATE(created_at) = '$today'
+              AND office_id = $office_id
+              AND status IN ('waiting', 'serving')";
+    $result = $db->query($query);
+    if ($result && $row = $result->fetch_assoc()) {
+        $summary['waiting'] = (int)$row['count'];
+    }
+
+    $query = "SELECT COUNT(*) as count FROM tickets
+              WHERE DATE(completed_at) = '$today'
+              AND office_id = $office_id
+              AND status = 'completed'";
+    $result = $db->query($query);
+    if ($result && $row = $result->fetch_assoc()) {
+        $summary['served'] = (int)$row['count'];
+    }
+
+    $query = "SELECT COUNT(*) as count FROM tickets
+              WHERE DATE(created_at) = '$today'
+              AND office_id = $office_id
+              AND status = 'skipped'";
+    $result = $db->query($query);
+    if ($result && $row = $result->fetch_assoc()) {
+        $summary['skipped'] = (int)$row['count'];
+    }
+
+    return $summary;
+}
+
+function getOfficeQueueTrend($db, $office_id)
+{
+    $today     = date('Y-m-d');
+    $office_id = (int)$office_id;
+    $trendData = array();
+
+    for ($hour = 6; $hour <= 18; $hour++) {
+        $hourStart = sprintf('%02d:00:00', $hour);
+        $hourEnd   = sprintf('%02d:59:59', $hour);
+        $hourLabel = sprintf('%02d:00', $hour);
+
+        $query = "SELECT COUNT(*) as count FROM tickets
+                  WHERE DATE(created_at) = '$today'
+                  AND office_id = $office_id
+                  AND TIME(created_at) BETWEEN '$hourStart' AND '$hourEnd'
+                  AND status IN ('waiting', 'serving', 'completed')";
+
+        $result = $db->query($query);
+        $count  = 0;
+
+        if ($result && $row = $result->fetch_assoc()) {
+            $count = (int)$row['count'];
+        }
+
+        $trendData[] = array(
+            'hour'  => $hourLabel,
+            'count' => $count,
+        );
+    }
+
+    return $trendData;
+}
