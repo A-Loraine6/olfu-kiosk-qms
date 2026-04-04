@@ -481,7 +481,6 @@ body {
   margin-top: 8px;
 }
 
-
 .charts-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -527,7 +526,6 @@ body {
   justify-content: center;
 }
 
-
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -567,7 +565,6 @@ body {
   line-height: 1.55;
 }
 
-
 .dashboard-footer {
   background: var(--surface);
   border-top: 1px solid var(--border);
@@ -584,7 +581,6 @@ body {
   margin-right: 4px;
 }
 
-
 @keyframes slideUp {
   from {
     opacity: 0;
@@ -594,6 +590,99 @@ body {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.office-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: var(--primary-ghost);
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  letter-spacing: 0.01em;
+}
+
+.office-badge i {
+  font-size: 11px;
+}
+
+.live-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #22c55e;
+  margin-top: 10px;
+}
+
+.live-dot::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  background: #22c55e;
+  border-radius: 50%;
+  animation: pulse-dot 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: scale(0.7);
+  }
+}
+
+.staff-cards {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 860px) {
+  .staff-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 580px) {
+  .staff-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chart-container-full {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+  animation: slideUp 0.4s var(--ease) 0.18s both;
+}
+
+.refresh-note {
+  font-size: 11.5px;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.refresh-note i {
+  font-size: 10px;
+  color: var(--primary);
 }
 
 @media (max-width: 1100px) {

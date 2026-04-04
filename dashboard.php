@@ -11,6 +11,11 @@ if (!isLoggedIn()) {
 }
 
 $currentUser    = getCurrentUser();
+
+if (isset($currentUser['role']) && $currentUser['role'] === 'staff') {
+    header('Location: ' . BASE_URL . 'staff_dashboard.php');
+    exit;
+}
 $queueSummary   = getTodayQueueSummary($db);
 $queueByOffice  = getQueueByOffice($db);
 $queueTrendData = getQueueTrendData($db);
