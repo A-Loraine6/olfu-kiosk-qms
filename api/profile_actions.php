@@ -128,7 +128,7 @@ switch ($action) {
                 'PASSWORD_CHANGE',
                 'USER',
                 $currentUser['id'],
-                'Changed own account password'
+                'Changed account password'
             );
 
             echo json_encode(['success' => true, 'message' => 'Password updated successfully.']);

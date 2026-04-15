@@ -661,6 +661,27 @@
   text-decoration: none;
 }
 
+.activity-item-new {
+  animation: slideDown 0.3s var(--ease) both;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.activity-item-highlight {
+  background: rgba(0, 139, 67, 0.06);
+  border-radius: 10px;
+  transition: background 1.8s ease;
+}
+
 @media (max-width: 1024px) {
   .profile-grid {
     grid-template-columns: 1fr;

@@ -149,6 +149,17 @@ async function confirmAndSaveProfile() {
     updateAvatar(fullName);
     cancelEdit();
     showToast(data.message, "success");
+
+    prependActivityItem(
+      "PROFILE_UPDATE",
+      "Profile Updated",
+      "Updated own profile",
+      {
+        full_name: document.getElementById("viewName").textContent,
+        email: document.getElementById("viewEmail").textContent,
+      },
+      { full_name: fullName, email },
+    );
   } else {
     showToast(data.message, "error");
     document.getElementById("confirm_identity_password").value = "";
@@ -262,6 +273,12 @@ async function submitChangePassword() {
     document.getElementById("confirm_password").value = "";
     document.getElementById("pwStrengthWrap").style.display = "none";
     showToast(data.message, "success");
+
+    prependActivityItem(
+      "PASSWORD_CHANGE",
+      "Password Changed",
+      "Changed account password",
+    );
   } else {
     showToast(data.message, "error");
   }
@@ -418,4 +435,67 @@ function escHtml(str) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function prependActivityItem(
+  type,
+  label,
+  description = "",
+  beforeValues = {},
+  afterValues = {},
+) {
+  const list = document.getElementById("activityList");
+  if (!list) return;
+
+  // If empty state is showing, clear it and show the list
+  const emptyEl = document.querySelector(".activity-empty");
+  if (emptyEl) emptyEl.remove();
+
+  const iconMeta = ACTIVITY_ICONS[type] ?? {
+    icon: "fa-circle",
+    color: "#90a4ae",
+  };
+  const diffHtml = buildDiffHtml(beforeValues, afterValues);
+  const now = new Date();
+  const timeStr =
+    now.toLocaleDateString("en-US", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+    }) +
+    " " +
+    now.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+
+  const el = document.createElement("div");
+  el.className = "activity-item activity-item-new";
+  el.innerHTML = `
+        <div class="activity-icon-wrap" style="background:${iconMeta.color}1a; color:${iconMeta.color}">
+            <i class="fas ${iconMeta.icon}"></i>
+        </div>
+        <div class="activity-info">
+            <div class="activity-label">${escHtml(label)}</div>
+            ${description ? `<div class="activity-desc">${escHtml(description)}</div>` : ""}
+            ${diffHtml}
+            <div class="activity-meta">
+                <span><i class="fas fa-clock"></i> ${escHtml(timeStr)}</span>
+            </div>
+        </div>
+    `;
+
+  list.prepend(el);
+
+  // Trigger highlight animation then settle
+  requestAnimationFrame(() => el.classList.add("activity-item-highlight"));
+  setTimeout(() => el.classList.remove("activity-item-highlight"), 2000);
+
+  // Update the total count badge
+  const badge = document.querySelector(".activity-count-badge");
+  if (badge) {
+    const current = parseInt(badge.textContent.replace(/\D/g, "")) || 0;
+    badge.textContent = (current + 1).toLocaleString() + " total";
+  }
 }
