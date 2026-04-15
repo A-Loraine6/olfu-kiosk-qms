@@ -40,6 +40,8 @@ $activityIcons = [
     'SETTINGS_SCHEDULE_UPDATE' => ['icon' => 'fa-clock',        'color' => '#00838f'],
     'SETTINGS_QUEUE_UPDATE'    => ['icon' => 'fa-ticket-alt',   'color' => '#00838f'],
     'SETTINGS_KIOSK_UPDATE'    => ['icon' => 'fa-tablet-alt',   'color' => '#00838f'],
+    'PROFILE_UPDATE'           => ['icon' => 'fa-user-edit',    'color' => '#2196f3'],
+    'PASSWORD_CHANGE'          => ['icon' => 'fa-key',          'color' => '#7b1fa2'],
 ];
 
 function getInitials(string $name): string
