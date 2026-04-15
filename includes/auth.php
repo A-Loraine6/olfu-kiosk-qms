@@ -9,6 +9,8 @@ session_set_cookie_params([
 ]);
 session_start();
 
+require_once __DIR__ . '/../api/activity_logger.php';
+
 function getCsrfToken(): string
 {
     if (empty($_SESSION['csrf_token'])) {
@@ -60,11 +62,22 @@ function login($db, string $email, string $password, string $csrf): array
         return ['success' => false, 'message' => $inputError];
     }
 
-    $ip   = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
     $user = fetchUserByEmail($db, $email);
+
+    if (!$user || !password_verify($password, $user['password'])) {
+        return ['success' => false, 'message' => 'Invalid email or password.'];
+    }
 
     rehashPasswordIfNeeded($db, $user, $password);
     establishSession($user);
+
+    logActivity(
+        $db,
+        'LOGIN',
+        'user',
+        $user['id'],
+        'User logged in successfully'
+    );
 
     return ['success' => true, 'message' => ''];
 }

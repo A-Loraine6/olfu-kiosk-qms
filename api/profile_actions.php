@@ -26,8 +26,9 @@ $conn        = $db->getConnection();
 switch ($action) {
 
     case 'update_profile': {
-            $fullName = trim(strip_tags($body['full_name'] ?? ''));
-            $email    = trim($body['email'] ?? '');
+            $fullName        = trim(strip_tags($body['full_name'] ?? ''));
+            $email           = trim($body['email'] ?? '');
+            $confirmPassword = $body['confirm_password'] ?? '';
 
             if ($fullName === '') {
                 echo json_encode(['success' => false, 'message' => 'Full name is required.']);
@@ -35,6 +36,21 @@ switch ($action) {
             }
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 echo json_encode(['success' => false, 'message' => 'A valid email address is required.']);
+                exit;
+            }
+            if ($confirmPassword === '') {
+                echo json_encode(['success' => false, 'message' => 'Password confirmation is required.']);
+                exit;
+            }
+
+            $stmt = $conn->prepare("SELECT password FROM users WHERE id = ? LIMIT 1");
+            $stmt->bind_param('i', $currentUser['id']);
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+
+            if (!$row || !password_verify($confirmPassword, $row['password'])) {
+                echo json_encode(['success' => false, 'message' => 'Incorrect password. Changes not saved.']);
                 exit;
             }
 
@@ -69,6 +85,53 @@ switch ($action) {
             );
 
             echo json_encode(['success' => true, 'message' => 'Profile updated successfully.']);
+            break;
+        }
+
+    case 'change_password': {
+            $currentPw = $body['current_password'] ?? '';
+            $newPw     = $body['new_password']     ?? '';
+
+            if ($currentPw === '' || $newPw === '') {
+                echo json_encode(['success' => false, 'message' => 'All password fields are required.']);
+                exit;
+            }
+            if (strlen($newPw) < 8) {
+                echo json_encode(['success' => false, 'message' => 'New password must be at least 8 characters.']);
+                exit;
+            }
+
+            $stmt = $conn->prepare("SELECT password FROM users WHERE id = ? LIMIT 1");
+            $stmt->bind_param('i', $currentUser['id']);
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+
+            if (!$row || !password_verify($currentPw, $row['password'])) {
+                echo json_encode(['success' => false, 'message' => 'Current password is incorrect.']);
+                exit;
+            }
+
+            $newHash = hashPassword($newPw); 
+            $stmt    = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
+            $stmt->bind_param('si', $newHash, $currentUser['id']);
+            $ok = $stmt->execute();
+            $stmt->close();
+
+            if (!$ok) {
+                echo json_encode(['success' => false, 'message' => 'Failed to update password. Please try again.']);
+                exit;
+            }
+
+            logActivity(
+                $conn,
+                'PASSWORD_CHANGE',
+                'USER',
+                $currentUser['id'],
+                'Changed own account password'
+            );
+
+            echo json_encode(['success' => true, 'message' => 'Password updated successfully.']);
             break;
         }
 

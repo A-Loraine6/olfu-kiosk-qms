@@ -213,9 +213,11 @@ function buildDiffHtml(array $before, array $after): string
                                         <h3 class="section-title-sm">Profile Information</h3>
                                         <p class="section-subtitle">View and update your personal details</p>
                                     </div>
-                                    <button class="btn-edit-toggle" id="editToggleBtn" onclick="toggleEditMode()">
-                                        <i class="fas fa-pen"></i> Edit Profile
-                                    </button>
+                                    <?php if (($currentUser['role'] ?? '') !== 'staff'): ?>
+                                        <button class="btn-edit-toggle" id="editToggleBtn" onclick="toggleEditMode()">
+                                            <i class="fas fa-pen"></i> Edit Profile
+                                        </button>
+                                    <?php endif; ?>
                                 </div>
 
                                 <div id="profileViewMode" class="profile-view-grid">
@@ -234,29 +236,30 @@ function buildDiffHtml(array $before, array $after): string
                                         </div>
                                     <?php endif; ?>
                                 </div>
-
-                                <div id="profileEditMode" class="profile-edit-form" style="display:none;">
-                                    <div class="form-row-2">
-                                        <div class="form-group">
-                                            <label for="edit_full_name">Full Name <span class="required">*</span></label>
-                                            <input type="text" id="edit_full_name"
-                                                value="<?php echo htmlspecialchars($currentUser['full_name']); ?>"
-                                                placeholder="Enter your full name">
+                                <?php if (($currentUser['role'] ?? '') !== 'staff'): ?>
+                                    <div id="profileEditMode" class="profile-edit-form" style="display:none;">
+                                        <div class="form-row-2">
+                                            <div class="form-group">
+                                                <label for="edit_full_name">Full Name <span class="required">*</span></label>
+                                                <input type="text" id="edit_full_name"
+                                                    value="<?php echo htmlspecialchars($currentUser['full_name']); ?>"
+                                                    placeholder="Enter your full name">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="edit_email">Email Address <span class="required">*</span></label>
+                                                <input type="email" id="edit_email"
+                                                    value="<?php echo htmlspecialchars($currentUser['email']); ?>"
+                                                    placeholder="Enter your email">
+                                            </div>
                                         </div>
-                                        <div class="form-group">
-                                            <label for="edit_email">Email Address <span class="required">*</span></label>
-                                            <input type="email" id="edit_email"
-                                                value="<?php echo htmlspecialchars($currentUser['email']); ?>"
-                                                placeholder="Enter your email">
+                                        <div class="form-actions">
+                                            <button class="btn btn-outline" onclick="cancelEdit()">Cancel</button>
+                                            <button class="btn btn-primary" id="saveProfileBtn" onclick="submitEditProfile()">
+                                                <i class="fas fa-save"></i> Save Changes
+                                            </button>
                                         </div>
                                     </div>
-                                    <div class="form-actions">
-                                        <button class="btn btn-outline" onclick="cancelEdit()">Cancel</button>
-                                        <button class="btn btn-primary" id="saveProfileBtn" onclick="submitEditProfile()">
-                                            <i class="fas fa-save"></i> Save Changes
-                                        </button>
-                                    </div>
-                                </div>
+                                <?php endif; ?>
                             </div>
 
                             <div id="section-security" class="profile-section <?php echo $activeSection === 'security' ? 'active' : ''; ?>">
@@ -370,6 +373,35 @@ function buildDiffHtml(array $before, array $after): string
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="confirmProfileModal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2><i class="fas fa-lock"></i> Confirm Your Password</h2>
+                <button class="modal-close" onclick="closeConfirmModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>To save changes to your name or email, please enter your current password.</p>
+                <div class="form-group" style="margin-top:16px; margin-bottom:0;">
+                    <label for="confirm_identity_password">Current Password <span class="required">*</span></label>
+                    <div class="input-pw-wrap">
+                        <input type="password" id="confirm_identity_password"
+                            placeholder="Enter your password">
+                        <button type="button" class="btn-pw-toggle"
+                            onclick="togglePw('confirm_identity_password', this)">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeConfirmModal()">Cancel</button>
+                <button class="btn btn-primary" id="confirmProfileSaveBtn" onclick="confirmAndSaveProfile()">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
             </div>
         </div>
     </div>

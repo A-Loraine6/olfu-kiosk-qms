@@ -17,3 +17,5 @@ define('MAX_LOGIN_ATTEMPTS', 5);
 
 define('PASSWORD_HASH_ALGO', PASSWORD_BCRYPT);
 define('PASSWORD_HASH_OPTIONS', array('cost' => 12));
+
+date_default_timezone_set('Asia/Manila');

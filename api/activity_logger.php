@@ -3,6 +3,8 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 
+date_default_timezone_set('Asia/Manila');
+
 function logActivity(
     $db,
     string  $activity_type,
@@ -31,7 +33,7 @@ function logActivity(
     $user_id    = $user['id'];
     $ip_address = $_SERVER['REMOTE_ADDR']      ?? '0.0.0.0';
     $user_agent = $_SERVER['HTTP_USER_AGENT']   ?? '';
-    $timestamp  = date('Y-m-d H:i:s');
+    $timestamp  = (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s');
     $before_json = !empty($before_values) ? json_encode($before_values) : null;
     $after_json  = !empty($after_values)  ? json_encode($after_values)  : null;
 
