@@ -3,6 +3,7 @@ require_once __DIR__ . '/config/config.php';
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/api/service_functions.php';
+require_once __DIR__ . '/includes/queue_functions.php';
 
 if (!isLoggedIn()) {
     header('Location: ' . BASE_URL . 'login.php');
@@ -12,8 +13,15 @@ if (!isLoggedIn()) {
 $currentUser = getCurrentUser();
 $csrf_token  = getCsrfToken();
 
-$offices        = getAllOffices($db->getConnection());
-$services       = getAllServicesWithOffice($db->getConnection());
+$isStaff         = ($currentUser['role'] ?? '') === 'staff';
+$staffOfficeId   = $currentUser['office_id'] ?? null;
+$officeInfo      = ($isStaff && $staffOfficeId) ? getOfficeInfo($db, $staffOfficeId) : null;
+$staffOfficeName = $officeInfo['name'] ?? null;
+
+$offices     = getAllOffices($db->getConnection());
+$services    = ($currentUser['role'] === 'staff')
+    ? getAllServicesWithOffice($db->getConnection(), $currentUser['office_id'] ?? null)
+    : getAllServicesWithOffice($db->getConnection());
 $totalServices  = count($services);
 $activeServices = count(array_filter($services, fn($s) => $s['is_active']));
 
@@ -59,11 +67,20 @@ function getCategoryColor(?string $cat): string
                     <h2 class="header-page-title">
                         <i class="fas fa-concierge-bell"></i> Service Management
                     </h2>
+                    <?php if ($isStaff && $staffOfficeName): ?>
+                        <span class="office-badge">
+                            <i class="fas fa-building"></i>
+                            <?php echo htmlspecialchars($staffOfficeName); ?>
+                        </span>
+                    <?php endif; ?>
                 </div>
                 <div class="header-right">
-                    <button class="btn-primary" onclick="openModal('addServiceModal')">
-                        <i class="fas fa-plus"></i> Add New Service
-                    </button>
+                    <?php if (($currentUser['role'] ?? '') !== 'staff'): ?>
+                        <button class="btn-primary" onclick="openModal('addServiceModal')">
+                            <i class="fas fa-plus"></i> Add New Service
+                        </button>
+                    <?php endif; ?>
+
                 </div>
             </header>
 
@@ -78,7 +95,9 @@ function getCategoryColor(?string $cat): string
                                 <div class="card-label">Total Services</div>
                             </div>
                             <div class="card-value" id="stat-total"><?php echo $totalServices; ?></div>
-                            <div class="card-description">All registered transaction types</div>
+                            <div class="card-description">
+                                <?php echo $isStaff ? 'Services in your office' : 'All registered transaction types'; ?>
+                            </div>
                         </div>
                         <div class="card card-active-services">
                             <div class="card-header">
@@ -86,7 +105,9 @@ function getCategoryColor(?string $cat): string
                                 <div class="card-label">Active Services</div>
                             </div>
                             <div class="card-value" id="stat-active"><?php echo $activeServices; ?></div>
-                            <div class="card-description">Currently shown in kiosk</div>
+                            <div class="card-description">
+                                <?php echo $isStaff ? 'Active in your office' : 'Currently shown in kiosk'; ?>
+                            </div>
                         </div>
                         <div class="card card-inactive-services">
                             <div class="card-header">
@@ -94,57 +115,64 @@ function getCategoryColor(?string $cat): string
                                 <div class="card-label">Inactive Services</div>
                             </div>
                             <div class="card-value" id="stat-inactive"><?php echo $totalServices - $activeServices; ?></div>
-                            <div class="card-description">Hidden from kiosk</div>
+                            <div class="card-description">
+                                <?php echo $isStaff ? 'Inactive in your office' : 'Hidden from kiosk'; ?>
+                            </div>
                         </div>
                     </div>
+                    <?php if (($currentUser['role'] ?? '') !== 'staff'): ?>
 
-                    <h2 class="section-title"><i class="fas fa-building"></i> Office Queue Mode</h2>
-                    <div class="office-mode-grid">
-                        <?php foreach ($offices as $office): ?>
-                            <div class="office-mode-card" id="office-card-<?php echo $office['id']; ?>">
-                                <div class="office-mode-header">
-                                    <div class="office-mode-icon"><i class="fas fa-building"></i></div>
-                                    <div>
-                                        <div class="office-mode-name"><?php echo htmlspecialchars($office['name']); ?></div>
-                                        <?php if ($office['code']): ?>
-                                            <div class="office-mode-code"><?php echo htmlspecialchars($office['code']); ?></div>
-                                        <?php endif; ?>
+                        <h2 class="section-title"><i class="fas fa-building"></i> Office Queue Mode</h2>
+                        <div class="office-mode-grid">
+                            <?php foreach ($offices as $office): ?>
+                                <div class="office-mode-card" id="office-card-<?php echo $office['id']; ?>">
+                                    <div class="office-mode-header">
+                                        <div class="office-mode-icon"><i class="fas fa-building"></i></div>
+                                        <div>
+                                            <div class="office-mode-name"><?php echo htmlspecialchars($office['name']); ?></div>
+                                            <?php if ($office['code']): ?>
+                                                <div class="office-mode-code"><?php echo htmlspecialchars($office['code']); ?></div>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div class="office-mode-body">
-                                    <div class="queue-mode-label">Queue Mode</div>
-                                    <div class="queue-mode-toggle-wrap">
-                                        <span class="queue-mode-value <?php echo $office['queue_mode'] === 'service-based' ? 'mode-service' : 'mode-unified'; ?>"
-                                            id="office-mode-label-<?php echo $office['id']; ?>">
-                                            <?php echo $office['queue_mode'] === 'service-based' ? 'Service-Based' : 'Unified'; ?>
+                                    <div class="office-mode-body">
+                                        <div class="queue-mode-label">Queue Mode</div>
+                                        <div class="queue-mode-toggle-wrap">
+                                            <span class="queue-mode-value <?php echo $office['queue_mode'] === 'service-based' ? 'mode-service' : 'mode-unified'; ?>"
+                                                id="office-mode-label-<?php echo $office['id']; ?>">
+                                                <?php echo $office['queue_mode'] === 'service-based' ? 'Service-Based' : 'Unified'; ?>
+                                            </span>
+                                            <button type="button" class="btn-mode-toggle"
+                                                title="Switch queue mode"
+                                                onclick="toggleQueueMode(<?php echo $office['id']; ?>, this)">
+                                                <i class="fas fa-exchange-alt"></i>
+                                            </button>
+                                        </div>
+                                        <p class="queue-mode-desc" id="office-mode-desc-<?php echo $office['id']; ?>">
+                                            <?php if ($office['queue_mode'] === 'service-based'): ?>
+                                                Kiosk shows service selection before issuing a number.
+                                            <?php else: ?>
+                                                Kiosk issues a number directly without service selection.
+                                            <?php endif; ?>
+                                        </p>
+                                    </div>
+
+                                    <div class="office-mode-footer">
+                                        <?php $cnt = count($servicesByOffice[$office['id']] ?? []); ?>
+                                        <span class="svc-count-badge">
+                                            <?php echo $cnt; ?> service<?php echo $cnt !== 1 ? 's' : ''; ?>
                                         </span>
-                                        <button type="button" class="btn-mode-toggle"
-                                            title="Switch queue mode"
-                                            onclick="toggleQueueMode(<?php echo $office['id']; ?>, this)">
-                                            <i class="fas fa-exchange-alt"></i>
-                                        </button>
                                     </div>
-                                    <p class="queue-mode-desc" id="office-mode-desc-<?php echo $office['id']; ?>">
-                                        <?php if ($office['queue_mode'] === 'service-based'): ?>
-                                            Kiosk shows service selection before issuing a number.
-                                        <?php else: ?>
-                                            Kiosk issues a number directly without service selection.
-                                        <?php endif; ?>
-                                    </p>
                                 </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
 
-                                <div class="office-mode-footer">
-                                    <?php $cnt = count($servicesByOffice[$office['id']] ?? []); ?>
-                                    <span class="svc-count-badge">
-                                        <?php echo $cnt; ?> service<?php echo $cnt !== 1 ? 's' : ''; ?>
-                                    </span>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-
-                    <h2 class="section-title"><i class="fas fa-th-list"></i> All Services</h2>
+                    <h2 class="section-title">
+                        <i class="fas fa-th-list"></i>
+                        <?php echo $isStaff ? htmlspecialchars($staffOfficeName) . ' — Services' : 'All Services'; ?>
+                    </h2>
                     <div class="services-table-section">
                         <div class="services-table-toolbar">
                             <div class="search-wrap">
@@ -158,14 +186,18 @@ function getCategoryColor(?string $cat): string
                             </div>
 
                             <div class="filter-group">
-                                <select id="filterOffice" class="filter-select" onchange="applyFilters()">
-                                    <option value="">All Offices</option>
-                                    <?php foreach ($offices as $o): ?>
-                                        <option value="<?php echo $o['id']; ?>">
-                                            <?php echo htmlspecialchars($o['name']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
+                                <?php if (($currentUser['role'] ?? '') !== 'staff'): ?>
+                                    <select id="filterOffice" class="filter-select" onchange="applyFilters()">
+                                        <option value="">All Offices</option>
+                                        <?php foreach ($offices as $o): ?>
+                                            <option value="<?php echo $o['id']; ?>">
+                                                <?php echo htmlspecialchars($o['name']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                <?php else: ?>
+                                    <input type="hidden" id="filterOffice" value="<?php echo (int)($currentUser['office_id'] ?? 0); ?>">
+                                <?php endif; ?>
                                 <select id="filterStatus" class="filter-select" onchange="applyFilters()">
                                     <option value="">All Status</option>
                                     <option value="active">Active</option>
@@ -181,7 +213,9 @@ function getCategoryColor(?string $cat): string
                                     <th>Office</th>
                                     <th>Category</th>
                                     <th>Status</th>
-                                    <th>Actions</th>
+                                    <?php if (($currentUser['role'] ?? '') !== 'staff'): ?>
+                                        <th>Actions</th>
+                                    <?php endif; ?>
                                 </tr>
                             </thead>
                             <tbody id="servicesTableBody">
@@ -224,25 +258,27 @@ function getCategoryColor(?string $cat): string
                                                     <?php echo $svc['is_active'] ? 'Active' : 'Inactive'; ?>
                                                 </span>
                                             </td>
-                                            <td>
-                                                <div class="dropdown">
-                                                    <button class="dropdown-toggle">
-                                                        <i class="fas fa-ellipsis-h"></i>
-                                                    </button>
-                                                    <div class="dropdown-menu">
-                                                        <button onclick="openEditServiceModal(<?php echo htmlspecialchars(json_encode($svc), ENT_QUOTES); ?>)">
-                                                            <i class="fas fa-pen"></i> Edit
+                                            <?php if (($currentUser['role'] ?? '') !== 'staff'): ?>
+                                                <td>
+                                                    <div class="dropdown">
+                                                        <button class="dropdown-toggle">
+                                                            <i class="fas fa-ellipsis-h"></i>
                                                         </button>
-                                                        <button onclick="openToggleModal(<?php echo $svc['id']; ?>, <?php echo $svc['is_active'] ? 'true' : 'false'; ?>)">
-                                                            <i class="fas fa-<?php echo $svc['is_active'] ? 'toggle-off' : 'toggle-on'; ?>"></i>
-                                                            <?php echo $svc['is_active'] ? 'Deactivate' : 'Activate'; ?>
-                                                        </button>
-                                                        <button class="danger" onclick="openDeleteModal(<?php echo $svc['id']; ?>)">
-                                                            <i class="fas fa-trash"></i> Delete
-                                                        </button>
+                                                        <div class="dropdown-menu">
+                                                            <button onclick="openEditServiceModal(<?php echo htmlspecialchars(json_encode($svc), ENT_QUOTES); ?>)">
+                                                                <i class="fas fa-pen"></i> Edit
+                                                            </button>
+                                                            <button onclick="openToggleModal(<?php echo $svc['id']; ?>, <?php echo $svc['is_active'] ? 'true' : 'false'; ?>)">
+                                                                <i class="fas fa-<?php echo $svc['is_active'] ? 'toggle-off' : 'toggle-on'; ?>"></i>
+                                                                <?php echo $svc['is_active'] ? 'Deactivate' : 'Activate'; ?>
+                                                            </button>
+                                                            <button class="danger" onclick="openDeleteModal(<?php echo $svc['id']; ?>)">
+                                                                <i class="fas fa-trash"></i> Delete
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </td>
+                                                </td>
+                                            <?php endif; ?>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
@@ -265,7 +301,6 @@ function getCategoryColor(?string $cat): string
         <div class="modal-content">
             <div class="modal-header">
                 <h2><i class="fas fa-plus-circle"></i> Add New Service</h2>
-                <button class="modal-close" onclick="closeModal('addServiceModal')">&times;</button>
             </div>
 
             <div class="form-group">
