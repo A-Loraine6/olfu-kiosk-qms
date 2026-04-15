@@ -93,15 +93,20 @@ function toggleOfficeQueueMode(mysqli $conn, int $officeId): array
     return serviceResponse(true, "Queue mode switched to {$label} for \"{$office['name']}\".");
 }
 
-function getAllServicesWithOffice(mysqli $conn): array
+function getAllServicesWithOffice(mysqli $conn, ?int $officeId = null): array
 {
     $sql = "SELECT
                 tt.id, tt.name, tt.category, tt.description,
                 tt.is_active, tt.office_id, o.name AS office_name
             FROM transaction_types tt
             LEFT JOIN offices o ON o.id = tt.office_id
-            WHERE tt.is_deleted = 0
-            ORDER BY o.name ASC, tt.name ASC";
+            WHERE tt.is_deleted = 0";
+
+    if ($officeId !== null) {
+        $sql .= " AND tt.office_id = " . (int) $officeId;
+    }
+
+    $sql .= " ORDER BY o.name ASC, tt.name ASC";
 
     $res = $conn->query($sql);
     if (!$res) return [];
