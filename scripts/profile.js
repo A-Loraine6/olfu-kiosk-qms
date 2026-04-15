@@ -70,7 +70,6 @@ function toggleEditMode() {
     viewMode.style.display = "none";
     editMode.style.display = "block";
     btn.classList.add("active-edit");
-    btn.innerHTML = '<i class="fas fa-times"></i> Cancel';
   } else {
     cancelEdit();
   }
@@ -98,25 +97,52 @@ async function submitEditProfile() {
     return;
   }
 
-  setBtnLoading(
-    "saveProfileBtn",
-    true,
-    '<i class="fas fa-save"></i> Save Changes',
+  document.getElementById("confirm_identity_password").value = "";
+  openConfirmModal();
+}
+
+function openConfirmModal() {
+  const modal = document.getElementById("confirmProfileModal");
+  modal.classList.add("show");
+  setTimeout(
+    () => document.getElementById("confirm_identity_password").focus(),
+    100,
   );
+}
+
+function closeConfirmModal() {
+  document.getElementById("confirmProfileModal").classList.remove("show");
+  document.getElementById("confirm_identity_password").value = "";
+}
+
+async function confirmAndSaveProfile() {
+  const fullName = document.getElementById("edit_full_name").value.trim();
+  const email = document.getElementById("edit_email").value.trim();
+  const confirmPassword = document.getElementById(
+    "confirm_identity_password",
+  ).value;
+
+  if (!confirmPassword) {
+    showToast("Please enter your password.", "error");
+    return;
+  }
+
+  const btn = document.getElementById("confirmProfileSaveBtn");
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
 
   const data = await ajax({
     action: "update_profile",
     full_name: fullName,
     email,
+    confirm_password: confirmPassword,
   });
 
-  setBtnLoading(
-    "saveProfileBtn",
-    false,
-    '<i class="fas fa-save"></i> Save Changes',
-  );
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
 
   if (data.success) {
+    closeConfirmModal();
     document.getElementById("viewName").textContent = fullName;
     document.getElementById("viewEmail").textContent = email;
     document.getElementById("cardName").textContent = fullName;
@@ -125,8 +151,16 @@ async function submitEditProfile() {
     showToast(data.message, "success");
   } else {
     showToast(data.message, "error");
+    document.getElementById("confirm_identity_password").value = "";
+    document.getElementById("confirm_identity_password").focus();
   }
 }
+
+document
+  .getElementById("confirmProfileModal")
+  .addEventListener("click", function (e) {
+    if (e.target === this) closeConfirmModal();
+  });
 
 function updateAvatar(name) {
   const parts = name.trim().split(" ").filter(Boolean);
