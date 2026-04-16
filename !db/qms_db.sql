@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 04, 2026 at 07:20 AM
+-- Generation Time: Apr 16, 2026 at 03:59 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -54,7 +54,28 @@ INSERT INTO `activity_logs` (`id`, `user_id`, `activity_type`, `entity_type`, `e
 (35, 1, 'STAFF_DEACTIVATE', 'USER', 2, '{\"is_active\":true}', '{\"is_active\":false}', 'Deactivated staff account: Liezel Mae Torres', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-03 22:12:12'),
 (36, 1, 'STAFF_ACTIVATE', 'USER', 2, '{\"is_active\":false}', '{\"is_active\":true}', 'Activated staff account: Liezel Mae Torres', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-03 22:12:16'),
 (37, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 2, '{\"open_time\":\"08:00\"}', '{\"open_time\":\"10:00\"}', 'Updated office schedule for \"Accounting\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-03 22:14:53'),
-(38, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 2, '{\"open_time\":\"10:00\"}', '{\"open_time\":\"08:00\"}', 'Updated office schedule for \"Accounting\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-03 22:15:09');
+(38, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 2, '{\"open_time\":\"10:00\"}', '{\"open_time\":\"08:00\"}', 'Updated office schedule for \"Accounting\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-03 22:15:09'),
+(39, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-14 21:15:10'),
+(40, 1, 'LOGOUT', 'user', 1, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-14 21:16:10'),
+(41, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-14 21:16:13'),
+(42, 1, 'LOGOUT', 'user', 1, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-15 03:17:19'),
+(43, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-15 03:17:21'),
+(44, 1, 'PROFILE_UPDATE', 'USER', 1, '{\"full_name\":\"Angel Loraine Reobilo\",\"email\":\"reobiloangel6@gmail.com\"}', '{\"full_name\":\"Angel Loraine Reobilos\",\"email\":\"reobiloangel6@gmail.com\"}', 'Updated own profile', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-15 03:25:30'),
+(45, 1, 'LOGOUT', 'user', 1, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-15 04:04:02'),
+(46, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-15 04:04:07'),
+(47, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-15 05:31:56'),
+(48, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-15 09:56:10'),
+(49, 2, 'LOGOUT', 'user', 2, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-15 10:08:15'),
+(50, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-15 10:08:17'),
+(51, 1, 'LOGOUT', 'user', 1, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-15 10:08:25'),
+(52, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-15 10:08:28'),
+(53, 2, 'PASSWORD_CHANGE', 'USER', 2, NULL, NULL, 'Changed account password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-15 10:14:30'),
+(54, 2, 'PASSWORD_CHANGE', 'USER', 2, NULL, NULL, 'Changed account password', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-15 10:18:17'),
+(55, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-16 01:16:27'),
+(56, 2, 'LOGOUT', 'user', 2, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-16 01:36:54'),
+(57, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-16 01:36:57'),
+(58, 1, 'LOGOUT', 'user', 1, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-16 01:38:18'),
+(59, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-16 01:38:38');
 
 -- --------------------------------------------------------
 
@@ -140,7 +161,8 @@ CREATE TABLE `tickets` (
   `status` enum('waiting','serving','completed','skipped') DEFAULT 'waiting',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `served_at` timestamp NULL DEFAULT NULL,
-  `completed_at` timestamp NULL DEFAULT NULL
+  `completed_at` timestamp NULL DEFAULT NULL,
+  `served_by` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -201,8 +223,8 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `full_name`, `email`, `password`, `role`, `office_id`, `created_at`, `is_active`, `last_activity`, `password_reset_token`, `password_reset_expires`, `created_by`, `is_deleted`) VALUES
-(1, 'Angel Loraine Reobilo', 'reobiloangel6@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$WlJwTFZiUlhoTWs4dkVFSg$2xXzhMVRqKcqr5WpRJb2a3z2vTz7rlE+fUTVoUA0eLY', 'admin', NULL, '2026-03-25 08:45:08', 1, NULL, NULL, NULL, NULL, 0),
-(2, 'Liezel Mae Torres', 'liezelmaetorres@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$UEd4UzJMNENnenVtTVNRZA$AoDiFTuK4jK0AJoqaOpmAyky5Ocqj09r1HC/f5Q/4dc', 'staff', 2, '2026-03-25 05:35:57', 1, NULL, NULL, NULL, 1, 0);
+(1, 'Angel Loraine Reobilos', 'reobiloangel6@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$WlJwTFZiUlhoTWs4dkVFSg$2xXzhMVRqKcqr5WpRJb2a3z2vTz7rlE+fUTVoUA0eLY', 'admin', NULL, '2026-03-25 08:45:08', 1, NULL, NULL, NULL, NULL, 0),
+(2, 'Liezel Mae Torres', 'liezelmaetorres@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$YXhxRll3ZmdaTm5DVDA4Yg$VJFkcE3j0F94U7yijmPOZlZy40u1Rk+ykwO7wjDhyHQ', 'staff', 2, '2026-03-25 05:35:57', 1, NULL, NULL, NULL, 1, 0);
 
 --
 -- Indexes for dumped tables
@@ -248,7 +270,8 @@ ALTER TABLE `tickets`
   ADD UNIQUE KEY `ticket_number` (`ticket_number`),
   ADD KEY `idx_office_id` (`office_id`),
   ADD KEY `idx_status` (`status`),
-  ADD KEY `idx_created_at` (`created_at`);
+  ADD KEY `idx_created_at` (`created_at`),
+  ADD KEY `fk_tickets_served_by` (`served_by`);
 
 --
 -- Indexes for table `transaction_types`
@@ -273,7 +296,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `activity_logs`
 --
 ALTER TABLE `activity_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=60;
 
 --
 -- AUTO_INCREMENT for table `kiosk_settings`
@@ -325,6 +348,7 @@ ALTER TABLE `sessions`
 -- Constraints for table `tickets`
 --
 ALTER TABLE `tickets`
+  ADD CONSTRAINT `fk_tickets_served_by` FOREIGN KEY (`served_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `tickets_ibfk_1` FOREIGN KEY (`office_id`) REFERENCES `offices` (`id`);
 
 --
