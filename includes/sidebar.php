@@ -80,8 +80,14 @@ $isStaff = isset($currentUser['role']) && $currentUser['role'] === 'staff';
                     <?php
                     $initials = '';
                     if (!empty($currentUser['full_name'])) {
-                        $names = explode(' ', $currentUser['full_name']);
-                        $initials = strtoupper(substr($names[0], 0, 1) . (isset($names[1]) ? substr($names[1], 0, 1) : ''));
+                        $names = explode(' ', trim($currentUser['full_name']));
+                        $firstInitial = strtoupper(substr($names[0], 0, 1));
+                        $lastInitial = '';
+                        if (count($names) > 1) {
+                            $lastName = $names[count($names) - 1];
+                            $lastInitial = strtoupper(substr($lastName, 0, 1));
+                        }
+                        $initials = $firstInitial . $lastInitial;
                     }
                     echo htmlspecialchars($initials);
                     ?>
