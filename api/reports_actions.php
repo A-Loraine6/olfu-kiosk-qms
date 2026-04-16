@@ -30,7 +30,6 @@ if ($action === 'staff_metrics') {
     $from   = $input['date_from'] ?? date('Y-m-d');
     $to     = $input['date_to']   ?? date('Y-m-d');
 
-    // Sanitize dates
     $from = date('Y-m-d', strtotime($from));
     $to   = date('Y-m-d', strtotime($to));
 
