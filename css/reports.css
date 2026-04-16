@@ -106,7 +106,6 @@
   color: var(--primary);
   background: var(--primary-ghost);
 }
-/* ── Report Blocks ── */
 .report-block {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -166,7 +165,6 @@
   padding: 22px;
 }
 
-/* ── Summary Stat Cards ── */
 .daily-summary-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -206,7 +204,6 @@
   margin-top: 2px;
 }
 
-/* Colored value variants */
 .stat-green .summary-stat-value {
   color: var(--primary);
 }
@@ -220,20 +217,17 @@
   color: #1a6faa;
 }
 
-/* Muted state — no data yet, show value but de-emphasised */
 .summary-stat-value.stat-muted {
   color: var(--text-3) !important;
   font-weight: 500;
 }
 
-/* N/A state — smaller text so it doesn't look like a broken number */
 .summary-stat-value.stat-na {
   font-size: 18px !important;
   letter-spacing: 0;
   font-variant-numeric: normal;
 }
 
-/* ── No-data notice banner ── */
 .no-data-notice {
   display: flex;
   align-items: center;
@@ -253,7 +247,6 @@
   flex-shrink: 0;
 }
 
-/* ── Performance Table ── */
 .perf-table {
   width: 100%;
   border-collapse: collapse;
@@ -345,7 +338,6 @@
   flex-shrink: 0;
 }
 
-/* ── Charts ── */
 .charts-2col {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -371,7 +363,6 @@
   gap: 6px;
 }
 
-/* ── Empty State ── */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -409,7 +400,6 @@
   line-height: 1.55;
 }
 
-/* ── Pills ── */
 .pill {
   display: inline-block;
   padding: 2px 9px;
@@ -453,7 +443,6 @@
   gap: 8px;
 }
 
-/* ── Responsive ── */
 @media (max-width: 900px) {
   .daily-summary-row {
     grid-template-columns: repeat(2, 1fr);
