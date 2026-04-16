@@ -447,7 +447,6 @@ function prependActivityItem(
   const list = document.getElementById("activityList");
   if (!list) return;
 
-  // If empty state is showing, clear it and show the list
   const emptyEl = document.querySelector(".activity-empty");
   if (emptyEl) emptyEl.remove();
 
@@ -488,11 +487,9 @@ function prependActivityItem(
 
   list.prepend(el);
 
-  // Trigger highlight animation then settle
   requestAnimationFrame(() => el.classList.add("activity-item-highlight"));
   setTimeout(() => el.classList.remove("activity-item-highlight"), 2000);
 
-  // Update the total count badge
   const badge = document.querySelector(".activity-count-badge");
   if (badge) {
     const current = parseInt(badge.textContent.replace(/\D/g, "")) || 0;
