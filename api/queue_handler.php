@@ -5,6 +5,8 @@ require_once '../includes/auth.php';
 
 header('Content-Type: application/json');
 
+date_default_timezone_set('Asia/Manila');
+
 const DATETIME_FORMAT = 'Y-m-d H:i:s';
 
 if (!isLoggedIn()) {
@@ -50,12 +52,16 @@ function getOfficeQueueMode(Database $db, int $officeId): string
 if ($action === 'get_stats') {
     $today = date('Y-m-d');
 
-    $stmt = $db->prepare("SELECT COUNT(*) AS cnt FROM tickets WHERE office_id=? AND status='completed' AND DATE(completed_at)=?");
+    $stmt = $db->prepare("SELECT COUNT(*) AS cnt FROM tickets 
+                          WHERE office_id=? AND status='completed' 
+                          AND DATE(CONVERT_TZ(completed_at, '+00:00', '+08:00')) = ?");
     $stmt->bind_param('is', $officeId, $today);
     $stmt->execute();
     $served = (int) $stmt->get_result()->fetch_assoc()['cnt'];
 
-    $stmt = $db->prepare("SELECT COUNT(*) AS cnt FROM tickets WHERE office_id=? AND status='skipped' AND DATE(created_at)=?");
+    $stmt = $db->prepare("SELECT COUNT(*) AS cnt FROM tickets 
+                          WHERE office_id=? AND status='skipped' 
+                          AND DATE(CONVERT_TZ(created_at, '+00:00', '+08:00')) = ?");
     $stmt->bind_param('is', $officeId, $today);
     $stmt->execute();
     $skipped = (int) $stmt->get_result()->fetch_assoc()['cnt'];
@@ -69,7 +75,7 @@ if ($action === 'get_stats') {
                            FROM tickets
                            WHERE office_id=? AND status='completed'
                              AND served_at IS NOT NULL AND completed_at IS NOT NULL
-                             AND DATE(completed_at)=?");
+                             AND DATE(CONVERT_TZ(completed_at, '+00:00', '+08:00')) = ?");
     $stmt->bind_param('is', $officeId, $today);
     $stmt->execute();
     $avgRow  = $stmt->get_result()->fetch_assoc();
@@ -94,6 +100,7 @@ if ($action === 'get_queue') {
 
     $statusMap = [
         'waiting' => ['waiting', 'serving'],
+        'on-hold' => ['on-hold'],
         'skipped' => ['skipped'],
         'done'    => ['completed'],
     ];
@@ -178,13 +185,13 @@ if ($action === 'call_next') {
 if ($action === 'complete_ticket') {
     $ticketId = (int) ($_POST['ticket_id'] ?? 0);
 
-    $stmt = $db->prepare("SELECT * FROM tickets WHERE id=? AND office_id=? AND status='serving' AND served_by=?");
-    $stmt->bind_param('iii', $ticketId, $officeId, $staffId);
+    $stmt = $db->prepare("SELECT * FROM tickets WHERE id=? AND office_id=? AND status='serving'");
+    $stmt->bind_param('ii', $ticketId, $officeId);
     $stmt->execute();
     $ticket = $stmt->get_result()->fetch_assoc();
 
     if (!$ticket) {
-        respond(['success' => false, 'message' => 'Ticket not found or not assigned to you.']);
+        respond(['success' => false, 'message' => 'Ticket not found or not in serving status.']);
     }
 
     $now  = date(DATETIME_FORMAT);
@@ -231,6 +238,55 @@ if ($action === 'recall_ticket') {
 
     if (!$ticket) {
         respond(['success' => false, 'message' => 'Skipped ticket not found.']);
+    }
+
+    $now  = date(DATETIME_FORMAT);
+    $stmt = $db->prepare("UPDATE tickets SET status='serving', served_at=?, served_by=? WHERE id=?");
+    $stmt->bind_param('sii', $now, $staffId, $ticketId);
+    $stmt->execute();
+
+    $ticket['status']    = 'serving';
+    $ticket['served_at'] = $now;
+    respond(['success' => true, 'ticket' => $ticket]);
+}
+
+if ($action === 'hold_ticket') {
+    $ticketId = (int) ($_POST['ticket_id'] ?? 0);
+
+    $stmt = $db->prepare("SELECT * FROM tickets WHERE id=? AND office_id=? AND status='serving'");
+    $stmt->bind_param('ii', $ticketId, $officeId);
+    $stmt->execute();
+    $ticket = $stmt->get_result()->fetch_assoc();
+
+    if (!$ticket) {
+        respond(['success' => false, 'message' => 'Ticket not found or not in serving status.']);
+    }
+
+    $now  = date(DATETIME_FORMAT);
+    $stmt = $db->prepare("UPDATE tickets SET status='on-hold', on_hold_at=? WHERE id=?");
+    $stmt->bind_param('si', $now, $ticketId);
+    $stmt->execute();
+
+    respond(['success' => true, 'message' => 'Ticket placed on hold. Queue number: ' . $ticket['ticket_number']]);
+}
+
+if ($action === 'resume_ticket') {
+    $ticketId = (int) ($_POST['ticket_id'] ?? 0);
+
+    $stmt = $db->prepare("SELECT id FROM tickets WHERE office_id=? AND status='serving' AND served_by=? LIMIT 1");
+    $stmt->bind_param('ii', $officeId, $staffId);
+    $stmt->execute();
+    if ($stmt->get_result()->fetch_assoc()) {
+        respond(['success' => false, 'message' => 'Complete the current ticket before resuming another.']);
+    }
+
+    $stmt = $db->prepare("SELECT * FROM tickets WHERE id=? AND office_id=? AND status='on-hold'");
+    $stmt->bind_param('ii', $ticketId, $officeId);
+    $stmt->execute();
+    $ticket = $stmt->get_result()->fetch_assoc();
+
+    if (!$ticket) {
+        respond(['success' => false, 'message' => 'On-hold ticket not found.']);
     }
 
     $now  = date(DATETIME_FORMAT);

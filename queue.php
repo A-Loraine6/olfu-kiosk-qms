@@ -128,6 +128,10 @@ if ($queueMode === 'service-based') {
                                     <i class="fas fa-check-circle"></i>
                                     Complete
                                 </button>
+                                <button class="action-btn action-hold" id="holdBtn" onclick="holdTicket()">
+                                    <i class="fas fa-pause-circle"></i>
+                                    Hold
+                                </button>
                                 <button class="action-btn action-skip" id="skipBtn" onclick="skipTicket()">
                                     <i class="fas fa-forward"></i>
                                     Skip
@@ -169,6 +173,7 @@ if ($queueMode === 'service-based') {
                             <div class="shortcut-hint" title="Keyboard shortcuts">
                                 <kbd>N</kbd> Next &nbsp;
                                 <kbd>C</kbd> Complete &nbsp;
+                                <kbd>H</kbd> Hold &nbsp;
                                 <kbd>S</kbd> Skip
                             </div>
                         </div>
@@ -200,6 +205,10 @@ if ($queueMode === 'service-based') {
                                 <button class="queue-tab active" data-tab="waiting" onclick="switchTab('waiting', this)">
                                     <i class="fas fa-clock"></i> Waiting
                                     <span class="tab-count" id="tabCountWaiting">0</span>
+                                </button>
+                                <button class="queue-tab" data-tab="on-hold" onclick="switchTab('on-hold', this)">
+                                    <i class="fas fa-pause"></i> On Hold
+                                    <span class="tab-count" id="tabCountOnHold">0</span>
                                 </button>
                                 <button class="queue-tab" data-tab="skipped" onclick="switchTab('skipped', this)">
                                     <i class="fas fa-forward"></i> Skipped
