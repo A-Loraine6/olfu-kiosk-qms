@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 16, 2026 at 10:06 AM
+-- Generation Time: Apr 17, 2026 at 10:01 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -76,7 +76,17 @@ INSERT INTO `activity_logs` (`id`, `user_id`, `activity_type`, `entity_type`, `e
 (57, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-16 01:36:57'),
 (58, 1, 'LOGOUT', 'user', 1, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-16 01:38:18'),
 (59, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-16 01:38:38'),
-(60, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-16 07:17:17');
+(60, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-16 07:17:17'),
+(61, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-16 10:17:55'),
+(62, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-16 12:05:38'),
+(63, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-16 13:37:23'),
+(64, 2, 'LOGOUT', 'user', 2, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-16 13:39:47'),
+(65, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-16 13:45:17'),
+(66, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-17 00:13:34'),
+(67, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-17 01:26:02'),
+(68, 2, 'LOGOUT', 'user', 2, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-17 02:15:02'),
+(69, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-17 06:50:21'),
+(70, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-17 07:51:13');
 
 -- --------------------------------------------------------
 
@@ -156,15 +166,34 @@ CREATE TABLE `tickets` (
   `id` int(11) NOT NULL,
   `ticket_number` varchar(50) NOT NULL,
   `office_id` int(11) NOT NULL,
-  `student_id` varchar(50) DEFAULT NULL,
   `transaction_type` varchar(50) DEFAULT NULL,
   `window_id` int(11) DEFAULT NULL,
-  `status` enum('waiting','serving','completed','skipped') DEFAULT 'waiting',
+  `status` enum('waiting','serving','completed','skipped','on-hold') DEFAULT 'waiting',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `served_at` timestamp NULL DEFAULT NULL,
   `completed_at` timestamp NULL DEFAULT NULL,
+  `on_hold_at` timestamp NULL DEFAULT NULL,
   `served_by` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `tickets`
+--
+
+INSERT INTO `tickets` (`id`, `ticket_number`, `office_id`, `transaction_type`, `window_id`, `status`, `created_at`, `served_at`, `completed_at`, `on_hold_at`, `served_by`) VALUES
+(1, 'ADM-001', 3, NULL, NULL, 'skipped', '2026-04-17 00:12:24', NULL, NULL, NULL, NULL),
+(2, 'ACC-001', 2, 'Balance Inquiry', NULL, 'completed', '2026-04-17 00:13:48', '2026-04-17 00:14:09', '2026-04-17 00:15:48', NULL, 2),
+(3, 'REG-001', 1, NULL, NULL, 'completed', '2026-04-17 00:23:51', NULL, '2026-04-17 00:53:12', NULL, NULL),
+(4, 'ADM-002', 3, NULL, NULL, 'skipped', '2026-04-17 00:52:03', NULL, NULL, NULL, NULL),
+(5, 'ADM-003', 3, NULL, NULL, 'skipped', '2026-04-17 00:52:41', NULL, NULL, NULL, NULL),
+(6, 'ADM-004', 3, NULL, NULL, 'skipped', '2026-04-17 06:38:13', NULL, NULL, NULL, NULL),
+(7, 'ADM-005', 3, NULL, NULL, 'skipped', '2026-04-17 06:38:43', NULL, NULL, NULL, NULL),
+(8, 'ACC-002', 2, 'Tuition Fee', NULL, 'completed', '2026-04-17 06:48:56', '2026-04-17 06:55:25', '2026-04-17 07:02:00', NULL, 2),
+(9, 'ACC-003', 2, 'Balance Inquiry', NULL, 'completed', '2026-04-17 07:01:26', '2026-04-17 07:03:11', '2026-04-17 07:13:24', NULL, 2),
+(10, 'ACC-004', 2, 'Balance Inquiry', NULL, 'completed', '2026-04-17 07:32:38', '2026-04-17 07:35:44', '2026-04-17 07:37:44', NULL, 2),
+(11, 'ACC-005', 2, 'Balance Inquiry', NULL, 'completed', '2026-04-17 07:37:57', '2026-04-17 07:38:06', '2026-04-17 07:43:48', NULL, 2),
+(12, 'REG-002', 1, NULL, NULL, 'skipped', '2026-04-17 07:42:40', NULL, NULL, NULL, NULL),
+(13, '0', 1, NULL, NULL, 'skipped', '2026-04-17 07:46:30', NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -297,7 +326,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `activity_logs`
 --
 ALTER TABLE `activity_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=61;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=71;
 
 --
 -- AUTO_INCREMENT for table `kiosk_settings`
@@ -315,7 +344,7 @@ ALTER TABLE `offices`
 -- AUTO_INCREMENT for table `tickets`
 --
 ALTER TABLE `tickets`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `transaction_types`

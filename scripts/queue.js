@@ -21,9 +21,10 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initQueue() {
-  loadQueue();
-  loadStats();
-  loadActiveTicket();
+  loadActiveTicket().then(() => {
+    loadQueue();
+    loadStats();
+  });
 }
 
 function updateClock() {
@@ -43,13 +44,15 @@ function registerKeyboardShortcuts() {
       return;
     if (document.getElementById("confirmModal")?.classList.contains("show"))
       return;
-
     switch (e.key.toUpperCase()) {
       case "N":
         if (!currentTicket) callNext();
         break;
       case "C":
         if (currentTicket) completeTicket();
+        break;
+      case "H":
+        if (currentTicket) holdTicket();
         break;
       case "S":
         if (currentTicket) skipTicket();
@@ -102,9 +105,9 @@ function setLastRefreshed() {
     minute: "2-digit",
     second: "2-digit",
   });
+  const html = `<i class="fas fa-check-circle" style="color:var(--primary)"></i> Updated ${timeStr}`;
   const el1 = document.getElementById("lastRefreshedText");
   const el2 = document.getElementById("queueLastRefreshed");
-  const html = `<i class="fas fa-check-circle" style="color:var(--primary)"></i> Updated ${timeStr}`;
   if (el1) el1.innerHTML = html;
   if (el2) el2.innerHTML = html;
 }
@@ -124,7 +127,7 @@ async function loadActiveTicket() {
       startTimer();
     }
   } catch (e) {
-    // walang gagawin
+    console.warn("loadActiveTicket failed:", e);
   }
 }
 
@@ -152,10 +155,7 @@ async function loadQueue() {
       }
 
       updateTabCount(currentTab, count);
-
-      const waiting = res.waiting_count ?? 0;
-      updateWaitingCount(waiting);
-
+      updateWaitingCount(res.waiting_count ?? 0);
       setLastRefreshed();
     } else {
       showQueueError(res.message || "Failed to load queue.");
@@ -191,7 +191,7 @@ async function loadStats() {
       updateWaitingCount(res.waiting ?? 0);
     }
   } catch (e) {
-    /* ignore */
+    /* walang gagawin */
   }
 }
 
@@ -232,7 +232,14 @@ async function callNext() {
 
   const btn = document.getElementById("callNextBtn");
   btn.disabled = true;
-  btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> <span>Calling…</span>`;
+  const labelSpan = btn.querySelector("span:first-of-type");
+  const origLabel = labelSpan ? labelSpan.textContent : "Call Next Student";
+  if (labelSpan) labelSpan.textContent = "Calling…";
+  const iconEl = btn.querySelector("i");
+  if (iconEl) {
+    iconEl.classList.remove("fa-bell");
+    iconEl.classList.add("fa-spinner", "fa-spin");
+  }
 
   try {
     const params = { action: "call_next", office_id: OFFICE_ID };
@@ -254,7 +261,11 @@ async function callNext() {
     showToast("Failed to call next ticket.", "error");
   } finally {
     btn.disabled = false;
-    btn.innerHTML = `<i class="fas fa-bell"></i> <span>Call Next Student</span> <span class="call-next-count" id="callNextCount">0 waiting</span>`;
+    if (labelSpan) labelSpan.textContent = origLabel;
+    if (iconEl) {
+      iconEl.classList.remove("fa-spinner", "fa-spin");
+      iconEl.classList.add("fa-bell");
+    }
     loadStats();
   }
 }
@@ -269,11 +280,21 @@ function completeTicket() {
   );
 }
 
+function holdTicket() {
+  if (!currentTicket) return;
+  openConfirmModal(
+    "Place Ticket on Hold",
+    `Place <strong>${escHtml(currentTicket.ticket_number)}</strong> on hold? You can resume it later from the On Hold tab.`,
+    "btn-warning",
+    { action: "hold", ticketId: currentTicket.id },
+  );
+}
+
 function skipTicket() {
   if (!currentTicket) return;
   openConfirmModal(
     "Skip Ticket",
-    `Skip <strong>${escHtml(currentTicket.ticket_number)}</strong>? The student can be recalled from the Skipped tab.`,
+    `Skip <strong>${escHtml(currentTicket.ticket_number)}</strong>? It can be recalled from the Skipped tab.`,
     "btn-warning",
     { action: "skip", ticketId: currentTicket.id },
   );
@@ -281,38 +302,65 @@ function skipTicket() {
 
 async function confirmAction() {
   if (!pendingAction) return;
-  closeModal("confirmModal");
 
   const { action, ticketId } = pendingAction;
   pendingAction = null;
 
-  disableServingActions(true);
+  closeModal("confirmModal");
+
+  const isServingTicket =
+    currentTicket && String(currentTicket.id) === String(ticketId);
+
+  if (isServingTicket) disableServingActions(true);
+
+  const actionMap = {
+    complete: "complete_ticket",
+    hold: "hold_ticket",
+    skip: "skip_ticket",
+  };
+  const apiAction = actionMap[action] || "skip_ticket";
+
+  console.log("[confirmAction]", {
+    action,
+    apiAction,
+    ticketId,
+    isServingTicket,
+    currentTicketId: currentTicket?.id,
+  });
 
   try {
     const res = await apiFetch("api/queue_handler.php", {
-      action: action === "complete" ? "complete_ticket" : "skip_ticket",
+      action: apiAction,
       ticket_id: ticketId,
       office_id: OFFICE_ID,
     });
 
+    console.log("[confirmAction] response:", res);
+
     if (res.success) {
-      stopTimer();
-      currentTicket = null;
-      serveStartTime = null;
-      clearServingCard();
-      showToast(
-        action === "complete" ? "Transaction completed!" : "Ticket skipped.",
-        "success",
-      );
-      loadQueue();
-      loadStats();
+      if (isServingTicket) {
+        stopTimer();
+        currentTicket = null;
+        serveStartTime = null;
+        clearServingCard();
+      }
+      const msgMap = {
+        complete: "Transaction completed!",
+        hold: "Ticket placed on hold.",
+        skip: "Ticket skipped.",
+      };
+      showToast(msgMap[action] || "Action completed.", "success");
+      await Promise.all([loadQueue(), loadStats()]);
+      startRefreshCountdown();
     } else {
+      console.error("[confirmAction] server error:", res.message);
       showToast(res.message || "Action failed.", "error");
-      disableServingActions(false);
+      if (isServingTicket) disableServingActions(false);
     }
   } catch (e) {
+    console.error("[confirmAction] network error:", e);
     showToast("Network error.", "error");
-    disableServingActions(false);
+    if (isServingTicket) disableServingActions(false);
   }
 }
 
@@ -337,6 +385,33 @@ async function recallTicket(ticketId) {
       loadStats();
     } else {
       showToast(res.message || "Failed to recall ticket.", "error");
+    }
+  } catch (e) {
+    showToast("Network error.", "error");
+  }
+}
+
+async function resumeTicket(ticketId) {
+  if (currentTicket) {
+    showToast("Complete the current ticket before resuming another.", "error");
+    return;
+  }
+  try {
+    const res = await apiFetch("api/queue_handler.php", {
+      action: "resume_ticket",
+      ticket_id: ticketId,
+      office_id: OFFICE_ID,
+    });
+    if (res.success && res.ticket) {
+      currentTicket = res.ticket;
+      serveStartTime = new Date();
+      renderServingCard(res.ticket, true);
+      startTimer();
+      showToast(`Resuming ${res.ticket.ticket_number}`, "success");
+      loadQueue();
+      loadStats();
+    } else {
+      showToast(res.message || "Failed to resume ticket.", "error");
     }
   } catch (e) {
     showToast("Network error.", "error");
@@ -374,7 +449,12 @@ function renderServingCard(ticket, showNew = false) {
     }
   }
 
-  studentEl.innerHTML = `<i class="fas fa-user"></i> ${escHtml(ticket.student_id || "Walk-in")}`;
+  if (ticket.student_id) {
+    studentEl.innerHTML = `<i class="fas fa-user"></i> ${escHtml(ticket.student_id)}`;
+    studentEl.style.display = "";
+  } else {
+    studentEl.style.display = "none";
+  }
 
   if (ticket.transaction_type) {
     typeEl.innerHTML = `<i class="fas fa-tag" style="font-size:10px;opacity:0.7;"></i> ${escHtml(ticket.transaction_type)}`;
@@ -391,15 +471,16 @@ function renderServingCard(ticket, showNew = false) {
 function clearServingCard() {
   const ticketEl = document.getElementById("servingTicket");
   const cardEl = document.getElementById("servingCard");
+  const studentEl = document.getElementById("servingStudent");
 
   ticketEl.textContent = "No ticket";
   ticketEl.classList.remove("pulse");
   ticketEl.classList.add("is-idle");
-
   cardEl.classList.remove("has-ticket");
 
-  document.getElementById("servingStudent").innerHTML =
-    `<i class="fas fa-user"></i> Waiting for next student…`;
+  studentEl.innerHTML = `<i class="fas fa-user"></i> Waiting for next student…`;
+  studentEl.style.display = "";
+
   document.getElementById("servingType").style.display = "none";
   document.getElementById("servingTimer").style.display = "none";
   document.getElementById("servingActions").style.display = "none";
@@ -412,8 +493,10 @@ function clearServingCard() {
 
 function disableServingActions(state) {
   const c = document.getElementById("completeBtn");
+  const h = document.getElementById("holdBtn");
   const s = document.getElementById("skipBtn");
   if (c) c.disabled = state;
+  if (h) h.disabled = state;
   if (s) s.disabled = state;
 }
 
@@ -433,21 +516,28 @@ function renderQueueList(tickets) {
 }
 
 function renderTicketRow(t, index) {
-  const isServing = currentTicket && currentTicket.id === t.id;
+  const isServing = currentTicket && String(currentTicket.id) === String(t.id);
   const isSkipped = t.status === "skipped";
   const isDone = t.status === "completed";
-  const isFirst = !isServing && !isSkipped && !isDone && index === 0;
+  const isOnHold = t.status === "on-hold";
+  const isFirst =
+    !isServing && !isSkipped && !isDone && !isOnHold && index === 0;
 
   let rowClass = "ticket-row";
   if (isServing) rowClass += " is-serving";
   if (isSkipped) rowClass += " is-skipped";
   if (isDone) rowClass += " is-done";
+  if (isOnHold) rowClass += " is-on-hold";
 
   const pos = isServing
     ? `<span class="ticket-pos" style="background:var(--primary);color:#fff;border-color:var(--primary);font-size:9px;">NOW</span>`
-    : isDone || isSkipped
+    : isDone || isSkipped || isOnHold
       ? ""
       : `<span class="ticket-pos${isFirst ? " pos-first" : ""}">${index + 1}</span>`;
+
+  const studentHtml = t.student_id
+    ? `<div class="ticket-student">${escHtml(t.student_id)}</div>`
+    : "";
 
   const typeHtml = t.transaction_type
     ? `<div class="ticket-type"><i class="fas fa-tag" style="font-size:9px;margin-right:3px;opacity:0.6;"></i>${escHtml(t.transaction_type)}</div>`
@@ -457,24 +547,33 @@ function renderTicketRow(t, index) {
     ? `<span class="ticket-status-chip chip-done"><i class="fas fa-check"></i> Done</span>`
     : isSkipped
       ? `<span class="ticket-status-chip chip-skipped"><i class="fas fa-forward"></i> Skipped</span>`
-      : "";
+      : isOnHold
+        ? `<span class="ticket-status-chip chip-on-hold"><i class="fas fa-pause"></i> On Hold</span>`
+        : "";
 
   let actionsHtml = "";
   if (!isDone) {
     if (isSkipped) {
       actionsHtml = `
-                <div class="ticket-actions-inline">
-                    <button class="ticket-btn" title="Recall this ticket (bring back to serving)" onclick="recallTicket(${t.id})">
-                        <i class="fas fa-redo"></i>
-                    </button>
-                </div>`;
+        <div class="ticket-actions-inline">
+          <button class="ticket-btn" title="Recall this ticket" onclick="recallTicket(${t.id})">
+            <i class="fas fa-redo"></i>
+          </button>
+        </div>`;
+    } else if (isOnHold) {
+      actionsHtml = `
+        <div class="ticket-actions-inline">
+          <button class="ticket-btn" title="Resume this ticket" onclick="resumeTicket(${t.id})">
+            <i class="fas fa-play"></i>
+          </button>
+        </div>`;
     } else if (!isServing) {
       actionsHtml = `
-                <div class="ticket-actions-inline">
-                    <button class="ticket-btn btn-danger" title="Skip this ticket" onclick="manualSkip(${t.id}, '${escHtml(t.ticket_number)}')">
-                        <i class="fas fa-forward"></i>
-                    </button>
-                </div>`;
+        <div class="ticket-actions-inline">
+          <button class="ticket-btn btn-danger" title="Skip this ticket" onclick="manualSkip(${t.id}, '${escHtml(t.ticket_number)}')">
+            <i class="fas fa-forward"></i>
+          </button>
+        </div>`;
     }
   }
 
@@ -482,15 +581,15 @@ function renderTicketRow(t, index) {
 
   return `
     <div class="${rowClass}" id="ticketRow_${t.id}">
-        ${pos}
-        <span class="ticket-num">${escHtml(t.ticket_number)}</span>
-        <div class="ticket-info">
-            <div class="ticket-student">${escHtml(t.student_id || "Walk-in")}</div>
-            ${typeHtml}
-        </div>
-        ${statusChip}
-        <div class="ticket-time">${timeAgo}</div>
-        ${actionsHtml}
+      ${pos}
+      <span class="ticket-num">${escHtml(t.ticket_number)}</span>
+      <div class="ticket-info">
+        ${studentHtml}
+        ${typeHtml}
+      </div>
+      ${statusChip}
+      <div class="ticket-time">${timeAgo}</div>
+      ${actionsHtml}
     </div>`;
 }
 
@@ -510,7 +609,6 @@ function applyTypeFilter() {
 
 function refreshQueue() {
   const btn = document.getElementById("refreshBtn");
-  const icon = document.getElementById("refreshIcon");
   btn.classList.add("spinning");
   Promise.all([loadQueue(), loadStats()]).finally(() => {
     setTimeout(() => btn.classList.remove("spinning"), 600);
@@ -535,9 +633,9 @@ function startTimer() {
     const elapsed = Math.floor((Date.now() - serveStartTime) / 1000);
     document.getElementById("timerDisplay").textContent =
       formatSeconds(elapsed);
-
-    const timerEl = document.getElementById("servingTimer");
-    timerEl.classList.toggle("timer-warn", elapsed >= TIMER_WARN_SECS);
+    document
+      .getElementById("servingTimer")
+      .classList.toggle("timer-warn", elapsed >= TIMER_WARN_SECS);
   }, 1000);
 }
 
@@ -559,7 +657,6 @@ function openConfirmModal(title, body, btnClass, action) {
 
 function closeModal(id) {
   document.getElementById(id).classList.remove("show");
-  pendingAction = null;
 }
 
 function showQueueLoading(show) {
@@ -576,8 +673,8 @@ function showQueueError(msg) {
   const listEl = document.getElementById("queueList");
   listEl.style.display = "";
   listEl.innerHTML = `<div style="padding:32px;text-align:center;font-size:13px;color:var(--text-3);">
-        <i class="fas fa-exclamation-circle" style="color:#c62828;margin-right:6px;"></i>${escHtml(msg)}
-    </div>`;
+    <i class="fas fa-exclamation-circle" style="color:#c62828;margin-right:6px;"></i>${escHtml(msg)}
+  </div>`;
 }
 
 async function apiFetch(url, params = {}) {
@@ -597,7 +694,7 @@ function showToast(message, type = "success") {
   const icon = type === "success" ? "fa-check-circle" : "fa-exclamation-circle";
   toast.className = `toast toast-${type}`;
   toast.innerHTML = `<i class="fas ${icon}"></i><span>${escHtml(message)}</span>
-        <button class="toast-close" onclick="this.parentElement.remove()">×</button>`;
+    <button class="toast-close" onclick="this.parentElement.remove()">×</button>`;
   container.appendChild(toast);
   requestAnimationFrame(() => toast.classList.add("show"));
   setTimeout(() => {
@@ -623,16 +720,23 @@ function formatSeconds(s) {
 }
 
 function formatDuration(seconds) {
-  if (seconds < 60) return `${Math.round(seconds)}s`;
+  if (seconds < 60) return `${seconds}s`;
   const m = Math.floor(seconds / 60);
-  const s = Math.round(seconds % 60);
-  return s ? `${m}m ${s}s` : `${m}m`;
+  const s = seconds % 60;
+  return s > 0 ? `${m}m ${s}s` : `${m}m`;
 }
 
-function timeAgoShort(dateStr) {
-  const d = new Date(dateStr.replace(" ", "T"));
-  const diff = Math.floor((Date.now() - d) / 1000);
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  return `${Math.floor(diff / 3600)}h ago`;
+function timeAgoShort(isoDateStr) {
+  try {
+    const d = new Date(isoDateStr.replace(" ", "T"));
+    const now = new Date();
+    const diff = Math.floor((now - d) / 1000);
+    if (diff < 60) return `${diff}s ago`;
+    const m = Math.floor(diff / 60);
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    return `${h}h ago`;
+  } catch {
+    return "—";
+  }
 }
