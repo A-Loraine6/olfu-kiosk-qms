@@ -15,14 +15,14 @@ class TicketGenerator
             return ['success' => false, 'message' => 'Office not found'];
         }
 
-        $transaction_type = null;
-        if ($service_name !== '') {
-            $transaction_type = $this->resolveServiceId($office_id, $service_name);
-        }
+        $transaction_type = ($service_name !== '') ? $service_name : null;
 
         $lockName = "ticket_gen_{$office_id}";
 
         $lockStmt = $this->db->prepare("SELECT GET_LOCK(?, 5) AS acquired");
+        if (!$lockStmt) {
+            return ['success' => false, 'message' => 'Database prepare failed for lock'];
+        }
         $lockStmt->bind_param('s', $lockName);
         $lockStmt->execute();
         $lockRow = $lockStmt->get_result()->fetch_assoc();
@@ -35,23 +35,16 @@ class TicketGenerator
         try {
             $ticketNumber = $this->generateTicketNumber($office);
             $today        = date('Y-m-d');
-
             $waitingCount = $this->countWaiting($office_id, $today);
             $peopleAhead  = $waitingCount;
 
             $insert = $this->db->prepare("
                 INSERT INTO tickets
-                    (office_id, transaction_type, ticket_number,
-                    status, created_at)
+                    (office_id, transaction_type, ticket_number, status, created_at)
                 VALUES
                     (?, ?, ?, 'waiting', NOW())
             ");
-            $insert->bind_param(
-                'isi',
-                $office_id,
-                $transaction_type,
-                $ticketNumber
-            );
+            $insert->bind_param('iss', $office_id, $transaction_type, $ticketNumber);
 
             if (!$insert->execute()) {
                 throw new RuntimeException('Failed to insert ticket: ' . $insert->error);

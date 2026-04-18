@@ -84,6 +84,9 @@ switch ($action) {
                 ['full_name' => $fullName, 'email' => $email]
             );
 
+            $_SESSION['full_name'] = $fullName;
+            $_SESSION['email']     = $email;
+
             echo json_encode(['success' => true, 'message' => 'Profile updated successfully.']);
             break;
         }
@@ -129,53 +132,6 @@ switch ($action) {
                 'USER',
                 $currentUser['id'],
                 'Changed account password'
-            );
-
-            echo json_encode(['success' => true, 'message' => 'Password updated successfully.']);
-            break;
-        }
-
-    case 'change_password': {
-            $currentPw = $body['current_password'] ?? '';
-            $newPw     = $body['new_password']     ?? '';
-
-            if ($currentPw === '' || $newPw === '') {
-                echo json_encode(['success' => false, 'message' => 'All password fields are required.']);
-                exit;
-            }
-            if (strlen($newPw) < 8) {
-                echo json_encode(['success' => false, 'message' => 'New password must be at least 8 characters.']);
-                exit;
-            }
-
-            $stmt = $conn->prepare("SELECT password_hash FROM users WHERE id = ? LIMIT 1");
-            $stmt->bind_param('i', $currentUser['id']);
-            $stmt->execute();
-            $row = $stmt->get_result()->fetch_assoc();
-            $stmt->close();
-
-            if (!$row || !password_verify($currentPw, $row['password_hash'])) {
-                echo json_encode(['success' => false, 'message' => 'Current password is incorrect.']);
-                exit;
-            }
-
-            $newHash = password_hash($newPw, PASSWORD_DEFAULT);
-            $stmt    = $conn->prepare("UPDATE users SET password_hash = ? WHERE id = ?");
-            $stmt->bind_param('si', $newHash, $currentUser['id']);
-            $ok = $stmt->execute();
-            $stmt->close();
-
-            if (!$ok) {
-                echo json_encode(['success' => false, 'message' => 'Failed to update password. Please try again.']);
-                exit;
-            }
-
-            logActivity(
-                $conn,
-                'PASSWORD_CHANGE',
-                'USER',
-                $currentUser['id'],
-                'Changed own account password'
             );
 
             echo json_encode(['success' => true, 'message' => 'Password updated successfully.']);

@@ -1,5 +1,7 @@
 <?php
 ob_start();
+ini_set('display_errors', 0);  // ← add this
+error_reporting(E_ALL);        // ← and this (logs errors instead of printing them)
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../config/config.php';

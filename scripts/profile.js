@@ -5,6 +5,7 @@ async function ajax(payload) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...payload, csrf_token: CSRF_TOKEN }),
+    cache: 'no-store'
   });
   return res.json();
 }
@@ -127,6 +128,8 @@ async function confirmAndSaveProfile() {
     return;
   }
 
+  console.log("Sending update:", { fullName, email, confirmPassword });
+
   const btn = document.getElementById("confirmProfileSaveBtn");
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
@@ -138,10 +141,16 @@ async function confirmAndSaveProfile() {
     confirm_password: confirmPassword,
   });
 
+  console.log("Response:", data);
+
   btn.disabled = false;
   btn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
 
   if (data.success) {
+    // Capture old values BEFORE updating the DOM
+    const oldFullName = document.getElementById("viewName").textContent;
+    const oldEmail = document.getElementById("viewEmail").textContent;
+
     closeConfirmModal();
     document.getElementById("viewName").textContent = fullName;
     document.getElementById("viewEmail").textContent = email;
@@ -155,11 +164,13 @@ async function confirmAndSaveProfile() {
       "Profile Updated",
       "Updated own profile",
       {
-        full_name: document.getElementById("viewName").textContent,
-        email: document.getElementById("viewEmail").textContent,
+        full_name: oldFullName,
+        email: oldEmail,
       },
       { full_name: fullName, email },
     );
+
+    setTimeout(() => window.location.reload(), 1000);
   } else {
     showToast(data.message, "error");
     document.getElementById("confirm_identity_password").value = "";
