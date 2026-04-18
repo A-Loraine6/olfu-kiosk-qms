@@ -1033,7 +1033,6 @@ kbd {
 .btn-refresh {
   background: var(--surface);
   color: var(--text-2);
-  border: 1.5px solid var(--border-strong);
 }
 
 .btn-refresh:hover {

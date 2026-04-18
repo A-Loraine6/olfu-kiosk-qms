@@ -21,10 +21,40 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initQueue() {
+  typeFilterId = localStorage.getItem("queueTypeFilter") || "";
+  const typeFilterEl = document.getElementById("typeFilter");
+  if (typeFilterEl) {
+    typeFilterEl.value = typeFilterId;
+  }
+  
   loadActiveTicket().then(() => {
+    loadAllTabCounts();
     loadQueue();
     loadStats();
   });
+}
+
+async function loadAllTabCounts() {
+  try {
+    const tabs = ["waiting", "on-hold", "skipped", "done"];
+    const promises = tabs.map(async (tab) => {
+      const params = {
+        action: "get_queue",
+        office_id: OFFICE_ID,
+        tab: tab,
+      };
+      if (typeFilterId) params.type_filter = typeFilterId;
+
+      const res = await apiFetch("api/queue_handler.php", params);
+      if (res.success) {
+        const count = res.tickets?.length ?? 0;
+        updateTabCount(tab, count);
+      }
+    });
+    await Promise.all(promises);
+  } catch (e) {
+    console.warn("loadAllTabCounts failed:", e);
+  }
 }
 
 function updateClock() {
@@ -42,8 +72,21 @@ function registerKeyboardShortcuts() {
       e.target.tagName === "TEXTAREA"
     )
       return;
-    if (document.getElementById("confirmModal")?.classList.contains("show"))
-      return;
+    
+    const modalOpen = document.getElementById("confirmModal")?.classList.contains("show");
+    if (modalOpen) {
+      if (e.key === "Escape") {
+        closeModal("confirmModal");
+        e.preventDefault();
+        return;
+      }
+      if (e.key === "Enter") {
+        confirmAction();
+        e.preventDefault();
+        return;
+      }
+    }
+    
     switch (e.key.toUpperCase()) {
       case "N":
         if (!currentTicket) callNext();
@@ -217,6 +260,7 @@ function updateWaitingCount(waiting) {
 function updateTabCount(tab, count) {
   const map = {
     waiting: "tabCountWaiting",
+    "on-hold": "tabCountOnHold",
     skipped: "tabCountSkipped",
     done: "tabCountDone",
   };
@@ -350,7 +394,7 @@ async function confirmAction() {
         skip: "Ticket skipped.",
       };
       showToast(msgMap[action] || "Action completed.", "success");
-      await Promise.all([loadQueue(), loadStats()]);
+      await Promise.all([loadQueue(), loadAllTabCounts(), loadStats()]);
       startRefreshCountdown();
     } else {
       console.error("[confirmAction] server error:", res.message);
@@ -381,8 +425,7 @@ async function recallTicket(ticketId) {
       renderServingCard(res.ticket, true);
       startTimer();
       showToast(`Recalling ${res.ticket.ticket_number}`, "success");
-      loadQueue();
-      loadStats();
+      await Promise.all([loadQueue(), loadAllTabCounts(), loadStats()]);
     } else {
       showToast(res.message || "Failed to recall ticket.", "error");
     }
@@ -408,8 +451,7 @@ async function resumeTicket(ticketId) {
       renderServingCard(res.ticket, true);
       startTimer();
       showToast(`Resuming ${res.ticket.ticket_number}`, "success");
-      loadQueue();
-      loadStats();
+      await Promise.all([loadQueue(), loadAllTabCounts(), loadStats()]);
     } else {
       showToast(res.message || "Failed to resume ticket.", "error");
     }
@@ -604,6 +646,7 @@ function switchTab(tab, el) {
 
 function applyTypeFilter() {
   typeFilterId = document.getElementById("typeFilter")?.value || "";
+  localStorage.setItem("queueTypeFilter", typeFilterId);
   loadQueue();
 }
 
