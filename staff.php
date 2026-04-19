@@ -238,9 +238,7 @@ $inactiveStaff = $totalStaff - $activeStaff;
 
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal('addStaffModal')">Cancel</button>
-                <button type="button" class="btn-primary" id="addStaffBtn" onclick="submitAddStaff()">
-                    <i class="fas fa-plus"></i> Add Staff
-                </button>
+                <button type="button" class="btn-primary" id="addStaffBtn" onclick="submitAddStaff()" data-action="confirm"><i class="fas fa-plus"></i> Add Staff</button>
             </div>
         </div>
     </div>
@@ -271,9 +269,7 @@ $inactiveStaff = $totalStaff - $activeStaff;
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal('editStaffModal')">Cancel</button>
-                <button type="button" class="btn-primary" id="editStaffBtn" onclick="submitEditStaff()">
-                    <i class="fas fa-save"></i> Save Changes
-                </button>
+                <button type="button" class="btn-primary" id="editStaffBtn" onclick="submitEditStaff()" data-action="confirm"><i class="fas fa-save"></i> Save Changes</button>
             </div>
         </div>
     </div>
@@ -296,9 +292,7 @@ $inactiveStaff = $totalStaff - $activeStaff;
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal('resetPasswordModal')">Cancel</button>
-                <button type="button" class="btn-primary" id="resetPasswordBtn" onclick="submitResetPassword()">
-                    <i class="fas fa-key"></i> Reset Password
-                </button>
+                <button type="button" class="btn-primary" id="resetPasswordBtn" onclick="submitResetPassword()" data-action="confirm"><i class="fas fa-key"></i> Reset Password</button>
             </div>
         </div>
     </div>
@@ -315,7 +309,7 @@ $inactiveStaff = $totalStaff - $activeStaff;
             <input type="hidden" id="toggle_staff_id">
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal('toggleStaffModal')">Cancel</button>
-                <button type="button" id="toggleSubmitBtn" class="btn-warning" onclick="submitToggleStaff()">Deactivate</button>
+                <button type="button" id="toggleSubmitBtn" class="btn-warning" onclick="submitToggleStaff()" data-action="confirm">Deactivate</button>
             </div>
         </div>
     </div>
@@ -333,14 +327,13 @@ $inactiveStaff = $totalStaff - $activeStaff;
             <input type="hidden" id="delete_staff_id">
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal('deleteStaffModal')">Cancel</button>
-                <button type="button" class="btn-danger" id="deleteStaffBtn" onclick="submitDeleteStaff()">
-                    <i class="fas fa-trash"></i> Delete
-                </button>
+                <button type="button" class="btn-danger" id="deleteStaffBtn" onclick="submitDeleteStaff()" data-action="confirm"><i class="fas fa-trash"></i> Delete</button>
             </div>
         </div>
     </div>
 
     <script src="scripts/staff.js"></script>
+    <script src="scripts/modal-shortcuts.js"></script>
     <script>
         const CSRF_TOKEN = <?php echo json_encode($csrf_token); ?>;
     </script>

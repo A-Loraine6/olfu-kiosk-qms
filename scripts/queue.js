@@ -85,6 +85,27 @@ function registerKeyboardShortcuts() {
         e.preventDefault();
         return;
       }
+      if (e.key === "Tab") {
+        const cancelBtn = document.getElementById("confirmCancelBtn");
+        const confirmBtn = document.getElementById("confirmModalBtn");
+        const focused = document.activeElement;
+        if (focused === confirmBtn) {
+          cancelBtn.focus();
+        } else {
+          confirmBtn.focus();
+        }
+        e.preventDefault();
+        return;
+      }
+      if (e.key === " ") {
+        if (document.activeElement === document.getElementById("confirmModalBtn")) {
+          confirmAction();
+        } else {
+          closeModal("confirmModal");
+        }
+        e.preventDefault();
+        return;
+      }
     }
     
     switch (e.key.toUpperCase()) {

@@ -337,9 +337,7 @@ function getCategoryColor(?string $cat): string
 
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal('addServiceModal')">Cancel</button>
-                <button type="button" class="btn-primary" id="addServiceBtn" onclick="submitAddService()">
-                    <i class="fas fa-plus"></i> Add Service
-                </button>
+                <button type="button" class="btn-primary" id="addServiceBtn" onclick="submitAddService()" data-action="confirm"><i class="fas fa-plus"></i> Add Service</button>
             </div>
         </div>
     </div>
@@ -379,9 +377,7 @@ function getCategoryColor(?string $cat): string
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal('editServiceModal')">Cancel</button>
-                <button type="button" class="btn-primary" id="editServiceBtn" onclick="submitEditService()">
-                    <i class="fas fa-save"></i> Save Changes
-                </button>
+                <button type="button" class="btn-primary" id="editServiceBtn" onclick="submitEditService()" data-action="confirm"><i class="fas fa-save"></i> Save Changes</button>
             </div>
         </div>
     </div>
@@ -398,7 +394,7 @@ function getCategoryColor(?string $cat): string
             <input type="hidden" id="toggle_service_id">
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal('toggleServiceModal')">Cancel</button>
-                <button type="button" id="toggleSubmitBtn" class="btn-warning" onclick="submitToggleService()">Deactivate</button>
+                <button type="button" id="toggleSubmitBtn" class="btn-warning" onclick="submitToggleService()" data-action="confirm">Deactivate</button>
             </div>
         </div>
     </div>
@@ -416,14 +412,13 @@ function getCategoryColor(?string $cat): string
             <input type="hidden" id="delete_service_id">
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal('deleteServiceModal')">Cancel</button>
-                <button type="button" class="btn-danger" id="deleteServiceBtn" onclick="submitDeleteService()">
-                    <i class="fas fa-trash"></i> Delete
-                </button>
+                <button type="button" class="btn-danger" id="deleteServiceBtn" onclick="submitDeleteService()" data-action="confirm"><i class="fas fa-trash"></i> Delete</button>
             </div>
         </div>
     </div>
 
     <script src="scripts/services.js"></script>
+    <script src="scripts/modal-shortcuts.js"></script>
     <script>
         const CSRF_TOKEN = <?php echo json_encode($csrf_token); ?>;
     </script>
