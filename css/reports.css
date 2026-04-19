@@ -351,6 +351,14 @@
   padding: 16px;
 }
 
+.sub-chart-box canvas {
+  max-height: 140px;
+}
+
+.sub-chart-box canvas {
+  max-height: 240px;
+}
+
 .sub-chart-label {
   font-size: 11px;
   font-weight: 600;
@@ -441,6 +449,36 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-high {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.status-medium {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+}
+
+.status-low {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.status-inactive {
+  background: rgba(100, 116, 139, 0.15);
+  color: #64748b;
 }
 
 @media (max-width: 900px) {

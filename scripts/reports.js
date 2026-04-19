@@ -123,6 +123,327 @@ function setStaffBlock(d, from, to) {
   }
 }
 
+function renderDailyReport(data) {
+  const block = document.getElementById("block-daily");
+  if (!block) return;
+
+  const hasData = data.total_queued > 0;
+  const container = block.querySelector(".daily-summary-row");
+  const pill = block.querySelector(".pill");
+
+  pill.textContent = hasData ? "Has Data" : "No Data";
+  pill.className = "pill " + (hasData ? "pill-green" : "pill-orange");
+
+  if (container) {
+    container.style.display = "";
+    container.innerHTML =
+      statCard("Total Queued", data.total_queued, "Students in queue", "stat-green", false, false, data.queued_trend) +
+      statCard("Total Served", data.total_served, "Completed transactions", "stat-green", false, false, data.served_trend) +
+      statCard("Total Skipped", data.total_skipped, "No-show tickets", "stat-orange", false, false) +
+      statCard("Completion Rate", Math.round(data.completion_rate) + "%", "Served / Total queued", "stat-blue", false, false);
+  }
+}
+
+function renderOfficePerformance(data) {
+  const block = document.getElementById("block-office");
+  if (!block) return;
+
+  const hasData = data.some(d => d.total_transactions > 0);
+  const table = block.querySelector(".perf-table");
+  const emptyState = block.querySelector(".empty-state");
+  const pill = block.querySelector(".pill");
+
+  pill.textContent = hasData ? "Has Data" : "No Data";
+  pill.className = "pill " + (hasData ? "pill-green" : "pill-orange");
+
+  if (emptyState) emptyState.style.display = hasData ? "none" : "";
+  
+  if (table) {
+    table.style.display = "";
+    const tbody = table.querySelector("tbody");
+    tbody.innerHTML = "";
+    data.forEach((office) => {
+      const row = document.createElement("tr");
+      let statusClass, statusLabel;
+      
+      if (office.total_transactions === 0) {
+        statusClass = "status-inactive";
+        statusLabel = "Inactive";
+      } else if (office.volume_share > 30) {
+        statusClass = "status-high";
+        statusLabel = "High";
+      } else if (office.volume_share > 15) {
+        statusClass = "status-medium";
+        statusLabel = "Normal";
+      } else {
+        statusClass = "status-low";
+        statusLabel = "Low";
+      }
+      
+      row.innerHTML = `
+        <td>${office.name}</td>
+        <td>${office.served}</td>
+        <td>${office.skipped}</td>
+        <td>${office.avg_service_time > 0 ? office.avg_service_time + " min" : "—"}</td>
+        <td>${office.volume_share.toFixed(1)}%</td>
+        <td><span class="status-badge ${statusClass}">
+          ${statusLabel}
+        </span></td>
+      `;
+      tbody.appendChild(row);
+    });
+    
+    // Add sorting capability to table headers
+    const headers = table.querySelectorAll("thead th");
+    headers.forEach((header, index) => {
+      header.style.cursor = "pointer";
+      header.title = "Click to sort";
+      header.addEventListener("click", () => sortTable(table, index));
+    });
+  }
+}
+
+function sortTable(table, columnIndex) {
+  const tbody = table.querySelector("tbody");
+  const rows = Array.from(tbody.querySelectorAll("tr"));
+  
+  rows.sort((a, b) => {
+    const aVal = a.querySelectorAll("td")[columnIndex].textContent.trim();
+    const bVal = b.querySelectorAll("td")[columnIndex].textContent.trim();
+    
+    // Try numeric sort first
+    const aNum = parseFloat(aVal);
+    const bNum = parseFloat(bVal);
+    if (!isNaN(aNum) && !isNaN(bNum)) {
+      return bNum - aNum;
+    }
+    // Fall back to string sort
+    return aVal.localeCompare(bVal);
+  });
+  
+  rows.forEach(row => tbody.appendChild(row));
+}
+
+let peakHoursChart = null;
+let deptChart = null;
+
+function renderPeakHours(data) {
+  const block = document.getElementById("block-peaks");
+  if (!block) return;
+
+  const hasData = data.some(d => d > 0);
+  const canvas = block.querySelector("#peakHoursChart");
+  const emptyState = canvas.closest(".sub-chart-box").querySelector(".empty-state");
+  const pill = block.querySelector(".pill");
+
+  if (pill) {
+    pill.textContent = hasData ? "Has Data" : "No Data";
+    pill.className = "pill " + (hasData ? "pill-green" : "pill-orange");
+  }
+
+  if (!hasData) {
+    if (emptyState) emptyState.style.display = "";
+    if (canvas) canvas.style.display = "none";
+  } else {
+    if (emptyState) emptyState.style.display = "none";
+    if (canvas) canvas.style.display = "";
+
+    const hours = Array.from({length: 24}, (_, i) => {
+      const h = String(i).padStart(2, "0");
+      return h + ":00";
+    });
+
+    const ctx = canvas.getContext("2d");
+    if (peakHoursChart) peakHoursChart.destroy();
+    peakHoursChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: hours,
+        datasets: [{
+          label: "Queue Volume",
+          data: data,
+          borderColor: "#008b43",
+          backgroundColor: "rgba(0, 139, 67, 0.1)",
+          tension: 0.3,
+          fill: true,
+          pointRadius: 4,
+          pointBackgroundColor: "#008b43",
+          pointBorderColor: "#008b43",
+          pointBorderWidth: 0,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false },
+        },
+        scales: {
+          y: { beginAtZero: true },
+        },
+      },
+    });
+  }
+}
+
+function renderDepartmentDemand(data) {
+  const block = document.getElementById("block-peaks");
+  if (!block) return;
+
+  const hasData = data.some(d => d.count > 0);
+  const canvas = block.querySelector("#deptChart");
+  const emptyState = canvas.closest(".sub-chart-box").querySelector(".empty-state");
+  const pill = block.querySelector(".pill");
+
+  if (pill) {
+    pill.textContent = hasData ? "Has Data" : "No Data";
+    pill.className = "pill " + (hasData ? "pill-green" : "pill-orange");
+  }
+
+  if (!hasData) {
+    if (emptyState) emptyState.style.display = "";
+    if (canvas) canvas.style.display = "none";
+  } else {
+    if (emptyState) emptyState.style.display = "none";
+    if (canvas) canvas.style.display = "";
+
+    // Green shades from the dashboard primary color
+    const greenShades = [
+      "#008b43", "#00a652", "#00c166", "#10b981", "#14b8a6", "#06b6d4"
+    ];
+    const borderShades = [
+      "#006633", "#007a3d", "#009950", "#0e9060", "#0f9e7e", "#0396a8"
+    ];
+
+    const ctx = canvas.getContext("2d");
+    if (deptChart) deptChart.destroy();
+    deptChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: data.map(d => d.name),
+        datasets: [{
+          label: "Queue Demand",
+          data: data.map(d => d.count),
+          backgroundColor: data.map((_, i) => greenShades[i % greenShades.length]),
+          borderColor: data.map((_, i) => borderShades[i % borderShades.length]),
+          borderWidth: 0,
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false },
+          datalabels: { display: false },
+        },
+        scales: {
+          x: { 
+            beginAtZero: true,
+            ticks: { stepSize: 1 },
+            grid: { drawBorder: false, display: false },
+          },
+          y: {
+            categoryPercentage: 0.5,
+            barPercentage: 0.6,
+            grid: { display: false, drawBorder: false },
+            ticks: { font: { size: 11, weight: '600' } },
+          },
+        },
+      },
+    });
+  }
+}
+
+async function fetchAndRenderDailyReport(from, to, officeId = null) {
+  try {
+    const res = await fetch("api/reports_actions.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "daily_report",
+        date_from: from,
+        date_to: to,
+        office_id: officeId,
+        csrf_token: CSRF_TOKEN,
+      }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      renderDailyReport(data.report);
+    }
+  } catch (e) {
+    console.error("Error fetching daily report:", e);
+  }
+}
+
+async function fetchAndRenderOfficePerformance(from, to, officeId = null) {
+  try {
+    const res = await fetch("api/reports_actions.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "office_performance",
+        date_from: from,
+        date_to: to,
+        office_id: officeId,
+        csrf_token: CSRF_TOKEN,
+      }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      renderOfficePerformance(data.performance);
+    }
+  } catch (e) {
+    console.error("Error fetching office performance:", e);
+  }
+}
+
+async function fetchAndRenderPeakHours(from, to, officeId = null) {
+  try {
+    const res = await fetch("api/reports_actions.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "peak_hours",
+        date_from: from,
+        date_to: to,
+        office_id: officeId,
+        csrf_token: CSRF_TOKEN,
+      }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      renderPeakHours(data.peak_hours);
+    }
+  } catch (e) {
+    console.error("Error fetching peak hours:", e);
+  }
+}
+
+async function fetchAndRenderDepartmentDemand(from, to, officeId = null) {
+  try {
+    const res = await fetch("api/reports_actions.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "department_demand",
+        date_from: from,
+        date_to: to,
+        office_id: officeId,
+        csrf_token: CSRF_TOKEN,
+      }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      renderDepartmentDemand(data.department_demand);
+    }
+  } catch (e) {
+    console.error("Error fetching department demand:", e);
+  }
+}
+
 async function applyStaffFilters() {
   const from = document.getElementById("dateFrom").value;
   const to = document.getElementById("dateTo").value;
@@ -178,19 +499,234 @@ async function applyStaffFilters() {
   setStaffBlock(data.metrics, from, to);
 }
 
+async function fetchAndRenderDayBreakdown(from, to, officeId = null) {
+  try {
+    const res = await fetch("api/reports_actions.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "day_of_week_volume",
+        date_from: from,
+        date_to: to,
+        office_id: officeId,
+        csrf_token: CSRF_TOKEN,
+      }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (data.day_of_week_volume && data.day_of_week_volume.length > 0) {
+        renderDayBreakdown(data.day_of_week_volume);
+      } else {
+        // Show empty state if no data
+        const canvas = document.getElementById("busyDaysChart");
+        const emptyState = canvas?.closest(".sub-chart-box")?.querySelector(".empty-state");
+        if (emptyState) emptyState.style.display = "";
+        if (canvas) canvas.style.display = "none";
+      }
+    }
+  } catch (e) {
+    console.error("Error fetching day breakdown:", e);
+  }
+}
+
+async function fetchAndRenderTransactionTypes(from, to, officeId = null) {
+  try {
+    const res = await fetch("api/reports_actions.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "transaction_types",
+        date_from: from,
+        date_to: to,
+        office_id: officeId,
+        csrf_token: CSRF_TOKEN,
+      }),
+    });
+    const data = await res.json();
+    if (data.success && data.transaction_types.length > 0) {
+      renderTransactionTypes(data.transaction_types);
+    }
+  } catch (e) {
+    console.error("Error fetching transaction types:", e);
+  }
+}
+
+function renderDayBreakdown(data) {
+  const labels = data.map(d => {
+    // If data has a date field, format it with date; otherwise just show day name
+    if (d.date) {
+      const dateObj = new Date(d.date + 'T00:00:00');
+      const dateStr = dateObj.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+      return `${d.day.substring(0, 3)} (${dateStr})`;
+    } else {
+      return d.day.substring(0, 3);
+    }
+  });
+  const counts = data.map(d => d.count);
+  
+  const canvas = document.getElementById("busyDaysChart");
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext("2d");
+  if (window.busyDaysChart) window.busyDaysChart.destroy();
+  
+  window.busyDaysChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Queue Volume by Day",
+        data: counts,
+        backgroundColor: "#3b82f6",
+        borderColor: "#2563eb",
+        borderWidth: 0,
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      indexAxis: 'x',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return 'Queue Volume: ' + context.parsed.y;
+            }
+          }
+        }
+      },
+      scales: {
+        y: { 
+          beginAtZero: true,
+          ticks: { stepSize: 1 },
+          grid: { drawBorder: false, display: false },
+        },
+        x: {
+          categoryPercentage: 0.6,
+          barPercentage: 0.7,
+          grid: { display: false, drawBorder: false },
+          ticks: { font: { size: 10, weight: '600' } },
+        },
+      },
+    },
+  });
+  
+  canvas.style.display = "";
+  const emptyState = canvas.closest(".sub-chart-box").querySelector(".empty-state");
+  if (emptyState) emptyState.style.display = "none";
+}
+
+function renderTransactionTypes(data) {
+  const labels = data.map(d => d.type);
+  const totals = data.map(d => d.total);
+  
+  const canvas = document.getElementById("transactionTypesChart");
+  if (!canvas) {
+    console.warn("Transaction types chart not found");
+    return;
+  }
+  
+  const ctx = canvas.getContext("2d");
+  if (window.transactionTypesChart) window.transactionTypesChart.destroy();
+  
+  window.transactionTypesChart = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Transactions by Type",
+        data: totals,
+        backgroundColor: [
+          "#ec4899",
+          "#f59e0b",
+          "#10b981",
+          "#3b82f6",
+          "#8b5cf6",
+          "#06b6d4",
+        ],
+        borderColor: "#fff",
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: "bottom",
+        },
+      },
+    },
+  });
+  
+  canvas.style.display = "";
+  const emptyState = canvas.closest(".sub-chart-box").querySelector(".empty-state");
+  if (emptyState) emptyState.style.display = "none";
+}
+
 function applyFilters() {
+  const from = document.getElementById("dateFrom").value;
+  const to = document.getElementById("dateTo").value;
+  const officeId = document.getElementById("officeFilter")?.value || null;
+
+  if (!from || !to) {
+    alert("Please select both a start and end date.");
+    return;
+  }
+  if (from > to) {
+    alert("'Date From' cannot be after 'Date To'.");
+    return;
+  }
+
   const btn = document.querySelector(".btn-apply");
   if (!btn) return;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying…';
   btn.disabled = true;
-  setTimeout(() => {
+
+  // Fetch all admin reports
+  Promise.all([
+    fetchAndRenderDailyReport(from, to, officeId),
+    fetchAndRenderOfficePerformance(from, to, officeId),
+    fetchAndRenderPeakHours(from, to, officeId),
+    fetchAndRenderDepartmentDemand(from, to, officeId),
+    fetchAndRenderDayBreakdown(from, to, officeId),
+    fetchAndRenderTransactionTypes(from, to, officeId),
+  ]).finally(() => {
     btn.innerHTML = '<i class="fas fa-search"></i> Apply';
     btn.disabled = false;
-  }, 1000);
+  });
 }
 
 function exportReport(type) {
   if (type === "pdf") window.print();
+}
+
+function refreshReports() {
+  const from = document.getElementById("dateFrom")?.value || new Date().toISOString().split("T")[0];
+  const to = document.getElementById("dateTo")?.value || new Date().toISOString().split("T")[0];
+  const officeId = document.getElementById("officeFilter")?.value || null;
+  
+  const btn = event?.target;
+  if (btn) {
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    btn.disabled = true;
+  }
+
+  Promise.all([
+    fetchAndRenderDailyReport(from, to, officeId),
+    fetchAndRenderOfficePerformance(from, to, officeId),
+    fetchAndRenderPeakHours(from, to, officeId),
+    fetchAndRenderDepartmentDemand(from, to, officeId),
+    fetchAndRenderDayBreakdown(from, to, officeId),
+    fetchAndRenderTransactionTypes(from, to, officeId),
+  ]).finally(() => {
+    if (btn) {
+      btn.innerHTML = '<i class="fas fa-redo"></i> Refresh';
+      btn.disabled = false;
+    }
+  });
 }
 
 if (IS_STAFF) {
@@ -213,4 +749,12 @@ if (IS_STAFF) {
       document.getElementById("staffResultsLoading").textContent =
         "Failed to load. Try refreshing.";
     });
+} else {
+  const today = new Date().toISOString().split("T")[0];
+  fetchAndRenderDailyReport(today, today);
+  fetchAndRenderOfficePerformance(today, today);
+  fetchAndRenderPeakHours(today, today);
+  fetchAndRenderDepartmentDemand(today, today);
+  fetchAndRenderDayBreakdown(today, today);
+  fetchAndRenderTransactionTypes(today, today);
 }
