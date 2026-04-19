@@ -401,7 +401,7 @@ function buildDiffHtml(array $before, array $after): string
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" onclick="closeConfirmModal()">Cancel</button>
-                <button class="btn btn-primary" id="confirmProfileSaveBtn" onclick="confirmAndSaveProfile()">
+                <button class="btn btn-primary" id="confirmProfileSaveBtn" onclick="confirmAndSaveProfile()" data-action="confirm">
                     <i class="fas fa-save"></i> Save Changes
                 </button>
             </div>
@@ -416,6 +416,7 @@ function buildDiffHtml(array $before, array $after): string
         const ACTIVITY_ICONS = <?php echo json_encode($activityIcons); ?>;
     </script>
     <script src="scripts/profile.js"></script>
+    <script src="scripts/modal-shortcuts.js"></script>
 </body>
 
 </html>

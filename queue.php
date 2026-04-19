@@ -255,12 +255,16 @@ if ($queueMode === 'service-based') {
         <div class="modal-content modal-sm">
             <div class="modal-header">
                 <h2 id="confirmModalTitle"><i class="fas fa-question-circle"></i> Confirm Action</h2>
-                <button class="modal-close" onclick="closeModal('confirmModal')">&times;</button>
+                <button class="modal-close" onclick="closeModal('confirmModal')" title="Press Esc to close">&times;</button>
             </div>
             <div class="modal-body" id="confirmModalBody">Are you sure?</div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('confirmModal')">Cancel</button>
-                <button class="btn" id="confirmModalBtn" onclick="confirmAction()">Confirm</button>
+                <button class="btn btn-secondary" id="confirmCancelBtn" onclick="closeModal('confirmModal')">
+                    <span>Cancel</span>
+                </button>
+                <button class="btn" id="confirmModalBtn" onclick="confirmAction()" data-action="confirm">
+                    <span>Confirm</span>
+                </button>
             </div>
         </div>
     </div>
@@ -274,6 +278,7 @@ if ($queueMode === 'service-based') {
         const CSRF_TOKEN = <?php echo json_encode($csrf_token); ?>;
     </script>
     <script src="scripts/queue.js"></script>
+    <script src="scripts/modal-shortcuts.js"></script>
 </body>
 
 </html>
