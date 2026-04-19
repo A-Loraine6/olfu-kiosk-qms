@@ -92,8 +92,11 @@ if ($isStaff) {
                                 <input type="date" id="dateTo" />
                             </div>
                             <div class="filter-actions">
-                                <button class="btn-filter btn-apply" id="applyBtn" onclick="applyStaffFilters()">
+                                <button class="btn-filter btn-apply" onclick="applyFilters()">
                                     <i class="fas fa-search"></i> Apply
+                                </button>
+                                <button class="btn-filter" onclick="refreshReports()" title="Refresh data">
+                                    <i class="fas fa-redo"></i> Refresh
                                 </button>
                             </div>
                         </div>
@@ -148,7 +151,7 @@ if ($isStaff) {
 
                         <h2 class="section-title"><i class="fas fa-calendar-day"></i> Daily Transaction Report</h2>
 
-                        <div class="report-block">
+                        <div class="report-block" id="block-daily">
                             <div class="report-block-header">
                                 <div class="report-block-title">
                                     <div class="report-block-icon"><i class="fas fa-receipt"></i></div>
@@ -184,7 +187,7 @@ if ($isStaff) {
 
                         <h2 class="section-title" style="margin-top:28px;"><i class="fas fa-building"></i> Office Performance Report</h2>
 
-                        <div class="report-block">
+                        <div class="report-block" id="block-office">
                             <div class="report-block-header">
                                 <div class="report-block-title">
                                     <div class="report-block-icon"><i class="fas fa-trophy"></i></div>
@@ -216,7 +219,7 @@ if ($isStaff) {
 
                         <h2 class="section-title" style="margin-top:28px;"><i class="fas fa-clock"></i> Peak Schedule Analysis</h2>
 
-                        <div class="report-block">
+                        <div class="report-block" id="block-peaks">
                             <div class="report-block-header">
                                 <div class="report-block-title">
                                     <div class="report-block-icon"><i class="fas fa-fire-alt"></i></div>
