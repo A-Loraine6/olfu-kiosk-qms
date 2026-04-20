@@ -352,11 +352,7 @@
 }
 
 .sub-chart-box canvas {
-  max-height: 140px;
-}
-
-.sub-chart-box canvas {
-  max-height: 240px;
+  max-height: 200px;
 }
 
 .sub-chart-label {

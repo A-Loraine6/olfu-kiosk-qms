@@ -11,7 +11,7 @@ function getTodayQueueSummary($db)
 
     $query = "SELECT COUNT(*) as count FROM tickets 
               WHERE DATE(created_at) = '$today' 
-              AND status IN ('waiting', 'serving', 'completed')";
+              AND status IN ('waiting', 'serving')";
     $result = $db->query($query);
     if ($result && $row = $result->fetch_assoc()) {
         $summary['total_queued'] = (int)$row['count'];

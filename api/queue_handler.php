@@ -120,22 +120,33 @@ if ($action === 'get_queue') {
 
     $orderBy = ($tab === 'done') ? 'completed_at DESC' : 'created_at ASC';
 
+    $today = date('Y-m-d');
+
     $sql  = "SELECT t.*, u.full_name AS staff_name
-             FROM tickets t
-             LEFT JOIN users u ON t.served_by = u.id
-             WHERE t.office_id=?
-               AND t.status IN ($placeholders)
-               $typeClause
-             ORDER BY $orderBy
-             LIMIT 100";
+         FROM tickets t
+         LEFT JOIN users u ON t.served_by = u.id
+         WHERE t.office_id=?
+           AND DATE(CONVERT_TZ(t.created_at, '+00:00', '+08:00')) = ?
+           AND t.status IN ($placeholders)
+           $typeClause
+         ORDER BY $orderBy
+         LIMIT 100";
+
+    $types  = 'is' . str_repeat('s', count($statuses));
+    $params = array_merge([$officeId, $today], $statuses);
 
     $stmt = $db->prepare($sql);
     $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-    $stmt2 = $db->prepare("SELECT COUNT(*) AS cnt FROM tickets WHERE office_id=? AND status='waiting'");
-    $stmt2->bind_param('i', $officeId);
+    $stmt2 = $db->prepare("SELECT COUNT(*) AS cnt 
+                       FROM tickets 
+                       WHERE office_id=? 
+                         AND status='waiting'
+                         AND DATE(CONVERT_TZ(created_at, '+00:00', '+08:00')) = ?");
+
+    $stmt2->bind_param('is', $officeId, $today);
     $stmt2->execute();
     $waitingCount = (int) $stmt2->get_result()->fetch_assoc()['cnt'];
 
@@ -163,7 +174,19 @@ if ($action === 'call_next') {
         $params[] = $officeId;
     }
 
-    $stmt = $db->prepare("SELECT * FROM tickets WHERE office_id=? AND status='waiting' $typeClause ORDER BY created_at ASC LIMIT 1");
+    $today = date('Y-m-d');
+
+    $stmt = $db->prepare("SELECT * 
+                      FROM tickets 
+                      WHERE office_id=? 
+                        AND status='waiting'
+                        AND DATE(CONVERT_TZ(created_at, '+00:00', '+08:00')) = ?
+                        $typeClause 
+                      ORDER BY created_at ASC 
+                      LIMIT 1");
+
+    $types  = 'is' . substr($types, 1);
+    $params = array_merge([$officeId, $today], array_slice($params, 1));
     $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $ticket = $stmt->get_result()->fetch_assoc();

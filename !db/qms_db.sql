@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 18, 2026 at 09:29 AM
+-- Generation Time: Apr 20, 2026 at 03:51 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -100,7 +100,29 @@ INSERT INTO `activity_logs` (`id`, `user_id`, `activity_type`, `entity_type`, `e
 (81, 1, 'PROFILE_UPDATE', 'USER', 1, '{\"full_name\":\"Angel Loraine Reobilos\",\"email\":\"reobiloangel6@gmail.com\"}', '{\"full_name\":\"Angel Loraine Reobilo\",\"email\":\"reobiloangel6@gmail.com\"}', 'Updated own profile', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-18 07:22:56'),
 (82, 1, 'PROFILE_UPDATE', 'USER', 1, '{\"full_name\":\"Angel Loraine Reobilos\",\"email\":\"reobiloangel6@gmail.com\"}', '{\"full_name\":\"Angel Loraine Reobilo\",\"email\":\"reobiloangel6@gmail.com\"}', 'Updated own profile', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-18 07:23:39'),
 (83, 1, 'PROFILE_UPDATE', 'USER', 1, '{\"full_name\":\"Angel Loraine Reobilos\",\"email\":\"reobiloangel6@gmail.com\"}', '{\"full_name\":\"Angel Loraine Reobilo\",\"email\":\"reobiloangel6@gmail.com\"}', 'Updated own profile', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-18 07:24:08'),
-(84, 1, 'PROFILE_UPDATE', 'USER', 1, '{\"full_name\":\"Angel Loraine Reobilos\",\"email\":\"reobiloangel6@gmail.com\"}', '{\"full_name\":\"Angel Loraine Reobilo\",\"email\":\"reobiloangel6@gmail.com\"}', 'Updated own profile', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-18 07:27:58');
+(84, 1, 'PROFILE_UPDATE', 'USER', 1, '{\"full_name\":\"Angel Loraine Reobilos\",\"email\":\"reobiloangel6@gmail.com\"}', '{\"full_name\":\"Angel Loraine Reobilo\",\"email\":\"reobiloangel6@gmail.com\"}', 'Updated own profile', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36', '2026-04-18 07:27:58'),
+(85, 2, 'LOGOUT', 'user', 2, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:15:16'),
+(86, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:15:25'),
+(87, 1, 'STAFF_ADD', 'USER', 3, NULL, '{\"full_name\":\"Liz Margaret Santiago\",\"email\":\"santiagolizmargaret4@gmail.com\",\"role\":\"staff\",\"office\":\"Admissions\"}', 'Added new staff member: Liz Margaret Santiago)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:15:54'),
+(88, 1, 'STAFF_ADD', 'USER', 4, NULL, '{\"full_name\":\"Iris Remorosa\",\"email\":\"irisremorosa@gmail.com\",\"role\":\"staff\",\"office\":\"Registrar\"}', 'Added new staff member: Iris Remorosa)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:16:16'),
+(89, 1, 'LOGOUT', 'user', 1, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:16:50'),
+(90, 3, 'LOGIN', 'user', 3, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:16:53'),
+(91, 3, 'LOGOUT', 'user', 3, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:17:57'),
+(92, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:18:02'),
+(93, 1, 'LOGOUT', 'user', 1, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:18:26'),
+(94, 4, 'LOGIN', 'user', 4, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:18:49'),
+(95, 4, 'LOGOUT', 'user', 4, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:19:43'),
+(96, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:19:46'),
+(97, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 2, '{\"close_time\":\"17:00\"}', '{\"close_time\":\"09:00\"}', 'Updated office schedule for \"Accounting\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:44:24'),
+(98, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 3, '{\"close_time\":\"17:00\"}', '{\"close_time\":\"09:00\"}', 'Updated office schedule for \"Admissions\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:44:54'),
+(99, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 1, '{\"close_time\":\"17:00\"}', '{\"close_time\":\"09:00\"}', 'Updated office schedule for \"Registrar\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:44:58'),
+(100, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 1, '{\"close_time\":\"09:00\"}', '{\"close_time\":\"17:00\"}', 'Updated office schedule for \"Registrar\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:45:07'),
+(101, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 3, '{\"close_time\":\"09:00\"}', '{\"close_time\":\"17:00\"}', 'Updated office schedule for \"Admissions\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:45:11'),
+(102, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 2, '{\"close_time\":\"09:00\"}', '{\"close_time\":\"17:00\"}', 'Updated office schedule for \"Accounting\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:45:14'),
+(103, 1, 'SETTINGS_KIOSK_UPDATE', 'KIOSK', 1, '{\"kiosk_enabled\":true}', '{\"kiosk_enabled\":false}', 'Updated kiosk settings', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:45:34'),
+(104, 1, 'SETTINGS_KIOSK_UPDATE', 'KIOSK', 1, '{\"kiosk_enabled\":false}', '{\"kiosk_enabled\":true}', 'Updated kiosk settings', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:48:19'),
+(105, 1, 'SETTINGS_KIOSK_UPDATE', 'KIOSK', 1, '{\"kiosk_enabled\":true}', '{\"kiosk_enabled\":false}', 'Updated kiosk settings', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:48:24'),
+(106, 1, 'SETTINGS_KIOSK_UPDATE', 'KIOSK', 1, '{\"kiosk_enabled\":false}', '{\"kiosk_enabled\":true}', 'Updated kiosk settings', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-20 01:50:34');
 
 -- --------------------------------------------------------
 
@@ -120,7 +142,7 @@ CREATE TABLE `kiosk_settings` (
 --
 
 INSERT INTO `kiosk_settings` (`id`, `kiosk_enabled`, `idle_timeout`, `updated_at`) VALUES
-(1, 1, 60, '2026-04-01 05:13:19');
+(1, 1, 60, '2026-04-20 01:50:34');
 
 -- --------------------------------------------------------
 
@@ -203,7 +225,19 @@ INSERT INTO `tickets` (`id`, `ticket_number`, `office_id`, `transaction_type`, `
 (25, 'ACC-006', 2, 'Promissory Note', NULL, 'completed', '2026-04-18 06:59:10', '2026-04-18 06:59:19', '2026-04-18 06:59:26', NULL, 2),
 (26, 'ACC-007', 2, 'Payment Issue', NULL, 'skipped', '2026-04-18 07:02:49', '2026-04-18 07:04:33', NULL, '2026-04-18 07:02:56', 2),
 (27, 'ACC-008', 2, 'Miscellaneous Fee', NULL, 'completed', '2026-04-18 07:04:59', '2026-04-18 07:05:03', '2026-04-18 07:05:07', NULL, 2),
-(28, 'ACC-009', 2, 'Miscellaneous Fee', NULL, 'completed', '2026-04-18 07:11:22', '2026-04-18 07:15:31', '2026-04-18 07:15:49', '2026-04-18 07:15:28', 2);
+(28, 'ACC-009', 2, 'Miscellaneous Fee', NULL, 'completed', '2026-04-18 07:11:22', '2026-04-18 07:15:31', '2026-04-18 07:15:49', '2026-04-18 07:15:28', 2),
+(30, 'ACC-001', 2, 'Tuition Fee', NULL, 'completed', '2026-04-20 01:09:27', '2026-04-20 01:11:36', '2026-04-20 01:12:10', NULL, 2),
+(31, 'ACC-002', 2, 'Balance Inquiry', NULL, 'completed', '2026-04-20 01:09:50', '2026-04-20 01:14:43', '2026-04-20 01:15:11', NULL, 2),
+(32, 'ACC-003', 2, 'Online Payment Validation', NULL, 'completed', '2026-04-20 01:09:59', '2026-04-20 01:13:41', '2026-04-20 01:14:40', '2026-04-20 01:12:56', 2),
+(33, 'ACC-004', 2, 'Payment Issue', NULL, 'completed', '2026-04-20 01:10:04', '2026-04-20 01:12:58', '2026-04-20 01:13:40', NULL, 2),
+(34, 'ADM-001', 3, NULL, NULL, 'completed', '2026-04-20 01:17:02', '2026-04-20 01:17:13', '2026-04-20 01:17:33', NULL, 3),
+(35, 'ADM-002', 3, NULL, NULL, 'completed', '2026-04-20 01:17:05', '2026-04-20 01:17:33', '2026-04-20 01:17:34', NULL, 3),
+(36, 'ADM-003', 3, NULL, NULL, 'completed', '2026-04-20 01:17:06', '2026-04-20 01:17:35', '2026-04-20 01:17:35', NULL, 3),
+(37, 'REG-001', 1, NULL, NULL, 'completed', '2026-04-20 01:18:54', '2026-04-20 01:19:20', '2026-04-20 01:19:21', NULL, 4),
+(38, 'REG-002', 1, NULL, NULL, 'completed', '2026-04-20 01:18:56', '2026-04-20 01:19:21', '2026-04-20 01:19:23', NULL, 4),
+(39, 'REG-003', 1, NULL, NULL, 'skipped', '2026-04-20 01:18:58', '2026-04-20 01:19:23', NULL, NULL, 4),
+(40, 'REG-004', 1, NULL, NULL, 'completed', '2026-04-20 01:19:00', '2026-04-20 01:19:24', '2026-04-20 01:19:25', NULL, 4),
+(41, 'REG-005', 1, NULL, NULL, 'completed', '2026-04-20 01:19:01', '2026-04-20 01:19:25', '2026-04-20 01:19:25', NULL, 4);
 
 -- --------------------------------------------------------
 
@@ -264,7 +298,9 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`id`, `full_name`, `email`, `password`, `role`, `office_id`, `created_at`, `is_active`, `last_activity`, `password_reset_token`, `password_reset_expires`, `created_by`, `is_deleted`) VALUES
 (1, 'Angel Loraine Reobilo', 'reobiloangel6@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$WlJwTFZiUlhoTWs4dkVFSg$2xXzhMVRqKcqr5WpRJb2a3z2vTz7rlE+fUTVoUA0eLY', 'admin', NULL, '2026-03-25 08:45:08', 1, NULL, NULL, NULL, NULL, 0),
-(2, 'Liezel Mae Torres', 'liezelmaetorres@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$YXhxRll3ZmdaTm5DVDA4Yg$VJFkcE3j0F94U7yijmPOZlZy40u1Rk+ykwO7wjDhyHQ', 'staff', 2, '2026-03-25 05:35:57', 1, NULL, NULL, NULL, 1, 0);
+(2, 'Liezel Mae Torres', 'liezelmaetorres@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$YXhxRll3ZmdaTm5DVDA4Yg$VJFkcE3j0F94U7yijmPOZlZy40u1Rk+ykwO7wjDhyHQ', 'staff', 2, '2026-03-25 05:35:57', 1, NULL, NULL, NULL, 1, 0),
+(3, 'Liz Margaret Santiago', 'santiagolizmargaret4@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$eHlxUGk5M2k1bHNuSVduQg$C5b+IZ3QeQWzwS/aEsxR99HUSkD2VGxzYgDzOGjqZ14', 'staff', 3, '2026-04-20 01:15:54', 1, NULL, NULL, NULL, 1, 0),
+(4, 'Iris Remorosa', 'irisremorosa@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$MEdPcUIuNUU5VGtWdHdZWQ$cvMgQFjhW2ibPedFPl91ye66BsSgXIbouMkzIkDK0/4', 'staff', 1, '2026-04-20 01:16:16', 1, NULL, NULL, NULL, 1, 0);
 
 --
 -- Indexes for dumped tables
@@ -307,7 +343,6 @@ ALTER TABLE `sessions`
 --
 ALTER TABLE `tickets`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `uk_office_ticket` (`office_id`,`ticket_number`),
   ADD KEY `idx_office_id` (`office_id`),
   ADD KEY `idx_status` (`status`),
   ADD KEY `idx_created_at` (`created_at`),
@@ -336,7 +371,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `activity_logs`
 --
 ALTER TABLE `activity_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=85;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=107;
 
 --
 -- AUTO_INCREMENT for table `kiosk_settings`
@@ -354,7 +389,7 @@ ALTER TABLE `offices`
 -- AUTO_INCREMENT for table `tickets`
 --
 ALTER TABLE `tickets`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
 
 --
 -- AUTO_INCREMENT for table `transaction_types`
@@ -366,7 +401,7 @@ ALTER TABLE `transaction_types`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- Constraints for dumped tables

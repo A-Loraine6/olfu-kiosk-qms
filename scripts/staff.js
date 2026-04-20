@@ -175,7 +175,6 @@ document.addEventListener("click", function (e) {
   closeAllDropdowns();
 });
 
-window.addEventListener("scroll", closeAllDropdowns, true);
 window.addEventListener("resize", closeAllDropdowns);
 
 function setBtnLoading(btnId, loading, defaultHtml) {

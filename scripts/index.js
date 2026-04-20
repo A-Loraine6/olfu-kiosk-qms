@@ -5,6 +5,94 @@ let state = {
   history: [1],
 };
 
+if (!KIOSK_ENABLED) {
+  document.body.innerHTML = `
+    <div style="
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #006633 0%, #008b43 60%, #00b856 100%);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      text-align: center;
+      padding: 40px;
+    ">
+      <div style="
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 32px;
+        padding: 60px 80px;
+        backdrop-filter: blur(12px);
+        max-width: 560px;
+        width: 100%;
+      ">
+        <div style="
+          width: 90px;
+          height: 90px;
+          background: rgba(255,255,255,0.15);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 28px;
+          font-size: 40px;
+          color: #fff;
+        ">
+          <i class="fas fa-power-off"></i>
+        </div>
+
+        <div style="
+          font-size: 13px;
+          font-weight: 700;
+          letter-spacing: 0.15em;
+          text-transform: uppercase;
+          color: rgba(255,255,255,0.6);
+          margin-bottom: 12px;
+        ">Queue Management System</div>
+
+        <h1 style="
+          font-size: 36px;
+          font-weight: 800;
+          color: #fff;
+          margin: 0 0 16px;
+          line-height: 1.2;
+        ">Kiosk is Currently<br>Unavailable</h1>
+
+        <p style="
+          font-size: 16px;
+          color: rgba(255,255,255,0.75);
+          margin: 0 0 36px;
+          line-height: 1.6;
+        ">This kiosk has been temporarily disabled.<br>Please approach a staff member for assistance.</p>
+
+        <div style="
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          background: rgba(255,255,255,0.12);
+          border: 1px solid rgba(255,255,255,0.2);
+          border-radius: 50px;
+          padding: 12px 24px;
+          color: rgba(255,255,255,0.85);
+          font-size: 14px;
+          font-weight: 600;
+        ">
+          <i class="fas fa-headset"></i>
+          See a staff member for help
+        </div>
+      </div>
+
+      <div style="
+        margin-top: 32px;
+        font-size: 13px;
+        color: rgba(255,255,255,0.4);
+      ">© Our Lady of Fatima University</div>
+    </div>
+  `;
+  throw new Error("Kiosk disabled");
+}
+
 function updateClocks() {
   const now = new Date();
   const time = now.toLocaleTimeString("en-PH", {
@@ -56,21 +144,41 @@ const ICONS = {
   ADM: "fa-user-graduate",
 };
 
+function isOfficeClosed(office) {
+  const now = new Date();
+  const [closeH, closeM] = office.close_time.split(":").map(Number);
+  const [openH, openM] = office.open_time.split(":").map(Number);
+
+  const closeMinutes = closeH * 60 + closeM;
+  const openMinutes = openH * 60 + openM;
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  return nowMinutes < openMinutes || nowMinutes >= closeMinutes;
+}
+
 function renderOffices() {
   const grid = document.getElementById("officeGrid");
   grid.innerHTML = "";
   OFFICES.forEach((o) => {
     const w = o.waiting;
     const icon = ICONS[o.code] || "fa-building";
+    const closed = isOfficeClosed(o); // ← add this
     const btn = document.createElement("button");
-    btn.className = "office-card";
+    btn.className = "office-card" + (closed ? " office-closed" : "");
+    btn.disabled = closed; // ← disable if closed
     btn.innerHTML = `
-            <div class="office-icon"><i class="fas ${icon}"></i></div>
-            <div class="office-name">${esc(o.name)}</div>
-            <div class="office-badge ${w > 0 ? "badge-active" : "badge-empty"}">
-                ${w > 0 ? '<span class="pulse"></span>' + w + " waiting" : '<i class="fas fa-check" style="font-size:10px"></i> No queue'}
-            </div>`;
-    btn.addEventListener("click", () => selectOffice(o));
+    <div class="office-icon"><i class="fas ${icon}"></i></div>
+    <div class="office-name">${esc(o.name)}</div>
+    <div class="office-badge ${closed ? "badge-closed" : w > 0 ? "badge-active" : "badge-empty"}">
+      ${
+        closed
+          ? '<i class="fas fa-lock" style="font-size:10px"></i> Closed'
+          : w > 0
+            ? '<span class="pulse"></span>' + w + " waiting"
+            : '<i class="fas fa-check" style="font-size:10px"></i> No queue'
+      }
+    </div>`;
+    if (!closed) btn.addEventListener("click", () => selectOffice(o));
     grid.appendChild(btn);
   });
 }
@@ -313,6 +421,36 @@ function esc(str) {
   const d = document.createElement("div");
   d.textContent = str;
   return d.innerHTML;
+}
+
+renderOffices();
+resetIdle();
+
+
+if (!KIOSK_ENABLED) {
+  document.body.innerHTML = `
+    <div style="
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: #f4f6f5;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      text-align: center;
+      gap: 16px;
+    ">
+      <div style="font-size: 64px; color: #ccc;">
+        <i class="fas fa-ban"></i>
+      </div>
+      <h1 style="font-size: 28px; color: #1a1a1a; margin: 0;">Kiosk Unavailable</h1>
+      <p style="font-size: 16px; color: #6b7280; margin: 0;">
+        This kiosk is currently disabled.<br>Please see a staff member for assistance.
+      </p>
+    </div>
+  `;
+  // Stop all further execution
+  throw new Error("Kiosk disabled");
 }
 
 renderOffices();

@@ -368,6 +368,12 @@ input::placeholder {
   color: #e74c3c;
 }
 
+tbody tr:last-child .dropdown-menu,
+tbody tr:nth-last-child(2) .dropdown-menu {
+  top: auto;
+  bottom: 120%;
+}
+
 .btn-danger {
   background: #c62828;
   color: white;
