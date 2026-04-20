@@ -88,7 +88,6 @@ if ($action === 'daily_report') {
     $from = date('Y-m-d', strtotime($from));
     $to   = date('Y-m-d', strtotime($to));
 
-    // Current period
     $where = "DATE(created_at) BETWEEN ? AND ?";
     if ($office_id) {
         $office_id = (int) $office_id;

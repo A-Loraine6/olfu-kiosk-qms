@@ -41,17 +41,23 @@ foreach ($servicesResult->fetch_all(MYSQLI_ASSOC) as $svc) {
 $officesForJs = [];
 foreach ($offices as $office) {
     $officesForJs[] = [
-        'id'       => $office['id'],
-        'name'     => $office['name'],
-        'code'     => $office['code'],
-        'mode'     => $office['queue_mode'],
-        'prefix'   => $office['queue_prefix'],
-        'waiting'  => $waitingCounts[$office['id']] ?? 0,
-        'services' => $servicesByOffice[$office['id']] ?? [],
+        'id'         => $office['id'],
+        'name'       => $office['name'],
+        'code'       => $office['code'],
+        'mode'       => $office['queue_mode'],
+        'prefix'     => $office['queue_prefix'],
+        'waiting'    => $waitingCounts[$office['id']] ?? 0,
+        'services'   => $servicesByOffice[$office['id']] ?? [],
+        'open_time'  => $office['open_time'],   // ← add
+        'close_time' => $office['close_time'],  // ← add
     ];
 }
 
 $officesJson = json_encode($officesForJs);
+
+$kioskSettingsResult = $db->query("SELECT kiosk_enabled FROM kiosk_settings WHERE id = 1 LIMIT 1");
+$kioskSettings = $kioskSettingsResult->fetch_assoc();
+$kioskEnabled = (bool)($kioskSettings['kiosk_enabled'] ?? true);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -207,6 +213,7 @@ $officesJson = json_encode($officesForJs);
 
     <script>
         const OFFICES = <?php echo $officesJson; ?>;
+        const KIOSK_ENABLED = <?php echo json_encode($kioskEnabled); ?>;
     </script>
     <script src="scripts/index.js"></script>
 </body>

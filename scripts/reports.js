@@ -137,10 +137,40 @@ function renderDailyReport(data) {
   if (container) {
     container.style.display = "";
     container.innerHTML =
-      statCard("Total Queued", data.total_queued, "Students in queue", "stat-green", false, false, data.queued_trend) +
-      statCard("Total Served", data.total_served, "Completed transactions", "stat-green", false, false, data.served_trend) +
-      statCard("Total Skipped", data.total_skipped, "No-show tickets", "stat-orange", false, false) +
-      statCard("Completion Rate", Math.round(data.completion_rate) + "%", "Served / Total queued", "stat-blue", false, false);
+      statCard(
+        "Total Queued",
+        data.total_queued,
+        "Students in queue",
+        "stat-green",
+        false,
+        false,
+        data.queued_trend,
+      ) +
+      statCard(
+        "Total Served",
+        data.total_served,
+        "Completed transactions",
+        "stat-green",
+        false,
+        false,
+        data.served_trend,
+      ) +
+      statCard(
+        "Total Skipped",
+        data.total_skipped,
+        "No-show tickets",
+        "stat-orange",
+        false,
+        false,
+      ) +
+      statCard(
+        "Completion Rate",
+        Math.round(data.completion_rate) + "%",
+        "Served / Total queued",
+        "stat-blue",
+        false,
+        false,
+      );
   }
 }
 
@@ -148,7 +178,7 @@ function renderOfficePerformance(data) {
   const block = document.getElementById("block-office");
   if (!block) return;
 
-  const hasData = data.some(d => d.total_transactions > 0);
+  const hasData = data.some((d) => d.total_transactions > 0);
   const table = block.querySelector(".perf-table");
   const emptyState = block.querySelector(".empty-state");
   const pill = block.querySelector(".pill");
@@ -157,7 +187,7 @@ function renderOfficePerformance(data) {
   pill.className = "pill " + (hasData ? "pill-green" : "pill-orange");
 
   if (emptyState) emptyState.style.display = hasData ? "none" : "";
-  
+
   if (table) {
     table.style.display = "";
     const tbody = table.querySelector("tbody");
@@ -165,7 +195,7 @@ function renderOfficePerformance(data) {
     data.forEach((office) => {
       const row = document.createElement("tr");
       let statusClass, statusLabel;
-      
+
       if (office.total_transactions === 0) {
         statusClass = "status-inactive";
         statusLabel = "Inactive";
@@ -179,7 +209,7 @@ function renderOfficePerformance(data) {
         statusClass = "status-low";
         statusLabel = "Low";
       }
-      
+
       row.innerHTML = `
         <td>${office.name}</td>
         <td>${office.served}</td>
@@ -192,7 +222,7 @@ function renderOfficePerformance(data) {
       `;
       tbody.appendChild(row);
     });
-    
+
     // Add sorting capability to table headers
     const headers = table.querySelectorAll("thead th");
     headers.forEach((header, index) => {
@@ -206,11 +236,11 @@ function renderOfficePerformance(data) {
 function sortTable(table, columnIndex) {
   const tbody = table.querySelector("tbody");
   const rows = Array.from(tbody.querySelectorAll("tr"));
-  
+
   rows.sort((a, b) => {
     const aVal = a.querySelectorAll("td")[columnIndex].textContent.trim();
     const bVal = b.querySelectorAll("td")[columnIndex].textContent.trim();
-    
+
     // Try numeric sort first
     const aNum = parseFloat(aVal);
     const bNum = parseFloat(bVal);
@@ -220,8 +250,8 @@ function sortTable(table, columnIndex) {
     // Fall back to string sort
     return aVal.localeCompare(bVal);
   });
-  
-  rows.forEach(row => tbody.appendChild(row));
+
+  rows.forEach((row) => tbody.appendChild(row));
 }
 
 let peakHoursChart = null;
@@ -231,9 +261,11 @@ function renderPeakHours(data) {
   const block = document.getElementById("block-peaks");
   if (!block) return;
 
-  const hasData = data.some(d => d > 0);
+  const hasData = data.some((d) => d > 0);
   const canvas = block.querySelector("#peakHoursChart");
-  const emptyState = canvas.closest(".sub-chart-box").querySelector(".empty-state");
+  const emptyState = canvas
+    .closest(".sub-chart-box")
+    .querySelector(".empty-state");
   const pill = block.querySelector(".pill");
 
   if (pill) {
@@ -248,7 +280,7 @@ function renderPeakHours(data) {
     if (emptyState) emptyState.style.display = "none";
     if (canvas) canvas.style.display = "";
 
-    const hours = Array.from({length: 24}, (_, i) => {
+    const hours = Array.from({ length: 24 }, (_, i) => {
       const h = String(i).padStart(2, "0");
       return h + ":00";
     });
@@ -259,18 +291,20 @@ function renderPeakHours(data) {
       type: "line",
       data: {
         labels: hours,
-        datasets: [{
-          label: "Queue Volume",
-          data: data,
-          borderColor: "#008b43",
-          backgroundColor: "rgba(0, 139, 67, 0.1)",
-          tension: 0.3,
-          fill: true,
-          pointRadius: 4,
-          pointBackgroundColor: "#008b43",
-          pointBorderColor: "#008b43",
-          pointBorderWidth: 0,
-        }],
+        datasets: [
+          {
+            label: "Queue Volume",
+            data: data,
+            borderColor: "#008b43",
+            backgroundColor: "rgba(0, 139, 67, 0.1)",
+            tension: 0.3,
+            fill: true,
+            pointRadius: 4,
+            pointBackgroundColor: "#008b43",
+            pointBorderColor: "#008b43",
+            pointBorderWidth: 0,
+          },
+        ],
       },
       options: {
         responsive: true,
@@ -290,9 +324,11 @@ function renderDepartmentDemand(data) {
   const block = document.getElementById("block-peaks");
   if (!block) return;
 
-  const hasData = data.some(d => d.count > 0);
+  const hasData = data.some((d) => d.count > 0);
   const canvas = block.querySelector("#deptChart");
-  const emptyState = canvas.closest(".sub-chart-box").querySelector(".empty-state");
+  const emptyState = canvas
+    .closest(".sub-chart-box")
+    .querySelector(".empty-state");
   const pill = block.querySelector(".pill");
 
   if (pill) {
@@ -309,10 +345,20 @@ function renderDepartmentDemand(data) {
 
     // Green shades from the dashboard primary color
     const greenShades = [
-      "#008b43", "#00a652", "#00c166", "#10b981", "#14b8a6", "#06b6d4"
+      "#008b43",
+      "#00a652",
+      "#00c166",
+      "#10b981",
+      "#14b8a6",
+      "#06b6d4",
     ];
     const borderShades = [
-      "#006633", "#007a3d", "#009950", "#0e9060", "#0f9e7e", "#0396a8"
+      "#006633",
+      "#007a3d",
+      "#009950",
+      "#0e9060",
+      "#0f9e7e",
+      "#0396a8",
     ];
 
     const ctx = canvas.getContext("2d");
@@ -320,18 +366,24 @@ function renderDepartmentDemand(data) {
     deptChart = new Chart(ctx, {
       type: "bar",
       data: {
-        labels: data.map(d => d.name),
-        datasets: [{
-          label: "Queue Demand",
-          data: data.map(d => d.count),
-          backgroundColor: data.map((_, i) => greenShades[i % greenShades.length]),
-          borderColor: data.map((_, i) => borderShades[i % borderShades.length]),
-          borderWidth: 0,
-          borderRadius: 4,
-        }],
+        labels: data.map((d) => d.name),
+        datasets: [
+          {
+            label: "Queue Demand",
+            data: data.map((d) => d.count),
+            backgroundColor: data.map(
+              (_, i) => greenShades[i % greenShades.length],
+            ),
+            borderColor: data.map(
+              (_, i) => borderShades[i % borderShades.length],
+            ),
+            borderWidth: 0,
+            borderRadius: 4,
+          },
+        ],
       },
       options: {
-        indexAxis: 'y',
+        indexAxis: "y",
         responsive: true,
         maintainAspectRatio: true,
         plugins: {
@@ -339,7 +391,7 @@ function renderDepartmentDemand(data) {
           datalabels: { display: false },
         },
         scales: {
-          x: { 
+          x: {
             beginAtZero: true,
             ticks: { stepSize: 1 },
             grid: { drawBorder: false, display: false },
@@ -348,7 +400,7 @@ function renderDepartmentDemand(data) {
             categoryPercentage: 0.5,
             barPercentage: 0.6,
             grid: { display: false, drawBorder: false },
-            ticks: { font: { size: 11, weight: '600' } },
+            ticks: { font: { size: 11, weight: "600" } },
           },
         },
       },
@@ -505,7 +557,7 @@ async function fetchAndRenderDayBreakdown(from, to, officeId = null) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "day_of_week_volume",
+        action: "day_of_week_volume", // make sure this matches
         date_from: from,
         date_to: to,
         office_id: officeId,
@@ -513,16 +565,20 @@ async function fetchAndRenderDayBreakdown(from, to, officeId = null) {
       }),
     });
     const data = await res.json();
-    if (data.success) {
-      if (data.day_of_week_volume && data.day_of_week_volume.length > 0) {
-        renderDayBreakdown(data.day_of_week_volume);
-      } else {
-        // Show empty state if no data
-        const canvas = document.getElementById("busyDaysChart");
-        const emptyState = canvas?.closest(".sub-chart-box")?.querySelector(".empty-state");
-        if (emptyState) emptyState.style.display = "";
-        if (canvas) canvas.style.display = "none";
-      }
+    console.log("day_of_week_volume response:", data); // add this to debug
+    if (
+      data.success &&
+      data.day_of_week_volume &&
+      data.day_of_week_volume.length > 0
+    ) {
+      renderDayBreakdown(data.day_of_week_volume);
+    } else {
+      const canvas = document.getElementById("busyDaysChart");
+      const emptyState = canvas
+        ?.closest(".sub-chart-box")
+        ?.querySelector(".empty-state");
+      if (emptyState) emptyState.style.display = "";
+      if (canvas) canvas.style.display = "none";
     }
   } catch (e) {
     console.error("Error fetching day breakdown:", e);
@@ -552,103 +608,120 @@ async function fetchAndRenderTransactionTypes(from, to, officeId = null) {
 }
 
 function renderDayBreakdown(data) {
-  const labels = data.map(d => {
-    // If data has a date field, format it with date; otherwise just show day name
+  data = [...data].sort((a, b) => b.count - a.count);
+  
+  const labels = data.map((d) => {
     if (d.date) {
-      const dateObj = new Date(d.date + 'T00:00:00');
-      const dateStr = dateObj.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+      const dateObj = new Date(d.date + "T00:00:00");
+      const dateStr = dateObj.toLocaleDateString("en-PH", {
+        month: "short",
+        day: "numeric",
+      });
       return `${d.day.substring(0, 3)} (${dateStr})`;
     } else {
       return d.day.substring(0, 3);
     }
   });
-  const counts = data.map(d => d.count);
-  
+  const counts = data.map((d) => d.count);
+
   const canvas = document.getElementById("busyDaysChart");
   if (!canvas) return;
-  
+
   const ctx = canvas.getContext("2d");
-  if (window.busyDaysChart) window.busyDaysChart.destroy();
-  
-  window.busyDaysChart = new Chart(ctx, {
+  if (window.busyDaysChartInstance) window.busyDaysChartInstance.destroy();
+
+  window.busyDaysChartInstance = new Chart(ctx, {
     type: "bar",
     data: {
       labels: labels,
-      datasets: [{
-        label: "Queue Volume by Day",
-        data: counts,
-        backgroundColor: "#3b82f6",
-        borderColor: "#2563eb",
-        borderWidth: 0,
-        borderRadius: 4,
-      }],
+      datasets: [
+        {
+          label: "Queue Volume by Day",
+          data: counts,
+          backgroundColor: [
+            "#006633",
+            "#007a3d",
+            "#008b43",
+            "#00a652",
+            "#00c166",
+            "#10b981",
+            "#48c774",
+          ],
+          borderColor: "transparent",
+          borderWidth: 0,
+          borderRadius: 6,
+          maxBarThickness: 48,
+        },
+      ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: true,
-      indexAxis: 'x',
+      indexAxis: "x",
       plugins: {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: function(context) {
-              return 'Queue Volume: ' + context.parsed.y;
-            }
-          }
-        }
+            label: function (context) {
+              return "Queue Volume: " + context.parsed.y;
+            },
+          },
+        },
       },
       scales: {
-        y: { 
+        y: {
           beginAtZero: true,
           ticks: { stepSize: 1 },
-          grid: { drawBorder: false, display: false },
+          grid: { drawBorder: false, color: "rgba(0,0,0,0.05)" },
         },
         x: {
-          categoryPercentage: 0.6,
-          barPercentage: 0.7,
-          grid: { display: false, drawBorder: false },
-          ticks: { font: { size: 10, weight: '600' } },
+          grid: { display: false },
+          ticks: { font: { size: 10, weight: "600" } },
         },
       },
     },
   });
-  
+
   canvas.style.display = "";
-  const emptyState = canvas.closest(".sub-chart-box").querySelector(".empty-state");
+  const emptyState = canvas
+    .closest(".sub-chart-box")
+    .querySelector(".empty-state");
   if (emptyState) emptyState.style.display = "none";
 }
 
 function renderTransactionTypes(data) {
-  const labels = data.map(d => d.type);
-  const totals = data.map(d => d.total);
-  
+  const labels = data.map((d) => d.type);
+  const totals = data.map((d) => d.total);
+
   const canvas = document.getElementById("transactionTypesChart");
   if (!canvas) {
     console.warn("Transaction types chart not found");
     return;
   }
-  
+
   const ctx = canvas.getContext("2d");
   if (window.transactionTypesChart) window.transactionTypesChart.destroy();
-  
+
   window.transactionTypesChart = new Chart(ctx, {
     type: "doughnut",
     data: {
       labels: labels,
-      datasets: [{
-        label: "Transactions by Type",
-        data: totals,
-        backgroundColor: [
-          "#ec4899",
-          "#f59e0b",
-          "#10b981",
-          "#3b82f6",
-          "#8b5cf6",
-          "#06b6d4",
-        ],
-        borderColor: "#fff",
-        borderWidth: 2,
-      }],
+      datasets: [
+        {
+          label: "Transactions by Type",
+          data: totals,
+          backgroundColor: [
+            "#ec4899",
+            "#f59e0b",
+            "#10b981",
+            "#3b82f6",
+            "#8b5cf6",
+            "#06b6d4",
+          ],
+          borderColor: "#fff",
+          borderWidth: 2,
+        },
+      ],
     },
     options: {
       responsive: true,
@@ -660,9 +733,11 @@ function renderTransactionTypes(data) {
       },
     },
   });
-  
+
   canvas.style.display = "";
-  const emptyState = canvas.closest(".sub-chart-box").querySelector(".empty-state");
+  const emptyState = canvas
+    .closest(".sub-chart-box")
+    .querySelector(".empty-state");
   if (emptyState) emptyState.style.display = "none";
 }
 
@@ -704,10 +779,14 @@ function exportReport(type) {
 }
 
 function refreshReports() {
-  const from = document.getElementById("dateFrom")?.value || new Date().toISOString().split("T")[0];
-  const to = document.getElementById("dateTo")?.value || new Date().toISOString().split("T")[0];
+  const from =
+    document.getElementById("dateFrom")?.value ||
+    new Date().toISOString().split("T")[0];
+  const to =
+    document.getElementById("dateTo")?.value ||
+    new Date().toISOString().split("T")[0];
   const officeId = document.getElementById("officeFilter")?.value || null;
-  
+
   const btn = event?.target;
   if (btn) {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
