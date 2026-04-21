@@ -416,7 +416,7 @@ function resetKiosk() {
   renderOffices();
   resetIdle();
 }
-
+//olfu
 let idleTimer = null;
 const IDLE_MS = 60000;
 
