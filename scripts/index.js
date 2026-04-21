@@ -156,16 +156,37 @@ function isOfficeClosed(office) {
   return nowMinutes < openMinutes || nowMinutes >= closeMinutes;
 }
 
+function isOfficeAcceptingQueue(office) {
+  const now = new Date();
+  const hhmm = now.toLocaleTimeString("en-PH", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Manila",
+  });
+
+  if (office.queue_cutoff && hhmm >= office.queue_cutoff) {
+    return { ok: false, reason: `Queue closed — cut-off time (${office.queue_cutoff}) has passed.` };
+  }
+
+  if (office.break_start && office.break_end &&
+      hhmm >= office.break_start && hhmm < office.break_end) {
+    return { ok: false, reason: `Office is on break until ${office.break_end}.` };
+  }
+
+  return { ok: true };
+}
+
 function renderOffices() {
   const grid = document.getElementById("officeGrid");
   grid.innerHTML = "";
   OFFICES.forEach((o) => {
     const w = o.waiting;
     const icon = ICONS[o.code] || "fa-building";
-    const closed = isOfficeClosed(o); // ← add this
+    const closed = isOfficeClosed(o);
     const btn = document.createElement("button");
     btn.className = "office-card" + (closed ? " office-closed" : "");
-    btn.disabled = closed; // ← disable if closed
+    btn.disabled = closed;
     btn.innerHTML = `
     <div class="office-icon"><i class="fas ${icon}"></i></div>
     <div class="office-name">${esc(o.name)}</div>
@@ -187,6 +208,13 @@ function selectOffice(o) {
   state.office = o;
   state.service = null;
   state.history = [1];
+
+  // Always check break / cut-off before proceeding, regardless of queue mode.
+  const check = isOfficeAcceptingQueue(o);
+  if (!check.ok) {
+    showBlockedMessage(check.reason);
+    return;
+  }
 
   if (o.mode === "service-based" && o.services && o.services.length) {
     renderServices(o);
@@ -216,6 +244,11 @@ function renderServices(o) {
 }
 
 function selectService(s) {
+  const check = isOfficeAcceptingQueue(state.office);
+  if (!check.ok) {
+    showBlockedMessage(check.reason);
+    return;
+  }
   state.service = s;
   prepareConfirm();
   state.history.push(3);
@@ -267,12 +300,7 @@ function confirmQueue() {
   const apiUrl = "api/issue_ticket.php";
 
   console.log("[v0] Initiating fetch to:", apiUrl);
-  console.log(
-    "[v0] Payload - office_id:",
-    o.id,
-    "service_name:",
-    s ? s.name : "",
-  );
+  console.log("[v0] Payload - office_id:", o.id, "service_name:", s ? s.name : "");
 
   fetch(apiUrl, {
     method: "POST",
@@ -291,8 +319,7 @@ function confirmQueue() {
     .then((data) => {
       console.log("[v0] Response data:", data);
       btn.disabled = false;
-      btn.innerHTML =
-        '<i class="fas fa-check-circle"></i> Confirm &amp; Get Ticket';
+      btn.innerHTML = '<i class="fas fa-check-circle"></i> Confirm &amp; Get Ticket';
       if (data.success) {
         const oo = OFFICES.find((x) => x.id == o.id);
         if (oo) oo.waiting = data.waiting_count ?? oo.waiting + 1;
@@ -304,8 +331,7 @@ function confirmQueue() {
     .catch((err) => {
       console.error("[v0] Fetch error:", err);
       btn.disabled = false;
-      btn.innerHTML =
-        '<i class="fas fa-check-circle"></i> Confirm &amp; Get Ticket';
+      btn.innerHTML = '<i class="fas fa-check-circle"></i> Confirm &amp; Get Ticket';
       alert("Network error: " + err.message);
     });
 }
@@ -322,8 +348,7 @@ function showTicket(data) {
     ? s.name
     : "General Queue";
   document.getElementById("s4TicketNumber").textContent = data.ticket_number;
-  document.getElementById("s4PeopleAhead").textContent =
-    data.people_ahead ?? "—";
+  document.getElementById("s4PeopleAhead").textContent = data.people_ahead ?? "—";
 
   const mins = (data.people_ahead ?? 0) * 5;
   document.getElementById("s4WaitTime").textContent =
@@ -391,7 +416,7 @@ function resetKiosk() {
   renderOffices();
   resetIdle();
 }
-
+//olfu
 let idleTimer = null;
 const IDLE_MS = 60000;
 
@@ -412,9 +437,7 @@ function dismissIdle() {
 }
 
 ["click", "touchstart", "keydown"].forEach((e) =>
-  document.addEventListener(e, resetIdle, {
-    passive: true,
-  }),
+  document.addEventListener(e, resetIdle, { passive: true }),
 );
 
 function esc(str) {
@@ -423,34 +446,110 @@ function esc(str) {
   return d.innerHTML;
 }
 
-renderOffices();
-resetIdle();
+function showBlockedMessage(reason) {
+  const existing = document.getElementById("blockedOverlay");
+  if (existing) existing.remove();
 
+  const isBreak = reason.toLowerCase().includes("break");
+  const icon = isBreak ? "fa-coffee" : "fa-clock";
+  const title = isBreak ? "Office is on Break" : "Queue is Now Closed";
 
-if (!KIOSK_ENABLED) {
-  document.body.innerHTML = `
-    <div style="
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      background: #f4f6f5;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      text-align: center;
-      gap: 16px;
-    ">
-      <div style="font-size: 64px; color: #ccc;">
-        <i class="fas fa-ban"></i>
-      </div>
-      <h1 style="font-size: 28px; color: #1a1a1a; margin: 0;">Kiosk Unavailable</h1>
-      <p style="font-size: 16px; color: #6b7280; margin: 0;">
-        This kiosk is currently disabled.<br>Please see a staff member for assistance.
-      </p>
-    </div>
+  const overlay = document.createElement("div");
+  overlay.id = "blockedOverlay";
+  overlay.style.cssText = `
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #006633 0%, #008b43 60%, #00b856 100%);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    text-align: center;
+    padding: 40px;
+    z-index: 9999;
+    animation: fadeIn .3s ease both;
   `;
-  // Stop all further execution
-  throw new Error("Kiosk disabled");
+
+  overlay.innerHTML = `
+    <div style="
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 32px;
+      padding: 60px 80px;
+      backdrop-filter: blur(12px);
+      max-width: 560px;
+      width: 100%;
+    ">
+      <div style="
+        width: 90px;
+        height: 90px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 28px;
+        font-size: 40px;
+        color: #fff;
+      ">
+        <i class="fas ${icon}"></i>
+      </div>
+
+      <div style="
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.6);
+        margin-bottom: 12px;
+      ">Queue Management System</div>
+
+      <h1 style="
+        font-size: 36px;
+        font-weight: 800;
+        color: #fff;
+        margin: 0 0 16px;
+        line-height: 1.2;
+      ">${title}</h1>
+
+      <p style="
+        font-size: 16px;
+        color: rgba(255,255,255,0.75);
+        margin: 0 0 36px;
+        line-height: 1.6;
+      ">${reason}<br>Please approach a staff member for assistance.</p>
+
+      <button onclick="document.getElementById('blockedOverlay').remove(); resetKiosk();" style="
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(255,255,255,0.12);
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 50px;
+        padding: 14px 32px;
+        color: #fff;
+        font-size: 15px;
+        font-weight: 600;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        cursor: pointer;
+        transition: background .2s;
+      "
+        onmouseover="this.style.background='rgba(255,255,255,0.22)'"
+        onmouseout="this.style.background='rgba(255,255,255,0.12)'"
+      >
+        <i class="fas fa-arrow-left"></i> Go Back
+      </button>
+    </div>
+
+    <div style="
+      margin-top: 32px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+    ">© Our Lady of Fatima University</div>
+  `;
+
+  document.body.appendChild(overlay);
 }
 
 renderOffices();

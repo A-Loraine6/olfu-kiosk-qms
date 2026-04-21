@@ -5,7 +5,8 @@ require_once 'includes/db.php';
 date_default_timezone_set('Asia/Manila');
 
 $officesResult = $db->query("
-    SELECT id, name, code, queue_mode, open_time, close_time, queue_prefix
+    SELECT id, name, code, queue_mode, open_time, close_time, queue_prefix,
+           break_start, break_end, queue_cutoff
     FROM offices
     ORDER BY name ASC
 ");
@@ -41,15 +42,18 @@ foreach ($servicesResult->fetch_all(MYSQLI_ASSOC) as $svc) {
 $officesForJs = [];
 foreach ($offices as $office) {
     $officesForJs[] = [
-        'id'         => $office['id'],
-        'name'       => $office['name'],
-        'code'       => $office['code'],
-        'mode'       => $office['queue_mode'],
-        'prefix'     => $office['queue_prefix'],
-        'waiting'    => $waitingCounts[$office['id']] ?? 0,
-        'services'   => $servicesByOffice[$office['id']] ?? [],
-        'open_time'  => $office['open_time'],   // ← add
-        'close_time' => $office['close_time'],  // ← add
+    'id'          => $office['id'],
+    'name'        => $office['name'],
+    'code'        => $office['code'],
+    'mode'        => $office['queue_mode'],
+    'prefix'      => $office['queue_prefix'],
+    'waiting'     => $waitingCounts[$office['id']] ?? 0,
+    'services'    => $servicesByOffice[$office['id']] ?? [],
+    'open_time'   => $office['open_time'],
+    'close_time'  => $office['close_time'],
+    'break_start' => $office['break_start'],
+    'break_end'   => $office['break_end'],
+    'queue_cutoff'=> $office['queue_cutoff'],  // ← add
     ];
 }
 
@@ -153,7 +157,7 @@ $kioskEnabled = (bool)($kioskSettings['kiosk_enabled'] ?? true);
                     </div>
                 </div>
             </div>
-
+//olfu
             <div class="screen-foot">
                 <button class="btn btn-ghost" onclick="goBack()">
                     <i class="fas fa-arrow-left"></i> Back
