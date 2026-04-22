@@ -156,6 +156,15 @@ function isOfficeClosed(office) {
   return nowMinutes < openMinutes || nowMinutes >= closeMinutes;
 }
 
+
+function formatTime12(hhmm) {
+  if (!hhmm) return "";
+  const [h, m] = hhmm.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const hour = h % 12 || 12;
+  return `${hour}:${String(m).padStart(2, "0")} ${period}`;
+}
+
 function isOfficeAcceptingQueue(office) {
   const now = new Date();
   const hhmm = now.toLocaleTimeString("en-PH", {
@@ -166,12 +175,12 @@ function isOfficeAcceptingQueue(office) {
   });
 
   if (office.queue_cutoff && hhmm >= office.queue_cutoff) {
-    return { ok: false, reason: `Queue closed — cut-off time (${office.queue_cutoff}) has passed.` };
+    return { ok: false, reason: `Queue closed — cut-off time (${formatTime12(office.queue_cutoff)}) has passed.` };
   }
 
   if (office.break_start && office.break_end &&
       hhmm >= office.break_start && hhmm < office.break_end) {
-    return { ok: false, reason: `Office is on break until ${office.break_end}.` };
+    return { ok: false, reason: `Office is on break from ${formatTime12(office.break_start)} to ${formatTime12(office.break_end)}.` };
   }
 
   return { ok: true };
@@ -503,7 +512,7 @@ function showBlockedMessage(reason) {
         text-transform: uppercase;
         color: rgba(255,255,255,0.6);
         margin-bottom: 12px;
-      ">Queue Management System</div>
+      "></div>
 
       <h1 style="
         font-size: 36px;
