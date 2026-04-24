@@ -143,4 +143,8 @@ function updateKioskStatus(isOn) {
         : 'The kiosk is turned off. Users cannot generate queue numbers.';
 }
 
+function clearCutoff() {
+    const el = document.getElementById('cutoffInput');
+    if (el) el.value = '';
+}
 document.addEventListener('DOMContentLoaded', updatePreview);
