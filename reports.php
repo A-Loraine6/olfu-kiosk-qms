@@ -44,6 +44,8 @@ if ($isStaff) {
     <link rel="stylesheet" href="css/dashboard.css" />
     <link rel="stylesheet" href="css/reports.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 
 <body>
@@ -78,7 +80,8 @@ if ($isStaff) {
             </header>
 
             <main class="dashboard-main">
-                <div class="dashboard-content">
+                <div class="dashboard-content" id="pdf-export-area">
+                  <div class="dashboard-content">
 
                     <?php if ($isStaff): ?>
 
