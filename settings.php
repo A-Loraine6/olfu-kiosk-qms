@@ -61,6 +61,29 @@ if (!$activeOffice && !empty($offices)) {
                         <i class="fas fa-cog"></i> System Settings
                     </h2>
                 </div>
+                <div class="header-right">
+                    <!-- Save button for Schedule tab -->
+                    <button type="button" id="headerSaveSchedule"
+                        class="btn-primary header-save-btn"
+                        style="<?php echo $activeTab !== 'schedule' ? 'display:none;' : ''; ?>"
+                        onclick="document.getElementById('scheduleForm').requestSubmit()">
+                        <i class="fas fa-save"></i> Save Schedule
+                    </button>
+                    <!-- Save button for Queue tab -->
+                    <button type="button" id="headerSaveQueue"
+                        class="btn-primary header-save-btn"
+                        style="<?php echo $activeTab !== 'queue' ? 'display:none;' : ''; ?>"
+                        onclick="document.getElementById('queueForm').requestSubmit()">
+                        <i class="fas fa-save"></i> Save Queue Config
+                    </button>
+                    <!-- Save button for Kiosk tab -->
+                    <button type="button" id="headerSaveKiosk"
+                        class="btn-primary header-save-btn"
+                        style="<?php echo $activeTab !== 'kiosk' ? 'display:none;' : ''; ?>"
+                        onclick="document.getElementById('kioskForm').requestSubmit()">
+                        <i class="fas fa-save"></i> Save Kiosk Settings
+                    </button>
+                </div>
             </header>
 
             <nav class="settings-tabs">
@@ -198,11 +221,6 @@ if (!$activeOffice && !empty($offices)) {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="settings-section-footer">
-                                                <button type="submit" class="btn-primary">
-                                                    <i class="fas fa-save"></i> Save Schedule
-                                                </button>
-                                            </div>
                                         </div>
                                     </form>
                                 <?php endif; ?>
@@ -323,11 +341,6 @@ if (!$activeOffice && !empty($offices)) {
                                                     </label>
                                                 </div>
                                             </div>
-                                            <div class="settings-section-footer">
-                                                <button type="submit" class="btn-primary">
-                                                    <i class="fas fa-save"></i> Save Queue Config
-                                                </button>
-                                            </div>
                                         </div>
 
                                     </form>
@@ -415,11 +428,6 @@ if (!$activeOffice && !empty($offices)) {
                                                 <div class="field-hint">Between 10 – 600 seconds. After this idle period the kiosk returns to the welcome screen automatically.</div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div class="settings-section-footer">
-                                        <button type="submit" class="btn-primary">
-                                            <i class="fas fa-save"></i> Save Kiosk Settings
-                                        </button>
                                     </div>
                                 </div>
 
