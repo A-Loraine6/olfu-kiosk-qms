@@ -157,7 +157,6 @@ $kioskEnabled = (bool)($kioskSettings['kiosk_enabled'] ?? true);
                     </div>
                 </div>
             </div>
-//olfu
             <div class="screen-foot">
                 <button class="btn btn-ghost" onclick="goBack()">
                     <i class="fas fa-arrow-left"></i> Back

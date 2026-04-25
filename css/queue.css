@@ -666,7 +666,7 @@ kbd {
   outline: none;
   cursor: pointer;
   transition: border-color var(--t) var(--ease);
-  max-width: 160px;
+  max-width: 190px;
 }
 
 .queue-type-filter:focus {

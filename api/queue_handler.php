@@ -110,6 +110,12 @@ if ($action === 'get_queue') {
     $types        = 'i' . str_repeat('s', count($statuses));
     $params       = array_merge([$officeId], $statuses);
 
+    $orderBy = ($tab === 'done') ? 'completed_at DESC' : 'created_at ASC';
+    $today = date('Y-m-d');
+
+    $types  = 'is' . str_repeat('s', count($statuses));
+    $params = array_merge([$officeId, $today], $statuses);
+
     $typeClause = '';
     if ($queueMode === 'service-based' && $typeFilter > 0) {
         $typeClause = " AND t.transaction_type = (SELECT name FROM transaction_types WHERE id=? AND office_id=? LIMIT 1)";
@@ -118,22 +124,15 @@ if ($action === 'get_queue') {
         $params[] = $officeId;
     }
 
-    $orderBy = ($tab === 'done') ? 'completed_at DESC' : 'created_at ASC';
-
-    $today = date('Y-m-d');
-
-    $sql  = "SELECT t.*, u.full_name AS staff_name
-         FROM tickets t
-         LEFT JOIN users u ON t.served_by = u.id
-         WHERE t.office_id=?
-           AND DATE(CONVERT_TZ(t.created_at, '+00:00', '+08:00')) = ?
-           AND t.status IN ($placeholders)
-           $typeClause
-         ORDER BY $orderBy
-         LIMIT 100";
-
-    $types  = 'is' . str_repeat('s', count($statuses));
-    $params = array_merge([$officeId, $today], $statuses);
+    $sql = "SELECT t.*, u.full_name AS staff_name
+        FROM tickets t
+        LEFT JOIN users u ON t.served_by = u.id
+        WHERE t.office_id=?
+          AND DATE(CONVERT_TZ(t.created_at, '+00:00', '+08:00')) = ?
+          AND t.status IN ($placeholders)
+          $typeClause
+        ORDER BY $orderBy
+        LIMIT 100";
 
     $stmt = $db->prepare($sql);
     $stmt->bind_param($types, ...$params);
