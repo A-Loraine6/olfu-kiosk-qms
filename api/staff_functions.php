@@ -22,7 +22,7 @@ function getAllStaff($db, int $limit = 100, int $offset = 0): array
 {
     $stmt = $db->prepare(
         "SELECT u.id, u.full_name, u.email, u.role, o.name AS office_name,
-                u.is_active, u.created_at, u.created_by
+            u.window_number, u.is_active, u.created_at, u.created_by
          FROM users u
          LEFT JOIN offices o ON u.office_id = o.id
          WHERE u.role = 'staff' AND u.is_deleted = 0
@@ -59,7 +59,7 @@ function getStaffById($db, int $id): ?array
 {
     $stmt = $db->prepare(
         "SELECT u.id, u.full_name, u.email, u.office_id,
-                o.name AS office, u.is_active, u.created_at, u.created_by
+                o.name AS office, u.window_number, u.is_active, u.created_at, u.created_by
          FROM users u
          LEFT JOIN offices o ON u.office_id = o.id
          WHERE u.id = ? AND u.is_deleted = 0
@@ -74,7 +74,7 @@ function getStaffById($db, int $id): ?array
     return $row ?: null;
 }
 
-function addStaff($db, string $full_name, string $email, string $password, string $office): array
+function addStaff($db, string $full_name, string $email, string $password, string $office, ?int $window_number): array
 {
     $full_name = trim($full_name);
     $email     = strtolower(trim($email));
@@ -106,6 +106,18 @@ function addStaff($db, string $full_name, string $email, string $password, strin
     $office_id = $officeRow['id'] ?? null;
     if (!$office_id) return ['success' => false, 'message' => 'Invalid office selected.'];
 
+    if ($window_number !== null) {
+        $wcStmt = $db->prepare("SELECT window_count FROM offices WHERE name = ? LIMIT 1");
+        $wcStmt->bind_param('s', $office);
+        $wcStmt->execute();
+        $wcRow = $wcStmt->get_result()->fetch_assoc();
+        $wcStmt->close();
+        $maxWindows = (int) ($wcRow['window_count'] ?? 1);
+        if ($window_number < 1 || $window_number > $maxWindows) {
+            return ['success' => false, 'message' => "Window number must be between 1 and $maxWindows for this office."];
+        }
+    }
+
     $currentUser     = getCurrentUser();
     $created_by      = $currentUser ? $currentUser['id'] : null;
     $hashed_password = hashPassword($password);
@@ -113,12 +125,10 @@ function addStaff($db, string $full_name, string $email, string $password, strin
     $created_at      = date('Y-m-d H:i:s');
 
     $insertStmt = $db->prepare(
-        "INSERT INTO users (full_name, email, password, role, office_id, is_active, created_by, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO users (full_name, email, password, role, office_id, window_number, is_active, created_by, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
-    if (!$insertStmt) return ['success' => false, 'message' => 'Database error occurred.'];
-
-    $insertStmt->bind_param('ssssiiis', $full_name, $email, $hashed_password, $role, $office_id, $is_active, $created_by, $created_at);
+    $insertStmt->bind_param('ssssiiiis', $full_name, $email, $hashed_password, $role, $office_id, $window_number, $is_active, $created_by, $created_at);
 
     if (!$insertStmt->execute()) {
         $insertStmt->close();
@@ -135,13 +145,13 @@ function addStaff($db, string $full_name, string $email, string $password, strin
         $new_id,
         "Added new staff member: $full_name)",
         null,
-        ['full_name' => $full_name, 'email' => $email, 'role' => $role, 'office' => $office]
+        ['full_name' => $full_name, 'email' => $email, 'role' => $role, 'office' => $office, 'window_number' => $window_number]
     );
 
     return ['success' => true, 'message' => 'Staff member added successfully.', 'staff_id' => $new_id];
 }
 
-function updateStaff($db, int $id, string $full_name, string $email, string $office): array
+function updateStaff($db, int $id, string $full_name, string $email, string $office, ?int $window_number): array
 {
     $full_name = trim($full_name);
     $email     = strtolower(trim($email));
@@ -155,6 +165,18 @@ function updateStaff($db, int $id, string $full_name, string $email, string $off
 
     $currentStaff = getStaffById($db, $id);
     if (!$currentStaff) return ['success' => false, 'message' => 'Staff member not found.'];
+
+    if ($window_number !== null) {
+        $wcStmt = $db->prepare("SELECT window_count FROM offices WHERE name = ? LIMIT 1");
+        $wcStmt->bind_param('s', $office);
+        $wcStmt->execute();
+        $wcRow = $wcStmt->get_result()->fetch_assoc();
+        $wcStmt->close();
+        $maxWindows = (int) ($wcRow['window_count'] ?? 1);
+        if ($window_number < 1 || $window_number > $maxWindows) {
+            return ['success' => false, 'message' => "Window number must be between 1 and $maxWindows for this office."];
+        }
+    }
 
     if ($currentStaff['email'] !== $email) {
         $checkStmt = $db->prepare("SELECT id FROM users WHERE email = ? AND id != ? LIMIT 1");
@@ -177,11 +199,10 @@ function updateStaff($db, int $id, string $full_name, string $email, string $off
     if (!$office_id) return ['success' => false, 'message' => 'Invalid office selected.'];
 
     $updateStmt = $db->prepare(
-        "UPDATE users SET full_name = ?, email = ?, role = ?, office_id = ? WHERE id = ?"
+        "UPDATE users SET full_name = ?, email = ?, role = ?, office_id = ?, window_number = ? WHERE id = ?"
     );
-    if (!$updateStmt) return ['success' => false, 'message' => 'Database error occurred.'];
+    $updateStmt->bind_param('sssiii', $full_name, $email, $role, $office_id, $window_number, $id);
 
-    $updateStmt->bind_param('sssii', $full_name, $email, $role, $office_id, $id);
     if (!$updateStmt->execute()) {
         $updateStmt->close();
         return ['success' => false, 'message' => 'Failed to update staff member.'];
@@ -189,8 +210,8 @@ function updateStaff($db, int $id, string $full_name, string $email, string $off
     $updateStmt->close();
 
     [$before, $after] = diffSnapshot(
-        ['full_name' => $currentStaff['full_name'], 'email' => $currentStaff['email'], 'office' => $currentStaff['office']],
-        ['full_name' => $full_name,                 'email' => $email,                 'office' => $office]
+        ['full_name' => $currentStaff['full_name'], 'email' => $currentStaff['email'], 'office' => $currentStaff['office'], 'window_number' => $currentStaff['window_number']],
+        ['full_name' => $full_name,                 'email' => $email,                 'office' => $office,                 'window_number' => $window_number]
     );
 
     if (!empty($before)) {

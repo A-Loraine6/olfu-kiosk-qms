@@ -36,7 +36,6 @@ function setBtnLoading(btn, loading, originalHtml) {
         : originalHtml;
 }
 
-// Returns the header save button for a given tab name
 function getHeaderSaveBtn(tab) {
     const map = {
         schedule: 'headerSaveSchedule',

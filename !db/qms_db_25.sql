@@ -198,7 +198,17 @@ INSERT INTO `activity_logs` (`id`, `user_id`, `activity_type`, `entity_type`, `e
 (179, 1, 'SERVICE_ADD', 'SERVICE', 19, NULL, '{\"name\":\"Exit Clearance\",\"category\":\"regular\",\"description\":\"Completion of final clearance requirements.\",\"office\":\"Registrar\"}', 'Added new service \"Exit Clearance\" for Registrar', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 01:42:54'),
 (180, 1, 'SERVICE_ADD', 'SERVICE', 20, NULL, '{\"name\":\"Enrollment Concerns\",\"category\":\"simple\",\"description\":\"Assistance with minor enrollment issues.\",\"office\":\"Registrar\"}', 'Added new service \"Enrollment Concerns\" for Registrar', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 01:43:04'),
 (181, 1, 'OFFICE_QUEUE_MODE_TOGGLE', 'OFFICE', 1, '{\"queue_mode\":\"unified\"}', '{\"queue_mode\":\"service-based\"}', 'Queue mode switched to service-based for Registrar', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 01:43:34'),
-(182, 1, 'OFFICE_QUEUE_MODE_TOGGLE', 'OFFICE', 1, '{\"queue_mode\":\"service-based\"}', '{\"queue_mode\":\"unified\"}', 'Queue mode switched to unified for Registrar', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 01:43:47');
+(182, 1, 'OFFICE_QUEUE_MODE_TOGGLE', 'OFFICE', 1, '{\"queue_mode\":\"service-based\"}', '{\"queue_mode\":\"unified\"}', 'Queue mode switched to unified for Registrar', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 01:43:47'),
+(183, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 02:42:19'),
+(184, 1, 'SERVICE_EDIT', 'SERVICE', 4, '{\"windows\":[]}', '{\"windows\":[1,2,3]}', 'Updated service \"Balance Inquiry\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 02:42:52'),
+(185, 1, 'SERVICE_EDIT', 'SERVICE', 4, '{\"windows\":[1,2,3]}', '{\"windows\":[]}', 'Updated service \"Balance Inquiry\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 02:43:33'),
+(186, 1, 'SERVICE_EDIT', 'SERVICE', 4, '{\"windows\":[]}', '{\"windows\":[1,2]}', 'Updated service \"Balance Inquiry\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 02:43:42'),
+(187, 1, 'SERVICE_EDIT', 'SERVICE', 4, '{\"windows\":[1,2]}', '{\"windows\":[1]}', 'Updated service \"Balance Inquiry\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 02:47:13'),
+(188, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 03:18:00'),
+(189, 1, 'STAFF_EDIT', 'USER', 2, '{\"window_number\":null}', '{\"window_number\":1}', 'Updated staff member: Liezel Mae Torres', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 03:30:15'),
+(190, 1, 'SERVICE_EDIT', 'SERVICE', 3, '{\"windows\":[]}', '{\"windows\":[1]}', 'Updated service \"Tuition Fee\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 03:30:35'),
+(191, 2, 'LOGOUT', 'user', 2, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 03:41:54'),
+(192, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-04-25 03:41:57');
 
 -- --------------------------------------------------------
 
@@ -254,6 +264,26 @@ INSERT INTO `offices` (`id`, `name`, `code`, `description`, `window_count`, `que
 (1, 'Registrar', 'REG', 'Registrar Office', 9, 'unified', '2026-03-25 08:03:37', '08:00:00', '22:00:00', '14:56:00', '21:57:00', '21:57:00', 'REG', 1, 1, 0, 1),
 (2, 'Accounting', 'ACC', 'Accounting Office', 10, 'service-based', '2026-03-25 08:03:37', '08:00:00', '17:00:00', '12:00:00', '13:00:00', '12:00:00', 'ACC', 1, 1, 0, 1),
 (3, 'Admissions', 'ADM', 'Admissions Office', 5, 'unified', '2026-03-25 08:03:37', '08:00:00', '22:00:00', '14:56:00', '21:58:00', '21:59:00', 'ADM', 1, 1, 0, 1);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `service_windows`
+--
+
+CREATE TABLE `service_windows` (
+  `service_id` int(11) NOT NULL,
+  `office_id` int(11) NOT NULL,
+  `window_number` tinyint(3) UNSIGNED NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `service_windows`
+--
+
+INSERT INTO `service_windows` (`service_id`, `office_id`, `window_number`) VALUES
+(3, 2, 1),
+(4, 2, 1);
 
 -- --------------------------------------------------------
 
@@ -319,7 +349,10 @@ INSERT INTO `tickets` (`id`, `ticket_number`, `office_id`, `transaction_type`, `
 (44, 'ACC-001', 2, 'Balance Inquiry', NULL, 'skipped', '2026-04-22 14:49:28', NULL, NULL, NULL, NULL),
 (45, 'ACC-001', 2, 'Tuition Fee', NULL, 'completed', '2026-04-25 01:23:25', '2026-04-25 01:26:21', '2026-04-25 01:30:39', NULL, 2),
 (46, 'ACC-002', 2, 'Tuition Fee', NULL, 'completed', '2026-04-25 01:30:53', '2026-04-25 01:35:40', '2026-04-25 01:35:49', NULL, 2),
-(47, 'ACC-003', 2, 'Promissory Note', NULL, 'completed', '2026-04-25 01:31:32', '2026-04-25 01:35:50', '2026-04-25 01:35:54', NULL, 2);
+(47, 'ACC-003', 2, 'Promissory Note', NULL, 'completed', '2026-04-25 01:31:32', '2026-04-25 01:35:50', '2026-04-25 01:35:54', NULL, 2),
+(48, 'ACC-004', 2, 'Miscellaneous Fee', NULL, 'skipped', '2026-04-25 03:43:14', NULL, NULL, NULL, 2),
+(49, 'ACC-005', 2, 'Balance Inquiry', NULL, 'skipped', '2026-04-25 03:53:03', NULL, NULL, NULL, 2),
+(50, 'ACC-006', 2, 'Balance Inquiry', NULL, 'skipped', '2026-04-25 03:53:59', NULL, NULL, NULL, 2);
 
 -- --------------------------------------------------------
 
@@ -377,24 +410,27 @@ CREATE TABLE `users` (
   `password` varchar(255) NOT NULL,
   `role` varchar(20) DEFAULT 'admin',
   `office_id` int(11) DEFAULT NULL,
+  `window_number` tinyint(3) UNSIGNED DEFAULT NULL,
+  `primary_category` varchar(20) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `is_active` tinyint(1) DEFAULT 1,
   `last_activity` timestamp NULL DEFAULT NULL,
   `password_reset_token` varchar(255) DEFAULT NULL,
   `password_reset_expires` timestamp NULL DEFAULT NULL,
   `created_by` int(11) DEFAULT NULL,
-  `is_deleted` tinyint(1) DEFAULT 0
+  `is_deleted` tinyint(1) DEFAULT 0,
+  `overflow_mode` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `full_name`, `email`, `password`, `role`, `office_id`, `created_at`, `is_active`, `last_activity`, `password_reset_token`, `password_reset_expires`, `created_by`, `is_deleted`) VALUES
-(1, 'Angel Loraine Reobilo', 'reobiloangel6@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$WlJwTFZiUlhoTWs4dkVFSg$2xXzhMVRqKcqr5WpRJb2a3z2vTz7rlE+fUTVoUA0eLY', 'admin', NULL, '2026-03-25 08:45:08', 1, NULL, NULL, NULL, NULL, 0),
-(2, 'Liezel Mae Torres', 'liezelmaetorres@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$YXhxRll3ZmdaTm5DVDA4Yg$VJFkcE3j0F94U7yijmPOZlZy40u1Rk+ykwO7wjDhyHQ', 'staff', 2, '2026-03-25 05:35:57', 1, NULL, NULL, NULL, 1, 0),
-(3, 'Liz Margaret Santiago', 'santiagolizmargaret4@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$eHlxUGk5M2k1bHNuSVduQg$C5b+IZ3QeQWzwS/aEsxR99HUSkD2VGxzYgDzOGjqZ14', 'staff', 3, '2026-04-20 01:15:54', 1, NULL, NULL, NULL, 1, 0),
-(4, 'Iris Remorosa', 'irisremorosa@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$MEdPcUIuNUU5VGtWdHdZWQ$cvMgQFjhW2ibPedFPl91ye66BsSgXIbouMkzIkDK0/4', 'staff', 1, '2026-04-20 01:16:16', 1, NULL, NULL, NULL, 1, 0);
+INSERT INTO `users` (`id`, `full_name`, `email`, `password`, `role`, `office_id`, `window_number`, `primary_category`, `created_at`, `is_active`, `last_activity`, `password_reset_token`, `password_reset_expires`, `created_by`, `is_deleted`, `overflow_mode`) VALUES
+(1, 'Angel Loraine Reobilo', 'reobiloangel6@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$WlJwTFZiUlhoTWs4dkVFSg$2xXzhMVRqKcqr5WpRJb2a3z2vTz7rlE+fUTVoUA0eLY', 'admin', NULL, NULL, NULL, '2026-03-25 08:45:08', 1, NULL, NULL, NULL, NULL, 0, 0),
+(2, 'Liezel Mae Torres', 'liezelmaetorres@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$YXhxRll3ZmdaTm5DVDA4Yg$VJFkcE3j0F94U7yijmPOZlZy40u1Rk+ykwO7wjDhyHQ', 'staff', 2, 1, NULL, '2026-03-25 05:35:57', 1, NULL, NULL, NULL, 1, 0, 0),
+(3, 'Liz Margaret Santiago', 'santiagolizmargaret4@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$eHlxUGk5M2k1bHNuSVduQg$C5b+IZ3QeQWzwS/aEsxR99HUSkD2VGxzYgDzOGjqZ14', 'staff', 3, NULL, NULL, '2026-04-20 01:15:54', 1, NULL, NULL, NULL, 1, 0, 0),
+(4, 'Iris Remorosa', 'irisremorosa@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$MEdPcUIuNUU5VGtWdHdZWQ$cvMgQFjhW2ibPedFPl91ye66BsSgXIbouMkzIkDK0/4', 'staff', 1, NULL, NULL, '2026-04-20 01:16:16', 1, NULL, NULL, NULL, 1, 0, 0);
 
 --
 -- Indexes for dumped tables
@@ -423,6 +459,13 @@ ALTER TABLE `offices`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `name` (`name`),
   ADD UNIQUE KEY `code` (`code`);
+
+--
+-- Indexes for table `service_windows`
+--
+ALTER TABLE `service_windows`
+  ADD PRIMARY KEY (`service_id`,`window_number`),
+  ADD KEY `office_id` (`office_id`);
 
 --
 -- Indexes for table `sessions`
@@ -465,7 +508,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `activity_logs`
 --
 ALTER TABLE `activity_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=183;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=193;
 
 --
 -- AUTO_INCREMENT for table `kiosk_settings`
@@ -483,7 +526,7 @@ ALTER TABLE `offices`
 -- AUTO_INCREMENT for table `tickets`
 --
 ALTER TABLE `tickets`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=48;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=51;
 
 --
 -- AUTO_INCREMENT for table `transaction_types`
@@ -506,6 +549,13 @@ ALTER TABLE `users`
 --
 ALTER TABLE `activity_logs`
   ADD CONSTRAINT `activity_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `service_windows`
+--
+ALTER TABLE `service_windows`
+  ADD CONSTRAINT `service_windows_ibfk_1` FOREIGN KEY (`service_id`) REFERENCES `transaction_types` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `service_windows_ibfk_2` FOREIGN KEY (`office_id`) REFERENCES `offices` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `sessions`

@@ -120,6 +120,7 @@ $inactiveStaff = $totalStaff - $activeStaff;
                                     <th>Name</th>
                                     <th>Email</th>
                                     <th>Office</th>
+                                    <th>Window</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
@@ -148,6 +149,7 @@ $inactiveStaff = $totalStaff - $activeStaff;
                                             </td>
                                             <td><?php echo htmlspecialchars($member['email']); ?></td>
                                             <td><?php echo htmlspecialchars($member['office_name'] ?? '—'); ?></td>
+                                            <td><?php echo $member['window_number'] ? 'Window ' . (int)$member['window_number'] : '—'; ?></td>
                                             <td>
                                                 <span class="status-badge <?php echo $member['is_active'] ? 'status-active' : 'status-inactive'; ?>">
                                                     <?php echo $member['is_active'] ? 'Active' : 'Inactive'; ?>
@@ -226,13 +228,20 @@ $inactiveStaff = $totalStaff - $activeStaff;
 
             <div class="form-group">
                 <label for="add_office">Office <span class="required">*</span></label>
-                <select id="add_office">
+                <select id="add_office" onchange="loadWindowOptions('add_office', 'add_window', 'add_window_group')">
                     <option value="" disabled selected>Select office</option>
                     <?php foreach ($offices as $o): ?>
                         <option value="<?php echo htmlspecialchars($o); ?>">
                             <?php echo htmlspecialchars($o); ?>
                         </option>
                     <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="form-group" id="add_window_group" style="display:none;">
+                <label for="add_window">Window <span class="required">*</span></label>
+                <select id="add_window">
+                    <option value="" disabled selected>Select window</option>
                 </select>
             </div>
 
@@ -260,11 +269,17 @@ $inactiveStaff = $totalStaff - $activeStaff;
             </div>
             <div class="form-group">
                 <label for="edit_office">Office <span class="required">*</span></label>
-                <select id="edit_office">
+                <select id="edit_office" onchange="loadWindowOptions('edit_office', 'edit_window', 'edit_window_group')">
                     <option value="" disabled>Select Office</option>
                     <?php foreach ($offices as $o): ?>
                         <option value="<?php echo htmlspecialchars($o); ?>"><?php echo htmlspecialchars($o); ?></option>
                     <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group" id="edit_window_group" style="display:none;">
+                <label for="edit_window">Window <span class="required">*</span></label>
+                <select id="edit_window">
+                    <option value="" disabled selected>Select window</option>
                 </select>
             </div>
             <div class="modal-footer">

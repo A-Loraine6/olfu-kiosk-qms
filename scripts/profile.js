@@ -147,7 +147,6 @@ async function confirmAndSaveProfile() {
   btn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
 
   if (data.success) {
-    // Capture old values BEFORE updating the DOM
     const oldFullName = document.getElementById("viewName").textContent;
     const oldEmail = document.getElementById("viewEmail").textContent;
 

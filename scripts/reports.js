@@ -223,7 +223,6 @@ function renderOfficePerformance(data) {
       tbody.appendChild(row);
     });
 
-    // Add sorting capability to table headers
     const headers = table.querySelectorAll("thead th");
     headers.forEach((header, index) => {
       header.style.cursor = "pointer";
@@ -241,13 +240,11 @@ function sortTable(table, columnIndex) {
     const aVal = a.querySelectorAll("td")[columnIndex].textContent.trim();
     const bVal = b.querySelectorAll("td")[columnIndex].textContent.trim();
 
-    // Try numeric sort first
     const aNum = parseFloat(aVal);
     const bNum = parseFloat(bVal);
     if (!isNaN(aNum) && !isNaN(bNum)) {
       return bNum - aNum;
     }
-    // Fall back to string sort
     return aVal.localeCompare(bVal);
   });
 
@@ -343,7 +340,6 @@ function renderDepartmentDemand(data) {
     if (emptyState) emptyState.style.display = "none";
     if (canvas) canvas.style.display = "";
 
-    // Green shades from the dashboard primary color
     const greenShades = [
       "#008b43",
       "#00a652",
@@ -557,7 +553,7 @@ async function fetchAndRenderDayBreakdown(from, to, officeId = null) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "day_of_week_volume", // make sure this matches
+        action: "day_of_week_volume",
         date_from: from,
         date_to: to,
         office_id: officeId,
@@ -565,7 +561,7 @@ async function fetchAndRenderDayBreakdown(from, to, officeId = null) {
       }),
     });
     const data = await res.json();
-    console.log("day_of_week_volume response:", data); // add this to debug
+    console.log("day_of_week_volume response:", data); 
     if (
       data.success &&
       data.day_of_week_volume &&
@@ -760,7 +756,6 @@ function applyFilters() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying…';
   btn.disabled = true;
 
-  // Fetch all admin reports
   Promise.all([
     fetchAndRenderDailyReport(from, to, officeId),
     fetchAndRenderOfficePerformance(from, to, officeId),
@@ -780,7 +775,6 @@ async function exportReport(type) {
   const btn = document.querySelector(".btn-export");
   const originalLabel = btn.innerHTML;
 
-  // Show loading state on the button
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating…';
   btn.disabled = true;
 
@@ -793,22 +787,21 @@ async function exportReport(type) {
       return;
     }
 
-    // Temporarily expand the container so nothing is clipped
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "visible";
 
     const canvas = await html2canvas(exportArea, {
-      scale: 2,                  // retina-quality render
+      scale: 2,
       useCORS: true,
       allowTaint: false,
-      backgroundColor: "#f4f7f5", // match your dashboard bg
+      backgroundColor: "#f4f7f5",
       scrollX: 0,
       scrollY: -window.scrollY,
       windowWidth: exportArea.scrollWidth,
       windowHeight: exportArea.scrollHeight,
       ignoreElements: (el) =>
-        el.classList.contains("btn-export") ||   // hide the export button itself
-        el.classList.contains("filter-actions"), // optionally hide filter buttons
+        el.classList.contains("btn-export") || 
+        el.classList.contains("filter-actions"),
     });
 
     document.body.style.overflow = originalOverflow;
@@ -820,13 +813,12 @@ async function exportReport(type) {
       format: "a4",
     });
 
-    const pageWidth  = pdf.internal.pageSize.getWidth();   // 210mm
-    const pageHeight = pdf.internal.pageSize.getHeight();  // 297mm
-    const margin     = 10; // mm
+    const pageWidth  = pdf.internal.pageSize.getWidth(); 
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin     = 10;
     const usableWidth  = pageWidth - margin * 2;
     const usableHeight = pageHeight - margin * 2;
 
-    // Scale image to fit the page width
     const imgWidthPx  = canvas.width;
     const imgHeightPx = canvas.height;
     const ratio       = usableWidth / (imgWidthPx / (canvas.width / usableWidth));
@@ -834,18 +826,15 @@ async function exportReport(type) {
     const imgWidthMm  = usableWidth;
     const imgHeightMm = (imgHeightPx / imgWidthPx) * imgWidthMm;
 
-    // If content is taller than one page, split across multiple pages
     let yOffset = 0;
 
     while (yOffset < imgHeightMm) {
       if (yOffset > 0) pdf.addPage();
 
-      // Clip what portion of the image to draw on this page
       const sliceHeightMm = Math.min(usableHeight, imgHeightMm - yOffset);
       const sliceHeightPx = (sliceHeightMm / imgHeightMm) * imgHeightPx;
       const sliceYPx      = (yOffset / imgHeightMm) * imgHeightPx;
 
-      // Create a temporary canvas for this slice
       const sliceCanvas = document.createElement("canvas");
       sliceCanvas.width  = imgWidthPx;
       sliceCanvas.height = Math.ceil(sliceHeightPx);
@@ -853,10 +842,10 @@ async function exportReport(type) {
       const sliceCtx = sliceCanvas.getContext("2d");
       sliceCtx.drawImage(
         canvas,
-        0, sliceYPx,            // source x, y
-        imgWidthPx, sliceHeightPx, // source w, h
-        0, 0,                   // dest x, y
-        imgWidthPx, sliceHeightPx  // dest w, h
+        0, sliceYPx,
+        imgWidthPx, sliceHeightPx, 
+        0, 0,                   
+        imgWidthPx, sliceHeightPx 
       );
 
       const sliceData = sliceCanvas.toDataURL("image/png");
@@ -865,7 +854,6 @@ async function exportReport(type) {
       yOffset += usableHeight;
     }
 
-    // Build a descriptive filename with today's date
     const dateFrom = document.getElementById("dateFrom")?.value || "";
     const dateTo   = document.getElementById("dateTo")?.value   || "";
     const suffix   = dateFrom === dateTo ? dateFrom : `${dateFrom}_to_${dateTo}`;

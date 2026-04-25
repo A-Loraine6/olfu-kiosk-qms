@@ -218,7 +218,6 @@ function selectOffice(o) {
   state.service = null;
   state.history = [1];
 
-  // Always check break / cut-off before proceeding, regardless of queue mode.
   const check = isOfficeAcceptingQueue(o);
   if (!check.ok) {
     showBlockedMessage(check.reason);
@@ -425,7 +424,6 @@ function resetKiosk() {
   renderOffices();
   resetIdle();
 }
-//olfu
 let idleTimer = null;
 const IDLE_MS = 60000;
 

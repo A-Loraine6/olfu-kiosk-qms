@@ -142,6 +142,7 @@ function getServiceById(mysqli $conn, int $serviceId): ?array
     $row['id']        = (int)  $row['id'];
     $row['office_id'] = $row['office_id'] !== null ? (int) $row['office_id'] : null;
     $row['is_active'] = (bool) $row['is_active'];
+    $row['assigned_windows'] = getWindowsForService($conn, $row['id']);
     return $row;
 }
 
@@ -174,7 +175,7 @@ function serviceNameExistsForOffice(
     return $found;
 }
 
-function addService(mysqli $conn, string $name, mixed $officeId, ?string $category, string $description): array
+function addService(mysqli $conn, string $name, mixed $officeId, ?string $category, string $description, array $windowNumbers = []): array
 {
     $name        = cleanStr($name);
     $officeId    = (int) $officeId;
@@ -205,6 +206,8 @@ function addService(mysqli $conn, string $name, mixed $officeId, ?string $catego
 
     if (!$ok) return serviceResponse(false, 'Failed to add service. Please try again.');
 
+    syncServiceWindows($conn, $newId, $officeId, $windowNumbers);
+
     logActivity(
         $conn,
         'SERVICE_ADD',
@@ -212,13 +215,13 @@ function addService(mysqli $conn, string $name, mixed $officeId, ?string $catego
         $newId,
         "Added new service \"$name\" for {$office['name']}",
         null,
-        ['name' => $name, 'category' => $category, 'description' => $description, 'office' => $office['name']]
+        ['name' => $name, 'category' => $category, 'description' => $description, 'office' => $office['name'], 'windows' => $windowNumbers]
     );
 
     return serviceResponse(true, "Service \"{$name}\" has been added successfully.", ['service_id' => $newId]);
 }
 
-function updateService(mysqli $conn, int $serviceId, string $name, mixed $officeId, ?string $category, string $description): array
+function updateService(mysqli $conn, int $serviceId, string $name, mixed $officeId, ?string $category, string $description, array $windowNumbers = []): array
 {
     $name        = cleanStr($name);
     $officeId    = (int) $officeId;
@@ -253,9 +256,11 @@ function updateService(mysqli $conn, int $serviceId, string $name, mixed $office
 
     if (!$ok) return serviceResponse(false, 'Failed to update service. Please try again.');
 
+    syncServiceWindows($conn, $serviceId, $officeId, $windowNumbers);
+
     [$before, $after] = diffSnapshot(
-        ['name' => $service['name'], 'category' => $service['category'], 'description' => $service['description'], 'office' => $service['office_name']],
-        ['name' => $name,            'category' => $category,            'description' => $description,            'office' => $office['name']]
+        ['name' => $service['name'], 'category' => $service['category'], 'description' => $service['description'], 'office' => $service['office_name'], 'windows' => $service['assigned_windows']],
+        ['name' => $name,            'category' => $category,            'description' => $description,            'office' => $office['name'], 'windows' => $windowNumbers]
     );
 
     if (!empty($before)) {
@@ -391,4 +396,47 @@ function getActiveServicesByOffice(mysqli $conn, int $officeId): array
         $rows[]    = $row;
     }
     return $rows;
+}
+
+function getWindowsForService(mysqli $conn, int $serviceId): array
+{
+    $stmt = $conn->prepare(
+        "SELECT window_number FROM service_windows WHERE service_id = ? ORDER BY window_number ASC"
+    );
+    if (!$stmt) return [];
+    $stmt->bind_param('i', $serviceId);
+    $stmt->execute();
+    $res  = $stmt->get_result();
+    $stmt->close();
+
+    $windows = [];
+    while ($row = $res->fetch_assoc()) {
+        $windows[] = (int) $row['window_number'];
+    }
+    return $windows;
+}
+
+function syncServiceWindows(mysqli $conn, int $serviceId, int $officeId, array $windowNumbers): bool
+{
+    $del = $conn->prepare("DELETE FROM service_windows WHERE service_id = ?");
+    if (!$del) return false;
+    $del->bind_param('i', $serviceId);
+    $del->execute();
+    $del->close();
+
+    if (empty($windowNumbers)) return true;
+
+    $ins = $conn->prepare(
+        "INSERT INTO service_windows (service_id, office_id, window_number) VALUES (?, ?, ?)"
+    );
+    if (!$ins) return false;
+
+    foreach ($windowNumbers as $wn) {
+        $wn = (int) $wn;
+        if ($wn < 1) continue;
+        $ins->bind_param('iii', $serviceId, $officeId, $wn);
+        $ins->execute();
+    }
+    $ins->close();
+    return true;
 }

@@ -98,6 +98,13 @@ if ($action === 'get_queue') {
     $typeFilter = (int) ($_POST['type_filter'] ?? 0);
     $queueMode  = getOfficeQueueMode($db, $officeId);
 
+    $stmt = $db->prepare("SELECT window_number, overflow_mode FROM users WHERE id = ? LIMIT 1");
+    $stmt->bind_param('i', $staffId);
+    $stmt->execute();
+    $staffData    = $stmt->get_result()->fetch_assoc();
+    $windowNumber = (int)  ($staffData['window_number'] ?? 0);
+    $overflowMode = (bool) ($staffData['overflow_mode']  ?? false);
+
     $statusMap = [
         'waiting' => ['waiting', 'serving'],
         'on-hold' => ['on-hold'],
@@ -107,14 +114,23 @@ if ($action === 'get_queue') {
     $statuses = $statusMap[$tab] ?? ['waiting'];
 
     $placeholders = implode(',', array_fill(0, count($statuses), '?'));
-    $types        = 'i' . str_repeat('s', count($statuses));
-    $params       = array_merge([$officeId], $statuses);
-
     $orderBy = ($tab === 'done') ? 'completed_at DESC' : 'created_at ASC';
-    $today = date('Y-m-d');
+    $today   = date('Y-m-d');
 
     $types  = 'is' . str_repeat('s', count($statuses));
     $params = array_merge([$officeId, $today], $statuses);
+
+    $windowClause = '';
+    if (!$overflowMode && $windowNumber > 0 && in_array($tab, ['waiting', 'on-hold', 'skipped'])) {
+        $windowClause = " AND EXISTS (
+            SELECT 1 FROM service_windows sw
+            LEFT JOIN transaction_types tt2 ON tt2.id = sw.service_id
+            WHERE tt2.name = t.transaction_type AND tt2.office_id = t.office_id
+              AND sw.window_number = ?
+        )";
+        $types   .= 'i';
+        $params[] = $windowNumber;
+    }
 
     $typeClause = '';
     if ($queueMode === 'service-based' && $typeFilter > 0) {
@@ -130,6 +146,7 @@ if ($action === 'get_queue') {
         WHERE t.office_id=?
           AND DATE(CONVERT_TZ(t.created_at, '+00:00', '+08:00')) = ?
           AND t.status IN ($placeholders)
+          $windowClause
           $typeClause
         ORDER BY $orderBy
         LIMIT 100";
@@ -139,13 +156,27 @@ if ($action === 'get_queue') {
     $stmt->execute();
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-    $stmt2 = $db->prepare("SELECT COUNT(*) AS cnt 
-                       FROM tickets 
-                       WHERE office_id=? 
-                         AND status='waiting'
-                         AND DATE(CONVERT_TZ(created_at, '+00:00', '+08:00')) = ?");
+    if (!$overflowMode && $windowNumber > 0) {
+        $stmt2 = $db->prepare("SELECT COUNT(*) AS cnt 
+            FROM tickets t
+            WHERE t.office_id = ?
+              AND t.status = 'waiting'
+              AND DATE(CONVERT_TZ(t.created_at, '+00:00', '+08:00')) = ?
+              AND EXISTS (
+                  SELECT 1 FROM service_windows sw
+                  LEFT JOIN transaction_types tt2 ON tt2.id = sw.service_id
+                  WHERE tt2.name = t.transaction_type AND tt2.office_id = t.office_id
+                    AND sw.window_number = ?
+              )");
+        $stmt2->bind_param('isi', $officeId, $today, $windowNumber);
+    } else {
+        $stmt2 = $db->prepare("SELECT COUNT(*) AS cnt 
+            FROM tickets 
+            WHERE office_id=? AND status='waiting'
+              AND DATE(CONVERT_TZ(created_at, '+00:00', '+08:00')) = ?");
+        $stmt2->bind_param('is', $officeId, $today);
+    }
 
-    $stmt2->bind_param('is', $officeId, $today);
     $stmt2->execute();
     $waitingCount = (int) $stmt2->get_result()->fetch_assoc()['cnt'];
 
@@ -160,38 +191,53 @@ if ($action === 'call_next') {
         respond(['success' => false, 'message' => 'You already have a ticket in progress.']);
     }
 
-    $typeFilter = (int) ($_POST['type_filter'] ?? 0);
-    $queueMode  = getOfficeQueueMode($db, $officeId);
+    $stmt = $db->prepare("SELECT window_number, overflow_mode FROM users WHERE id = ? LIMIT 1");
+    $stmt->bind_param('i', $staffId);
+    $stmt->execute();
+    $staffData    = $stmt->get_result()->fetch_assoc();
+    $windowNumber = (int)  ($staffData['window_number']  ?? 0);
+    $overflowMode = (bool) ($staffData['overflow_mode']  ?? false);
 
-    $typeClause = '';
-    $params     = [$officeId];
-    $types      = 'i';
-    if ($queueMode === 'service-based' && $typeFilter > 0) {
-        $typeClause = " AND transaction_type = (SELECT name FROM transaction_types WHERE id=? AND office_id=? LIMIT 1)";
-        $types  .= 'ii';
-        $params[] = $typeFilter;
-        $params[] = $officeId;
+    $today  = date('Y-m-d');
+    $params = [$officeId, $today];
+    $types  = 'is';
+
+    if (!$overflowMode && $windowNumber > 0) {
+        $sql = "SELECT t.*
+            FROM tickets t
+            LEFT JOIN transaction_types tt
+                ON tt.name = t.transaction_type AND tt.office_id = t.office_id
+            WHERE t.office_id = ?
+            AND t.status = 'waiting'
+            AND DATE(CONVERT_TZ(t.created_at, '+00:00', '+08:00')) = ?
+            AND EXISTS (
+                SELECT 1 FROM service_windows sw
+                WHERE sw.service_id = tt.id AND sw.window_number = ?
+            )
+            ORDER BY t.created_at ASC
+            LIMIT 1";
+        $types   .= 'i';
+        $params[] = $windowNumber;
+    } else {
+        $sql = "SELECT t.*
+                FROM tickets t
+                WHERE t.office_id = ?
+                  AND t.status = 'waiting'
+                  AND DATE(CONVERT_TZ(t.created_at, '+00:00', '+08:00')) = ?
+                ORDER BY t.created_at ASC
+                LIMIT 1";
     }
 
-    $today = date('Y-m-d');
-
-    $stmt = $db->prepare("SELECT * 
-                      FROM tickets 
-                      WHERE office_id=? 
-                        AND status='waiting'
-                        AND DATE(CONVERT_TZ(created_at, '+00:00', '+08:00')) = ?
-                        $typeClause 
-                      ORDER BY created_at ASC 
-                      LIMIT 1");
-
-    $types  = 'is' . substr($types, 1);
-    $params = array_merge([$officeId, $today], array_slice($params, 1));
+    $stmt = $db->prepare($sql);
     $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $ticket = $stmt->get_result()->fetch_assoc();
 
     if (!$ticket) {
-        respond(['success' => false, 'message' => 'No waiting tickets in queue.']);
+        $msg = $overflowMode
+            ? 'No waiting tickets in queue.'
+            : 'No waiting tickets for your window.';
+        respond(['success' => false, 'message' => $msg]);
     }
 
     $now  = date(DATETIME_FORMAT);
@@ -236,8 +282,8 @@ if ($action === 'skip_ticket') {
         respond(['success' => false, 'message' => 'Ticket not found or already processed.']);
     }
 
-    $stmt = $db->prepare("UPDATE tickets SET status='skipped' WHERE id=?");
-    $stmt->bind_param('i', $ticketId);
+    $stmt = $db->prepare("UPDATE tickets SET status='skipped', served_by=? WHERE id=?");
+    $stmt->bind_param('ii', $staffId, $ticketId);
     $stmt->execute();
 
     respond(['success' => true, 'message' => 'Ticket skipped.']);
@@ -319,6 +365,37 @@ if ($action === 'resume_ticket') {
     $ticket['status']    = 'serving';
     $ticket['served_at'] = $now;
     respond(['success' => true, 'ticket' => $ticket]);
+}
+
+if ($action === 'toggle_overflow') {
+    $stmt = $db->prepare("SELECT overflow_mode FROM users WHERE id = ?");
+    $stmt->bind_param('i', $staffId);
+    $stmt->execute();
+    $current  = (bool) $stmt->get_result()->fetch_assoc()['overflow_mode'];
+    $newMode  = $current ? 0 : 1;
+
+    $stmt = $db->prepare("UPDATE users SET overflow_mode = ? WHERE id = ?");
+    $stmt->bind_param('ii', $newMode, $staffId);
+    $stmt->execute();
+
+    respond([
+        'success'       => true,
+        'overflow_mode' => (bool) $newMode,
+        'message'       => $newMode
+            ? 'Overflow mode enabled — pulling from all services.'
+            : 'Back to your assigned services only.',
+    ]);
+}
+
+if ($action === 'get_overflow_state') {
+    $stmt = $db->prepare("SELECT overflow_mode FROM users WHERE id = ?");
+    $stmt->bind_param('i', $staffId);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    respond([
+        'success'       => true,
+        'overflow_mode' => (bool) ($row['overflow_mode'] ?? false),
+    ]);
 }
 
 respond(['success' => false, 'message' => 'Unknown action.']);
