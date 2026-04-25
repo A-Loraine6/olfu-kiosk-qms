@@ -62,21 +62,18 @@ if (!$activeOffice && !empty($offices)) {
                     </h2>
                 </div>
                 <div class="header-right">
-                    <!-- Save button for Schedule tab -->
                     <button type="button" id="headerSaveSchedule"
                         class="btn-primary header-save-btn"
                         style="<?php echo $activeTab !== 'schedule' ? 'display:none;' : ''; ?>"
                         onclick="document.getElementById('scheduleForm').requestSubmit()">
                         <i class="fas fa-save"></i> Save Schedule
                     </button>
-                    <!-- Save button for Queue tab -->
                     <button type="button" id="headerSaveQueue"
                         class="btn-primary header-save-btn"
                         style="<?php echo $activeTab !== 'queue' ? 'display:none;' : ''; ?>"
                         onclick="document.getElementById('queueForm').requestSubmit()">
                         <i class="fas fa-save"></i> Save Queue Config
                     </button>
-                    <!-- Save button for Kiosk tab -->
                     <button type="button" id="headerSaveKiosk"
                         class="btn-primary header-save-btn"
                         style="<?php echo $activeTab !== 'kiosk' ? 'display:none;' : ''; ?>"

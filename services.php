@@ -80,7 +80,6 @@ function getCategoryColor(?string $cat): string
                             <i class="fas fa-plus"></i> Add New Service
                         </button>
                     <?php endif; ?>
-
                 </div>
             </header>
 
@@ -120,8 +119,8 @@ function getCategoryColor(?string $cat): string
                             </div>
                         </div>
                     </div>
-                    <?php if (($currentUser['role'] ?? '') !== 'staff'): ?>
 
+                    <?php if (($currentUser['role'] ?? '') !== 'staff'): ?>
                         <h2 class="section-title"><i class="fas fa-building"></i> Office Queue Mode</h2>
                         <div class="office-mode-grid">
                             <?php foreach ($offices as $office): ?>
@@ -219,8 +218,7 @@ function getCategoryColor(?string $cat): string
                                 </tr>
                             </thead>
                             <tbody id="servicesTableBody">
-                                <?php
-                                if (empty($services)): ?>
+                                <?php if (empty($services)): ?>
                                     <tr>
                                         <td colspan="5">
                                             <div class="empty-state">
@@ -232,6 +230,7 @@ function getCategoryColor(?string $cat): string
                                     </tr>
                                 <?php else: ?>
                                     <?php foreach ($services as $svc): ?>
+                                        <?php $assignedWindows = getWindowsForService($db->getConnection(), $svc['id']); ?>
                                         <tr>
                                             <td>
                                                 <div class="service-name-cell">
@@ -239,6 +238,17 @@ function getCategoryColor(?string $cat): string
                                                         <div class="svc-name"><?php echo htmlspecialchars($svc['name']); ?></div>
                                                         <?php if ($svc['description']): ?>
                                                             <div class="svc-desc"><?php echo htmlspecialchars($svc['description']); ?></div>
+                                                        <?php endif; ?>
+                                                        <?php if (!empty($assignedWindows)): ?>
+                                                            <div class="svc-windows-hint">
+                                                                <i class="fas fa-desktop"></i>
+                                                                Windows: <?php echo implode(', ', $assignedWindows); ?>
+                                                            </div>
+                                                        <?php else: ?>
+                                                            <div class="svc-windows-hint svc-windows-all">
+                                                                <i class="fas fa-desktop"></i>
+                                                                All windows
+                                                            </div>
                                                         <?php endif; ?>
                                                     </div>
                                                 </div>
@@ -310,7 +320,7 @@ function getCategoryColor(?string $cat): string
 
             <div class="form-group">
                 <label for="add_office">Assigned Office <span class="required">*</span></label>
-                <select id="add_office">
+                <select id="add_office" onchange="loadServiceWindowCheckboxes('add_office', 'add_windows_list', 'add_windows_group', [])">
                     <option value="" disabled selected>Select office</option>
                     <?php foreach ($offices as $o): ?>
                         <option value="<?php echo $o['id']; ?>">
@@ -318,6 +328,15 @@ function getCategoryColor(?string $cat): string
                         </option>
                     <?php endforeach; ?>
                 </select>
+            </div>
+
+            <div class="form-group" id="add_windows_group" style="display:none;">
+                <label>Assign to Windows <span class="optional">(optional)</span></label>
+                <div class="window-checkbox-list" id="add_windows_list"></div>
+                <div class="form-hint">
+                    <i class="fas fa-info-circle"></i>
+                    Leave all unchecked to make available at all windows.
+                </div>
             </div>
 
             <div class="form-group">
@@ -355,12 +374,20 @@ function getCategoryColor(?string $cat): string
             </div>
             <div class="form-group">
                 <label for="edit_office">Assigned Office <span class="required">*</span></label>
-                <select id="edit_office">
+                <select id="edit_office" onchange="loadServiceWindowCheckboxes('edit_office', 'edit_windows_list', 'edit_windows_group', [])">
                     <option value="" disabled>Select Office</option>
                     <?php foreach ($offices as $o): ?>
                         <option value="<?php echo $o['id']; ?>"><?php echo htmlspecialchars($o['name']); ?></option>
                     <?php endforeach; ?>
                 </select>
+            </div>
+            <div class="form-group" id="edit_windows_group" style="display:none;">
+                <label>Assign to Windows <span class="optional">(optional)</span></label>
+                <div class="window-checkbox-list" id="edit_windows_list"></div>
+                <div class="form-hint">
+                    <i class="fas fa-info-circle"></i>
+                    Leave all unchecked to make available at all windows.
+                </div>
             </div>
             <div class="form-group">
                 <label for="edit_category">Category</label>

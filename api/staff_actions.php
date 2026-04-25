@@ -29,10 +29,13 @@ switch ($action) {
     case 'add_staff':
         $result = addStaff(
             $conn,
-            $input['full_name'] ?? '',
-            $input['email']     ?? '',
-            $input['password']  ?? '',
-            $input['office']    ?? ''
+            $input['full_name']     ?? '',
+            $input['email']         ?? '',
+            $input['password']      ?? '',
+            $input['office']        ?? '',
+            isset($input['window_number']) && $input['window_number'] !== ''
+                ? (int) $input['window_number']
+                : null
         );
         break;
 
@@ -40,11 +43,31 @@ switch ($action) {
         $result = updateStaff(
             $conn,
             (int) ($input['staff_id'] ?? 0),
-            $input['full_name'] ?? '',
-            $input['email']     ?? '',
-            $input['office']    ?? ''
+            $input['full_name']     ?? '',
+            $input['email']         ?? '',
+            $input['office']        ?? '',
+            isset($input['window_number']) && $input['window_number'] !== ''
+                ? (int) $input['window_number']
+                : null
         );
         break;
+
+    case 'get_windows_for_office':
+        $officeName = trim($input['office'] ?? '');
+        if (!$officeName) {
+            echo json_encode(['success' => false, 'message' => 'No office specified.']);
+            exit;
+        }
+        $wcStmt = $conn->prepare("SELECT window_count FROM offices WHERE name = ? LIMIT 1");
+        $wcStmt->bind_param('s', $officeName);
+        $wcStmt->execute();
+        $wcRow = $wcStmt->get_result()->fetch_assoc();
+        $wcStmt->close();
+        echo json_encode([
+            'success'      => (bool) $wcRow,
+            'window_count' => (int) ($wcRow['window_count'] ?? 1),
+        ]);
+        exit;
 
     case 'toggle_staff':
         $isActive = (bool) ($input['is_active'] ?? false);
@@ -148,6 +171,7 @@ function renderStaffRows(array $staff): void
             </td>
             <td><?php echo htmlspecialchars($member['email']); ?></td>
             <td><?php echo htmlspecialchars($member['office_name'] ?? '—'); ?></td>
+            <td><?php echo $member['window_number'] ? 'Window ' . (int)$member['window_number'] : '—'; ?></td>
             <td>
                 <span class="status-badge <?php echo $member['is_active'] ? 'status-active' : 'status-inactive'; ?>">
                     <?php echo $member['is_active'] ? 'Active' : 'Inactive'; ?>

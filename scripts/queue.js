@@ -26,7 +26,9 @@ function initQueue() {
   if (typeFilterEl) {
     typeFilterEl.value = typeFilterId;
   }
-  
+
+  loadOverflowState();
+
   loadActiveTicket().then(() => {
     loadAllTabCounts();
     loadQueue();
@@ -72,8 +74,10 @@ function registerKeyboardShortcuts() {
       e.target.tagName === "TEXTAREA"
     )
       return;
-    
-    const modalOpen = document.getElementById("confirmModal")?.classList.contains("show");
+
+    const modalOpen = document
+      .getElementById("confirmModal")
+      ?.classList.contains("show");
     if (modalOpen) {
       if (e.key === "Escape") {
         closeModal("confirmModal");
@@ -98,7 +102,9 @@ function registerKeyboardShortcuts() {
         return;
       }
       if (e.key === " ") {
-        if (document.activeElement === document.getElementById("confirmModalBtn")) {
+        if (
+          document.activeElement === document.getElementById("confirmModalBtn")
+        ) {
           confirmAction();
         } else {
           closeModal("confirmModal");
@@ -107,7 +113,7 @@ function registerKeyboardShortcuts() {
         return;
       }
     }
-    
+
     switch (e.key.toUpperCase()) {
       case "N":
         if (!currentTicket) callNext();
@@ -803,4 +809,49 @@ function timeAgoShort(isoDateStr) {
   } catch {
     return "—";
   }
+}
+
+async function loadOverflowState() {
+  try {
+    const res = await apiFetch("api/queue_handler.php", {
+      action: "get_overflow_state",
+      office_id: OFFICE_ID,
+    });
+    if (res.success) updateOverflowBtn(res.overflow_mode);
+  } catch (e) {
+    console.warn("loadOverflowState failed:", e);
+  }
+}
+
+async function toggleOverflow() {
+  const res = await apiFetch("api/queue_handler.php", {
+    action: "toggle_overflow",
+    office_id: OFFICE_ID,
+  });
+  if (res.success) {
+    updateOverflowBtn(res.overflow_mode);
+    showToast(res.message, "success");
+  } else {
+    showToast(res.message || "Failed to toggle overflow.", "error");
+  }
+}
+
+function updateOverflowBtn(isOverflow) {
+  const row = document.getElementById("overflowRow");
+  const desc = document.getElementById("overflowDesc");
+  const typeFilter = document.getElementById("typeFilter");
+  if (!row) return;
+
+  row.classList.toggle("overflow-active", isOverflow);
+  desc.textContent = isOverflow
+    ? "Pulling any waiting ticket in this office"
+    : "Pull tickets from your assigned window only";
+
+  if (typeFilter) {
+    typeFilter.value = "";
+    typeFilterId = "";
+  }
+
+  loadQueue();
+  loadAllTabCounts();
 }

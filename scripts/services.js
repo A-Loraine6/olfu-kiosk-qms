@@ -56,7 +56,6 @@ function updateTable(html) {
     tbody.innerHTML = html;
 
     tbody.style.opacity = "1";
-
   }, 150);
 }
 
@@ -215,12 +214,25 @@ document.addEventListener("click", function (e) {
 window.addEventListener("scroll", closeAllDropdowns, true);
 window.addEventListener("resize", closeAllDropdowns);
 
-function openEditServiceModal(svc) {
+async function openEditServiceModal(svc) {
   document.getElementById("edit_service_id").value = svc.id;
   document.getElementById("edit_name").value = svc.name;
   document.getElementById("edit_office").value = svc.office_id;
   document.getElementById("edit_category").value = svc.category || "";
   document.getElementById("edit_description").value = svc.description || "";
+
+  const winData = await ajax({
+    action: "get_windows_for_service",
+    service_id: svc.id,
+  });
+  const assigned = winData.success ? winData.windows : [];
+  await loadServiceWindowCheckboxes(
+    "edit_office",
+    "edit_windows_list",
+    "edit_windows_group",
+    assigned,
+  );
+
   openModal("editServiceModal");
 }
 
@@ -272,6 +284,7 @@ async function submitAddService() {
     office_id: document.getElementById("add_office").value,
     category: document.getElementById("add_category").value,
     description: document.getElementById("add_description").value,
+    windows: getCheckedWindows("add_windows_list"),
   });
   setBtnLoading(
     "addServiceBtn",
@@ -286,6 +299,8 @@ async function submitAddService() {
     );
     document.getElementById("add_office").selectedIndex = 0;
     document.getElementById("add_category").selectedIndex = 0;
+    document.getElementById("add_windows_list").innerHTML = "";
+    document.getElementById("add_windows_group").style.display = "none";
 
     updateTable(data.tableHtml);
     updateStats(data);
@@ -308,6 +323,7 @@ async function submitEditService() {
     office_id: document.getElementById("edit_office").value,
     category: document.getElementById("edit_category").value,
     description: document.getElementById("edit_description").value,
+    windows: getCheckedWindows("edit_windows_list"),
   });
   setBtnLoading(
     "editServiceBtn",
@@ -377,3 +393,55 @@ async function submitDeleteService() {
   }
 }
 
+async function loadServiceWindowCheckboxes(
+  officeSelectId,
+  listId,
+  groupId,
+  selectedWindows = [],
+) {
+  const officeId = document.getElementById(officeSelectId).value;
+  const list = document.getElementById(listId);
+  const group = document.getElementById(groupId);
+
+  list.innerHTML = "";
+
+  if (!officeId) {
+    group.style.display = "none";
+    return;
+  }
+
+  const data = await ajax({
+    action: "get_windows_for_office",
+    office_id: officeId,
+  });
+
+  if (!data.success || data.window_count < 1) {
+    group.style.display = "none";
+    return;
+  }
+
+  for (let i = 1; i <= data.window_count; i++) {
+    const checked = selectedWindows.includes(i) ? "checked" : "";
+    list.innerHTML += `
+        <label class="window-chip">
+            <input type="checkbox" name="window" value="${i}" ${checked}>
+            <span>
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="0.5" y="1.5" width="10" height="7" rx="1" stroke="currentColor" stroke-width="1.2"/>
+                    <rect x="3" y="8.5" width="5" height="1" rx="0.5" fill="currentColor"/>
+                    <rect x="4.5" y="9.5" width="2" height="1" rx="0.5" fill="currentColor"/>
+                </svg>
+                ${i}
+            </span>
+        </label>
+    `;
+  }
+
+  group.style.display = "";
+}
+
+function getCheckedWindows(listId) {
+  return [
+    ...document.querySelectorAll(`#${listId} input[name="window"]:checked`),
+  ].map((cb) => parseInt(cb.value));
+}
