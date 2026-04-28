@@ -179,7 +179,7 @@ $kioskEnabled = (bool)($kioskSettings['kiosk_enabled'] ?? true);
 
                             <div class="ticket-stats">
                                 <div>
-                                    <div class="stat-label">People Ahead</div>
+                                    <div class="stat-label">Position in Queue</div>
                                     <div class="stat-value" id="s4PeopleAhead">—</div>
                                 </div>
                                 <div>

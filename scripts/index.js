@@ -356,11 +356,12 @@ function showTicket(data) {
     ? s.name
     : "General Queue";
   document.getElementById("s4TicketNumber").textContent = data.ticket_number;
-  document.getElementById("s4PeopleAhead").textContent = data.people_ahead ?? "—";
+  const position = (data.people_ahead ?? 0) + 1;
+document.getElementById("s4PeopleAhead").textContent = position;
 
-  const mins = (data.people_ahead ?? 0) * 5;
-  document.getElementById("s4WaitTime").textContent =
-    mins === 0 ? "Now" : `~${mins}m`;
+const mins = (data.people_ahead ?? 0) * 5;
+document.getElementById("s4WaitTime").textContent =
+  mins === 0 ? "Now" : `~${mins}m`;
 
   document.getElementById("qrCode").innerHTML = "";
   new QRCode(document.getElementById("qrCode"), {
