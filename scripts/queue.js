@@ -11,7 +11,7 @@ let newBadgeTimeout = null;
 
 const AUTO_REFRESH_MS = 15000;
 const TIMER_WARN_SECS = 300;
-
+//di ko madebug
 document.addEventListener("DOMContentLoaded", () => {
   updateClock();
   setInterval(updateClock, 1000);
