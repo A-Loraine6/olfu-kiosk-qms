@@ -54,20 +54,22 @@ if ($action === 'get_stats') {
 
     $stmt = $db->prepare("SELECT COUNT(*) AS cnt FROM tickets 
                           WHERE office_id=? AND status='completed' 
-                          AND DATE(CONVERT_TZ(completed_at, '+00:00', '+08:00')) = ?");
+                          AND DATE(completed_at) = ?");
     $stmt->bind_param('is', $officeId, $today);
     $stmt->execute();
     $served = (int) $stmt->get_result()->fetch_assoc()['cnt'];
 
     $stmt = $db->prepare("SELECT COUNT(*) AS cnt FROM tickets 
                           WHERE office_id=? AND status='skipped' 
-                          AND DATE(CONVERT_TZ(created_at, '+00:00', '+08:00')) = ?");
+                          AND DATE(created_at) = ?");
     $stmt->bind_param('is', $officeId, $today);
     $stmt->execute();
     $skipped = (int) $stmt->get_result()->fetch_assoc()['cnt'];
 
-    $stmt = $db->prepare("SELECT COUNT(*) AS cnt FROM tickets WHERE office_id=? AND status='waiting'");
-    $stmt->bind_param('i', $officeId);
+    $stmt = $db->prepare("SELECT COUNT(*) AS cnt FROM tickets
+                          WHERE office_id=? AND status='waiting'
+                          AND DATE(created_at) = ?");
+    $stmt->bind_param('is', $officeId, $today);
     $stmt->execute();
     $waiting = (int) $stmt->get_result()->fetch_assoc()['cnt'];
 
@@ -75,7 +77,7 @@ if ($action === 'get_stats') {
                            FROM tickets
                            WHERE office_id=? AND status='completed'
                              AND served_at IS NOT NULL AND completed_at IS NOT NULL
-                             AND DATE(CONVERT_TZ(completed_at, '+00:00', '+08:00')) = ?");
+                             AND DATE(completed_at) = ?");
     $stmt->bind_param('is', $officeId, $today);
     $stmt->execute();
     $avgRow  = $stmt->get_result()->fetch_assoc();
@@ -144,7 +146,7 @@ if ($action === 'get_queue') {
         FROM tickets t
         LEFT JOIN users u ON t.served_by = u.id
         WHERE t.office_id=?
-          AND DATE(CONVERT_TZ(t.created_at, '+00:00', '+08:00')) = ?
+          AND DATE(t.created_at) = ?
           AND t.status IN ($placeholders)
           $windowClause
           $typeClause
@@ -161,7 +163,7 @@ if ($action === 'get_queue') {
             FROM tickets t
             WHERE t.office_id = ?
               AND t.status = 'waiting'
-              AND DATE(CONVERT_TZ(t.created_at, '+00:00', '+08:00')) = ?
+              AND DATE(t.created_at) = ?
               AND EXISTS (
                   SELECT 1 FROM service_windows sw
                   LEFT JOIN transaction_types tt2 ON tt2.id = sw.service_id
@@ -173,7 +175,7 @@ if ($action === 'get_queue') {
         $stmt2 = $db->prepare("SELECT COUNT(*) AS cnt 
             FROM tickets 
             WHERE office_id=? AND status='waiting'
-              AND DATE(CONVERT_TZ(created_at, '+00:00', '+08:00')) = ?");
+              AND DATE(created_at) = ?");
         $stmt2->bind_param('is', $officeId, $today);
     }
 
@@ -209,7 +211,7 @@ if ($action === 'call_next') {
                 ON tt.name = t.transaction_type AND tt.office_id = t.office_id
             WHERE t.office_id = ?
             AND t.status = 'waiting'
-            AND DATE(CONVERT_TZ(t.created_at, '+00:00', '+08:00')) = ?
+            AND DATE(t.created_at) = ?
             AND EXISTS (
                 SELECT 1 FROM service_windows sw
                 WHERE sw.service_id = tt.id AND sw.window_number = ?
@@ -223,7 +225,7 @@ if ($action === 'call_next') {
                 FROM tickets t
                 WHERE t.office_id = ?
                   AND t.status = 'waiting'
-                  AND DATE(CONVERT_TZ(t.created_at, '+00:00', '+08:00')) = ?
+                  AND DATE(t.created_at) = ?
                 ORDER BY t.created_at ASC
                 LIMIT 1";
     }
