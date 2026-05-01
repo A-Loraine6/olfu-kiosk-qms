@@ -48,8 +48,8 @@ foreach ($offices as $office) {
         'prefix'     => $office['queue_prefix'],
         'waiting'    => $waitingCounts[$office['id']] ?? 0,
         'services'   => $servicesByOffice[$office['id']] ?? [],
-        'open_time'  => $office['open_time'],   // ← add
-        'close_time' => $office['close_time'],  // ← add
+        'open_time'  => $office['open_time'],
+        'close_time' => $office['close_time'],
     ];
 }
 

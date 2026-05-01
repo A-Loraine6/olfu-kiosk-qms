@@ -112,7 +112,6 @@ if ($action === 'daily_report') {
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
 
-    // Previous period for comparison (same length)
     $from_dt = new DateTime($from);
     $to_dt = new DateTime($to);
     $interval = $from_dt->diff($to_dt)->days + 1;

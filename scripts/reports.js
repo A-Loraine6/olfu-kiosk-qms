@@ -223,7 +223,6 @@ function renderOfficePerformance(data) {
       tbody.appendChild(row);
     });
 
-    // Add sorting capability to table headers
     const headers = table.querySelectorAll("thead th");
     headers.forEach((header, index) => {
       header.style.cursor = "pointer";
@@ -241,13 +240,11 @@ function sortTable(table, columnIndex) {
     const aVal = a.querySelectorAll("td")[columnIndex].textContent.trim();
     const bVal = b.querySelectorAll("td")[columnIndex].textContent.trim();
 
-    // Try numeric sort first
     const aNum = parseFloat(aVal);
     const bNum = parseFloat(bVal);
     if (!isNaN(aNum) && !isNaN(bNum)) {
       return bNum - aNum;
     }
-    // Fall back to string sort
     return aVal.localeCompare(bVal);
   });
 
@@ -343,7 +340,6 @@ function renderDepartmentDemand(data) {
     if (emptyState) emptyState.style.display = "none";
     if (canvas) canvas.style.display = "";
 
-    // Green shades from the dashboard primary color
     const greenShades = [
       "#008b43",
       "#00a652",
@@ -557,7 +553,7 @@ async function fetchAndRenderDayBreakdown(from, to, officeId = null) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        action: "day_of_week_volume", // make sure this matches
+        action: "day_of_week_volume",
         date_from: from,
         date_to: to,
         office_id: officeId,
@@ -565,7 +561,7 @@ async function fetchAndRenderDayBreakdown(from, to, officeId = null) {
       }),
     });
     const data = await res.json();
-    console.log("day_of_week_volume response:", data); // add this to debug
+    console.log("day_of_week_volume response:", data);
     if (
       data.success &&
       data.day_of_week_volume &&
@@ -760,7 +756,6 @@ function applyFilters() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying…';
   btn.disabled = true;
 
-  // Fetch all admin reports
   Promise.all([
     fetchAndRenderDailyReport(from, to, officeId),
     fetchAndRenderOfficePerformance(from, to, officeId),

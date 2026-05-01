@@ -71,11 +71,16 @@ if ($action === 'get_stats') {
     $stmt->execute();
     $waiting = (int) $stmt->get_result()->fetch_assoc()['cnt'];
 
-    $stmt = $db->prepare("SELECT AVG(TIMESTAMPDIFF(SECOND, served_at, completed_at)) AS avg_s
-                           FROM tickets
-                           WHERE office_id=? AND status='completed'
-                             AND served_at IS NOT NULL AND completed_at IS NOT NULL
-                             AND DATE(CONVERT_TZ(completed_at, '+00:00', '+08:00')) = ?");
+    $stmt = $db->prepare("
+        SELECT AVG(
+            COALESCE(time_spent, 0) +
+            TIMESTAMPDIFF(SECOND, served_at, completed_at)
+        ) AS avg_s
+        FROM tickets
+        WHERE office_id=? AND status='completed'
+          AND served_at IS NOT NULL AND completed_at IS NOT NULL
+          AND DATE(CONVERT_TZ(completed_at, '+00:00', '+08:00')) = ?
+    ");
     $stmt->bind_param('is', $officeId, $today);
     $stmt->execute();
     $avgRow  = $stmt->get_result()->fetch_assoc();
@@ -285,9 +290,14 @@ if ($action === 'hold_ticket') {
         respond(['success' => false, 'message' => 'Ticket not found or not in serving status.']);
     }
 
-    $now  = date(DATETIME_FORMAT);
-    $stmt = $db->prepare("UPDATE tickets SET status='on-hold', on_hold_at=? WHERE id=?");
-    $stmt->bind_param('si', $now, $ticketId);
+    $servedAt   = new DateTime($ticket['served_at']);
+    $now        = new DateTime();
+    $elapsed    = max(0, $now->getTimestamp() - $servedAt->getTimestamp());
+    $newSpent   = (int)($ticket['time_spent'] ?? 0) + $elapsed;
+    $nowStr     = date(DATETIME_FORMAT);
+
+    $stmt = $db->prepare("UPDATE tickets SET status='on-hold', on_hold_at=?, time_spent=? WHERE id=?");
+    $stmt->bind_param('sii', $nowStr, $newSpent, $ticketId);
     $stmt->execute();
 
     respond(['success' => true, 'message' => 'Ticket placed on hold. Queue number: ' . $ticket['ticket_number']]);

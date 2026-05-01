@@ -26,7 +26,7 @@ function initQueue() {
   if (typeFilterEl) {
     typeFilterEl.value = typeFilterId;
   }
-  
+
   loadActiveTicket().then(() => {
     loadAllTabCounts();
     loadQueue();
@@ -72,8 +72,10 @@ function registerKeyboardShortcuts() {
       e.target.tagName === "TEXTAREA"
     )
       return;
-    
-    const modalOpen = document.getElementById("confirmModal")?.classList.contains("show");
+
+    const modalOpen = document
+      .getElementById("confirmModal")
+      ?.classList.contains("show");
     if (modalOpen) {
       if (e.key === "Escape") {
         closeModal("confirmModal");
@@ -98,7 +100,9 @@ function registerKeyboardShortcuts() {
         return;
       }
       if (e.key === " ") {
-        if (document.activeElement === document.getElementById("confirmModalBtn")) {
+        if (
+          document.activeElement === document.getElementById("confirmModalBtn")
+        ) {
           confirmAction();
         } else {
           closeModal("confirmModal");
@@ -107,7 +111,7 @@ function registerKeyboardShortcuts() {
         return;
       }
     }
-    
+
     switch (e.key.toUpperCase()) {
       case "N":
         if (!currentTicket) callNext();
@@ -468,7 +472,10 @@ async function resumeTicket(ticketId) {
     });
     if (res.success && res.ticket) {
       currentTicket = res.ticket;
-      serveStartTime = new Date();
+
+      const alreadySpent = parseInt(res.ticket.time_spent ?? 0, 10);
+      serveStartTime = new Date(Date.now() - alreadySpent * 1000);
+
       renderServingCard(res.ticket, true);
       startTimer();
       showToast(`Resuming ${res.ticket.ticket_number}`, "success");

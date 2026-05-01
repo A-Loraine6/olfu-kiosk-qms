@@ -162,10 +162,10 @@ function renderOffices() {
   OFFICES.forEach((o) => {
     const w = o.waiting;
     const icon = ICONS[o.code] || "fa-building";
-    const closed = isOfficeClosed(o); // ← add this
+    const closed = isOfficeClosed(o);
     const btn = document.createElement("button");
     btn.className = "office-card" + (closed ? " office-closed" : "");
-    btn.disabled = closed; // ← disable if closed
+    btn.disabled = closed;
     btn.innerHTML = `
     <div class="office-icon"><i class="fas ${icon}"></i></div>
     <div class="office-name">${esc(o.name)}</div>
@@ -449,7 +449,6 @@ if (!KIOSK_ENABLED) {
       </p>
     </div>
   `;
-  // Stop all further execution
   throw new Error("Kiosk disabled");
 }
 
