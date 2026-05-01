@@ -494,6 +494,8 @@ body {
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card);
   animation: slideUp 0.4s var(--ease) 0.18s both;
+  max-height: 380px;
+  overflow: hidden;
 }
 
 .chart-title {
@@ -520,7 +522,8 @@ body {
 }
 
 .chart-canvas {
-  max-height: 300px;
+  max-height: 220px;
+  height: 220px;
   display: flex;
   align-items: center;
   justify-content: center;
