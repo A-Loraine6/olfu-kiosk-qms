@@ -25,6 +25,8 @@ $services    = ($currentUser['role'] === 'staff')
 $totalServices  = count($services);
 $activeServices = count(array_filter($services, fn($s) => $s['is_active']));
 
+$pageLimit = 10;
+
 $servicesByOffice = [];
 foreach ($services as $svc) {
     $servicesByOffice[$svc['office_id']][] = $svc;
@@ -229,7 +231,7 @@ function getCategoryColor(?string $cat): string
                                         </td>
                                     </tr>
                                 <?php else: ?>
-                                    <?php foreach ($services as $svc): ?>
+                                    <?php foreach (array_slice($services, 0, $pageLimit) as $svc): ?>
                                         <?php $assignedWindows = getWindowsForService($db->getConnection(), $svc['id']); ?>
                                         <tr>
                                             <td>
@@ -297,6 +299,11 @@ function getCategoryColor(?string $cat): string
 
                         <div class="table-loading" id="tableLoading">
                             <div class="table-spinner"></div>
+                        </div>
+
+                        <div class="pagination-bar" id="paginationBar">
+                            <div class="pagination-info" id="paginationInfo"></div>
+                            <div class="pagination-controls" id="paginationControls"></div>
                         </div>
                     </div>
 
@@ -448,6 +455,8 @@ function getCategoryColor(?string $cat): string
     <script src="scripts/modal-shortcuts.js"></script>
     <script>
         const CSRF_TOKEN = <?php echo json_encode($csrf_token); ?>;
+        const PAGINATION_LIMIT = <?php echo (int)$pageLimit; ?>;
+        const TOTAL_SERVICES = <?php echo (int)$totalServices; ?>;
     </script>
 
 </body>

@@ -100,6 +100,10 @@ switch ($action) {
         $filterOffice = $isStaff ? $staffOffice : (int) ($input['office'] ?? 0);
         $filterStatus = $input['status'] ?? '';
 
+        $page  = max(1, (int) ($input['page']  ?? 1));
+        $limit = (int) ($input['limit'] ?? 10);
+        if (!in_array($limit, [10, 25, 50, 100])) $limit = 10;
+
         $filtered = array_filter($services, function ($s) use ($search, $filterOffice, $filterStatus) {
             if ($filterOffice && $s['office_id'] !== $filterOffice) return false;
             if ($filterStatus === 'active'   && !$s['is_active'])   return false;
@@ -115,14 +119,24 @@ switch ($action) {
             return true;
         });
 
+        $filtered     = array_values($filtered);
+        $totalCount   = count($filtered);
+        $totalPages   = $limit > 0 ? (int) ceil($totalCount / $limit) : 1;
+        $page         = min($page, max(1, $totalPages));
+        $offset       = ($page - 1) * $limit;
+        $paginated    = array_slice($filtered, $offset, $limit);
+
         ob_start();
-        renderServiceRows(array_values($filtered), $isStaff, $conn);
+        renderServiceRows($paginated, $isStaff, $conn);
         $html = ob_get_clean();
 
         echo json_encode([
-            'success' => true,
-            'html'    => $html,
-            'count'   => count($filtered),
+            'success'    => true,
+            'html'       => $html,
+            'count'      => $totalCount,
+            'page'       => $page,
+            'totalPages' => $totalPages,
+            'limit'      => $limit,
         ]);
         exit;
 
@@ -136,14 +150,22 @@ if ($result['success']) {
     $totalServices  = count($services);
     $activeServices = count(array_filter($services, fn($s) => $s['is_active']));
 
+    $limit      = 10;
+    $paginated  = array_slice($services, 0, $limit);
+    $totalPages = (int) ceil($totalServices / $limit);
+
     ob_start();
-    renderServiceRows($services, $isStaff, $conn);
+    renderServiceRows($paginated, $isStaff, $conn);
     $tableHtml = ob_get_clean();
 
     $result['tableHtml']        = $tableHtml;
     $result['totalServices']    = $totalServices;
     $result['activeServices']   = $activeServices;
     $result['inactiveServices'] = $totalServices - $activeServices;
+    $result['count']            = $totalServices;
+    $result['page']             = 1;
+    $result['totalPages']       = $totalPages;
+    $result['limit']            = $limit;
 }
 
 echo json_encode($result);
