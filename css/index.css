@@ -180,6 +180,7 @@ body {
 }
 
 .screen-head {
+  position: relative;
   flex-shrink: 0;
   padding: 36px 48px 28px;
   text-align: center;
@@ -507,7 +508,6 @@ body {
   font-size: 16px;
   font-weight: 700;
   color: var(--green-700);
-  margin-bottom: 28px;
 }
 
 .service-grid {
@@ -1223,9 +1223,53 @@ body {
   color: #64748b;
 }
 
+.screen-head-with-nav {
+  position: relative; /* add this */
+  display: flex;
+  align-items: center; /* change from flex-start */
+  justify-content: center;
+  padding: 36px 48px 28px !important;
+}
+
+.btn-nav-back {
+  position: absolute;
+  left: 48px;
+  top: 50%;
+  padding: 12px 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--green-700);
+  font-family: var(--font);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all var(--t) var(--ease);
+  /* remove margin-top: 24px */
+}
+
 @media (max-width: 600px) {
   .screen-head {
     padding: 20px 20px 14px;
+  }
+
+  .screen-head-with-nav {
+    padding: 16px 20px 14px !important;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .screen-head-with-nav > div:nth-child(2) {
+    flex-basis: 100%;
+  }
+
+  .btn-nav-back {
+    margin-top: 0;
+    padding: 10px 16px;
+    font-size: 14px;
   }
 
   .screen-body {
