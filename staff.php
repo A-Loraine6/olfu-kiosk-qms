@@ -128,7 +128,7 @@ $inactiveStaff = $totalStaff - $activeStaff;
                             <tbody id="staffTableBody">
                                 <?php if (empty($staff)): ?>
                                     <tr>
-                                        <td colspan="5">
+                                        <td colspan="6">
                                             <div class="empty-state">
                                                 <div class="empty-state-icon"><i class="fas fa-users"></i></div>
                                                 <div class="empty-state-title">No staff found</div>

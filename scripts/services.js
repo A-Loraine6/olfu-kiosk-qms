@@ -1,16 +1,21 @@
 const AJAX_URL = "api/service_actions.php";
 let currentRequest = 0;
 
+let currentPage = 1;
+let currentLimit =
+  typeof PAGINATION_LIMIT !== "undefined" ? PAGINATION_LIMIT : 10;
+let currentTotal = typeof TOTAL_SERVICES !== "undefined" ? TOTAL_SERVICES : 0;
+let currentTotalPages = Math.ceil(currentTotal / currentLimit) || 1;
+
+document.addEventListener("DOMContentLoaded", () => {
+  fetchFilteredRows();
+});
+
 async function ajax(payload) {
   const res = await fetch(AJAX_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      ...payload,
-      csrf_token: CSRF_TOKEN,
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...payload, csrf_token: CSRF_TOKEN }),
   });
   return res.json();
 }
@@ -19,13 +24,12 @@ function showToast(message, type = "success") {
   const container = document.getElementById("toast-container");
   const toast = document.createElement("div");
   const icon = type === "success" ? "fa-check-circle" : "fa-exclamation-circle";
-
   toast.className = `toast toast-${type}`;
   toast.innerHTML = `
-            <i class="fas ${icon}"></i>
-            <span>${message}</span>
-            <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
-        `;
+    <i class="fas ${icon}"></i>
+    <span>${message}</span>
+    <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
+  `;
   container.appendChild(toast);
   requestAnimationFrame(() => toast.classList.add("show"));
   setTimeout(() => {
@@ -48,13 +52,10 @@ function updateStats(data) {
 
 function updateTable(html) {
   const tbody = document.getElementById("servicesTableBody");
-
   tbody.style.transition = "opacity 0.2s ease";
   tbody.style.opacity = "0";
-
   setTimeout(() => {
     tbody.innerHTML = html;
-
     tbody.style.opacity = "1";
   }, 150);
 }
@@ -63,7 +64,6 @@ function setTableLoading(on) {
   const el = document.getElementById("tableLoading");
   if (!el) return;
   el.style.transition = "opacity 0.2s ease";
-
   if (on) {
     el.style.display = "flex";
     requestAnimationFrame(() => (el.style.opacity = "1"));
@@ -73,9 +73,121 @@ function setTableLoading(on) {
   }
 }
 
+function updateResultCount(total, limit, page) {
+  const el = document.getElementById("resultCount");
+  if (!el) return;
+  if (total === 0) {
+    el.textContent = "No results";
+    return;
+  }
+  const from = (page - 1) * limit + 1;
+  const to = Math.min(page * limit, total);
+  el.textContent = `${from}–${to} of ${total}`;
+}
+
+function renderPagination(page, totalPages, total, limit) {
+  const bar = document.getElementById("paginationBar");
+  const infoEl = document.getElementById("paginationInfo");
+  const ctrlEl = document.getElementById("paginationControls");
+  if (!bar || !infoEl || !ctrlEl) return;
+
+  bar.style.display = totalPages <= 1 && total <= limit ? "none" : "flex";
+
+  const from = total === 0 ? 0 : (page - 1) * limit + 1;
+  const to = Math.min(page * limit, total);
+  infoEl.textContent =
+    total === 0
+      ? "No results"
+      : `Showing ${from}–${to} of ${total} service${total !== 1 ? "s" : ""}`;
+
+  ctrlEl.innerHTML = "";
+
+  const btn = (label, title, disabled, active, onClick) => {
+    const b = document.createElement("button");
+    b.className = active ? "active" : "";
+    b.title = title;
+    b.disabled = disabled;
+    b.innerHTML = label;
+    if (!disabled) b.addEventListener("click", onClick);
+    return b;
+  };
+
+  ctrlEl.appendChild(
+    btn(
+      '<i class="fas fa-chevron-left"></i>',
+      "Previous page",
+      page <= 1,
+      false,
+      () => goToPage(page - 1),
+    ),
+  );
+
+  const pages = buildPageList(page, totalPages);
+  pages.forEach((p) => {
+    if (p === "…") {
+      const ellipsisBtn = document.createElement("button");
+      ellipsisBtn.className = "ellipsis";
+      ellipsisBtn.textContent = "…";
+      ctrlEl.appendChild(ellipsisBtn);
+    } else {
+      ctrlEl.appendChild(
+        btn(p, `Page ${p}`, false, p === page, () => goToPage(p)),
+      );
+    }
+  });
+
+  ctrlEl.appendChild(
+    btn(
+      '<i class="fas fa-chevron-right"></i>',
+      "Next page",
+      page >= totalPages,
+      false,
+      () => goToPage(page + 1),
+    ),
+  );
+}
+
+function buildPageList(current, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+
+  const pages = [];
+  const addPage = (p) => {
+    if (!pages.includes(p)) pages.push(p);
+  };
+  const addEllipsis = () => {
+    if (pages[pages.length - 1] !== "…") pages.push("…");
+  };
+
+  addPage(1);
+  if (current > 3) addEllipsis();
+  for (
+    let p = Math.max(2, current - 1);
+    p <= Math.min(total - 1, current + 1);
+    p++
+  )
+    addPage(p);
+  if (current < total - 2) addEllipsis();
+  addPage(total);
+
+  return pages;
+}
+
+function goToPage(page) {
+  currentPage = page;
+  fetchFilteredRows();
+}
+
+function changePageLimit() {
+  const sel = document.getElementById("pageLimitSelect");
+  if (sel) currentLimit = parseInt(sel.value, 10);
+  currentPage = 1;
+  fetchFilteredRows();
+}
+
 let searchDebounce;
 
 function applyFilters() {
+  currentPage = 1;
   clearTimeout(searchDebounce);
   searchDebounce = setTimeout(fetchFilteredRows, 250);
 }
@@ -83,6 +195,7 @@ function applyFilters() {
 document.getElementById("searchInput").addEventListener("input", function () {
   const clearBtn = document.getElementById("searchClear");
   clearBtn.style.opacity = this.value ? "1" : "0";
+  currentPage = 1;
   clearTimeout(searchDebounce);
   searchDebounce = setTimeout(fetchFilteredRows, 280);
 });
@@ -90,12 +203,12 @@ document.getElementById("searchInput").addEventListener("input", function () {
 function clearSearch() {
   document.getElementById("searchInput").value = "";
   document.getElementById("searchClear").style.opacity = "0";
+  currentPage = 1;
   fetchFilteredRows();
 }
 
 async function fetchFilteredRows() {
   const requestId = ++currentRequest;
-
   setTableLoading(true);
 
   const data = await ajax({
@@ -103,14 +216,26 @@ async function fetchFilteredRows() {
     search: document.getElementById("searchInput").value,
     office: document.getElementById("filterOffice").value,
     status: document.getElementById("filterStatus").value,
+    page: currentPage,
+    limit: currentLimit,
   });
 
   if (requestId !== currentRequest) return;
-
   setTableLoading(false);
 
   if (data.success) {
+    currentTotal = data.count;
+    currentTotalPages = data.totalPages;
+    currentPage = data.page;
+
     updateTable(data.html);
+    updateResultCount(currentTotal, currentLimit, currentPage);
+    renderPagination(
+      currentPage,
+      currentTotalPages,
+      currentTotal,
+      currentLimit,
+    );
   }
 }
 
@@ -118,10 +243,7 @@ async function toggleQueueMode(officeId, btn) {
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
-  const data = await ajax({
-    action: "toggle_queue_mode",
-    office_id: officeId,
-  });
+  const data = await ajax({ action: "toggle_queue_mode", office_id: officeId });
 
   btn.disabled = false;
   btn.innerHTML = '<i class="fas fa-exchange-alt"></i>';
@@ -130,14 +252,12 @@ async function toggleQueueMode(officeId, btn) {
     const isServiceBased = data.message.includes("Service-Based");
     const label = document.getElementById(`office-mode-label-${officeId}`);
     const desc = document.getElementById(`office-mode-desc-${officeId}`);
-
     label.textContent = isServiceBased ? "Service-Based" : "Unified";
     label.className =
       "queue-mode-value " + (isServiceBased ? "mode-service" : "mode-unified");
     desc.textContent = isServiceBased
       ? "Kiosk shows service selection before issuing a number."
       : "Kiosk issues a number directly without service selection.";
-
     showToast(data.message, "success");
   } else {
     showToast(data.message, "error");
@@ -147,17 +267,13 @@ async function toggleQueueMode(officeId, btn) {
 function openModal(id) {
   const modal = document.getElementById(id);
   modal.style.display = "flex";
-  requestAnimationFrame(() => {
-    modal.classList.add("show");
-  });
+  requestAnimationFrame(() => modal.classList.add("show"));
 }
 
 function closeModal(id) {
   const modal = document.getElementById(id);
   modal.classList.remove("show");
-  setTimeout(() => {
-    modal.style.display = "none";
-  }, 300);
+  setTimeout(() => (modal.style.display = "none"), 300);
 }
 
 document.querySelectorAll(".modal").forEach((m) => {
@@ -167,33 +283,14 @@ document.querySelectorAll(".modal").forEach((m) => {
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
-    document.querySelectorAll(".modal.show").forEach((m) => {
-      closeModal(m.id);
-    });
+    document.querySelectorAll(".modal.show").forEach((m) => closeModal(m.id));
   }
 });
 
-function positionDropdown(toggle) {
-  const menu = toggle.closest(".dropdown").querySelector(".dropdown-menu");
-  const rect = toggle.getBoundingClientRect();
-  const items = menu.querySelectorAll("button").length;
-  const menuH = items * 41 + 16;
-  const spaceBelow = window.innerHeight - rect.bottom;
-  const openUp = spaceBelow < menuH;
-
-  menu.style.position = "fixed";
-  menu.style.right = window.innerWidth - rect.right + "px";
-  menu.style.minWidth = "160px";
-  menu.style.top = openUp ? "auto" : rect.bottom + 4 + "px";
-  menu.style.bottom = openUp
-    ? window.innerHeight - rect.top + 4 + "px"
-    : "auto";
-}
-
 function closeAllDropdowns() {
-  document.querySelectorAll(".dropdown.active").forEach((d) => {
-    d.classList.remove("active");
-  });
+  document
+    .querySelectorAll(".dropdown.active")
+    .forEach((d) => d.classList.remove("active"));
 }
 
 document.addEventListener("click", function (e) {
@@ -202,9 +299,7 @@ document.addEventListener("click", function (e) {
     const dropdown = toggle.closest(".dropdown");
     const isAlreadyOn = dropdown.classList.contains("active");
     closeAllDropdowns();
-    if (!isAlreadyOn) {
-      dropdown.classList.add("active");
-    }
+    if (!isAlreadyOn) dropdown.classList.add("active");
     e.stopPropagation();
     return;
   }
@@ -241,7 +336,6 @@ function openToggleModal(id, isActive) {
   const title = document.getElementById("toggleModalTitle");
   const body = document.getElementById("toggleModalBody");
   const btn = document.getElementById("toggleSubmitBtn");
-
   if (isActive) {
     title.textContent = "Deactivate Service";
     body.textContent =
@@ -302,8 +396,11 @@ async function submitAddService() {
     document.getElementById("add_windows_list").innerHTML = "";
     document.getElementById("add_windows_group").style.display = "none";
 
+    currentPage = 1;
     updateTable(data.tableHtml);
     updateStats(data);
+    renderPagination(data.page, data.totalPages, data.count, data.limit);
+    updateResultCount(data.count, data.limit, data.page);
     showToast(data.message, "success");
   } else {
     showToast(data.message, "error");
@@ -333,8 +430,11 @@ async function submitEditService() {
 
   if (data.success) {
     closeModal("editServiceModal");
+    currentPage = 1;
     updateTable(data.tableHtml);
     updateStats(data);
+    renderPagination(data.page, data.totalPages, data.count, data.limit);
+    updateResultCount(data.count, data.limit, data.page);
     showToast(data.message, "success");
   } else {
     showToast(data.message, "error");
@@ -359,8 +459,11 @@ async function submitToggleService() {
 
   if (data.success) {
     closeModal("toggleServiceModal");
+    currentPage = 1;
     updateTable(data.tableHtml);
     updateStats(data);
+    renderPagination(data.page, data.totalPages, data.count, data.limit);
+    updateResultCount(data.count, data.limit, data.page);
     showToast(data.message, "success");
   } else {
     showToast(data.message, "error");
@@ -385,8 +488,11 @@ async function submitDeleteService() {
 
   if (data.success) {
     closeModal("deleteServiceModal");
+    currentPage = 1;
     updateTable(data.tableHtml);
     updateStats(data);
+    renderPagination(data.page, data.totalPages, data.count, data.limit);
+    updateResultCount(data.count, data.limit, data.page);
     showToast(data.message, "success");
   } else {
     showToast(data.message, "error");
@@ -404,7 +510,6 @@ async function loadServiceWindowCheckboxes(
   const group = document.getElementById(groupId);
 
   list.innerHTML = "";
-
   if (!officeId) {
     group.style.display = "none";
     return;
@@ -423,18 +528,17 @@ async function loadServiceWindowCheckboxes(
   for (let i = 1; i <= data.window_count; i++) {
     const checked = selectedWindows.includes(i) ? "checked" : "";
     list.innerHTML += `
-        <label class="window-chip">
-            <input type="checkbox" name="window" value="${i}" ${checked}>
-            <span>
-                <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="0.5" y="1.5" width="10" height="7" rx="1" stroke="currentColor" stroke-width="1.2"/>
-                    <rect x="3" y="8.5" width="5" height="1" rx="0.5" fill="currentColor"/>
-                    <rect x="4.5" y="9.5" width="2" height="1" rx="0.5" fill="currentColor"/>
-                </svg>
-                ${i}
-            </span>
-        </label>
-    `;
+      <label class="window-chip">
+        <input type="checkbox" name="window" value="${i}" ${checked}>
+        <span>
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="0.5" y="1.5" width="10" height="7" rx="1" stroke="currentColor" stroke-width="1.2"/>
+            <rect x="3" y="8.5" width="5" height="1" rx="0.5" fill="currentColor"/>
+            <rect x="4.5" y="9.5" width="2" height="1" rx="0.5" fill="currentColor"/>
+          </svg>
+          ${i}
+        </span>
+      </label>`;
   }
 
   group.style.display = "";
