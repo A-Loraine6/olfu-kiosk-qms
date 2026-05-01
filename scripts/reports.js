@@ -561,7 +561,7 @@ async function fetchAndRenderDayBreakdown(from, to, officeId = null) {
       }),
     });
     const data = await res.json();
-    console.log("day_of_week_volume response:", data); 
+    console.log("day_of_week_volume response:", data);
     if (
       data.success &&
       data.day_of_week_volume &&

@@ -33,7 +33,7 @@ function initializeModalKeyboardShortcuts() {
       if (!confirmBtn) {
         const buttons = activeModal.querySelectorAll(".modal-footer .btn");
         if (buttons.length > 0) {
-          confirmBtn = buttons[buttons.length - 1];
+          confirmBtn = buttons[buttons.length - 1]; 
         }
       }
       if (confirmBtn && !confirmBtn.disabled) {

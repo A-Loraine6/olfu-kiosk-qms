@@ -556,8 +556,7 @@ function showBlockedMessage(reason) {
       color: rgba(255,255,255,0.4);
     ">© Our Lady of Fatima University</div>
   `;
-
-  document.body.appendChild(overlay);
+  throw new Error("Kiosk disabled");
 }
 
 renderOffices();

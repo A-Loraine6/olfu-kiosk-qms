@@ -27,8 +27,6 @@ function initQueue() {
     typeFilterEl.value = typeFilterId;
   }
 
-  loadOverflowState();
-
   loadActiveTicket().then(() => {
     loadAllTabCounts();
     loadQueue();
@@ -474,7 +472,10 @@ async function resumeTicket(ticketId) {
     });
     if (res.success && res.ticket) {
       currentTicket = res.ticket;
-      serveStartTime = new Date();
+
+      const alreadySpent = parseInt(res.ticket.time_spent ?? 0, 10);
+      serveStartTime = new Date(Date.now() - alreadySpent * 1000);
+
       renderServingCard(res.ticket, true);
       startTimer();
       showToast(`Resuming ${res.ticket.ticket_number}`, "success");
