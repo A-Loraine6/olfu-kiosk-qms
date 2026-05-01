@@ -17,6 +17,8 @@ $staff      = getAllStaff($db->getConnection());
 $totalStaff = count($staff);
 $activeStaff   = count(array_filter($staff, fn($s) => $s['is_active']));
 $inactiveStaff = $totalStaff - $activeStaff;
+
+$pageLimit = 10;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -191,6 +193,11 @@ $inactiveStaff = $totalStaff - $activeStaff;
                         <div class="table-loading" id="tableLoading">
                             <div class="table-spinner"></div>
                         </div>
+
+                        <div class="pagination-bar" id="paginationBar">
+                            <div class="pagination-info" id="paginationInfo"></div>
+                            <div class="pagination-controls" id="paginationControls"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -351,6 +358,8 @@ $inactiveStaff = $totalStaff - $activeStaff;
     <script src="scripts/modal-shortcuts.js"></script>
     <script>
         const CSRF_TOKEN = <?php echo json_encode($csrf_token); ?>;
+        const PAGINATION_LIMIT = 10;
+        const TOTAL_STAFF = <?php echo (int)$totalStaff; ?>;
     </script>
 </body>
 

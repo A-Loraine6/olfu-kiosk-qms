@@ -96,6 +96,10 @@ switch ($action) {
         $filterOffice = trim($input['office'] ?? '');
         $filterStatus = $input['status'] ?? '';
 
+        $page  = max(1, (int) ($input['page']  ?? 1));
+        $limit = (int) ($input['limit'] ?? 10);
+        if (!in_array($limit, [10, 25, 50, 100])) $limit = 10;
+
         $filtered = array_filter($staff, function ($s) use ($search, $filterOffice, $filterStatus) {
             if ($filterOffice && ($s['office_name'] ?? '') !== $filterOffice) return false;
             if ($filterStatus === 'active'   && !$s['is_active']) return false;
@@ -111,14 +115,24 @@ switch ($action) {
             return true;
         });
 
+        $filtered   = array_values($filtered);
+        $totalCount = count($filtered);
+        $totalPages = $limit > 0 ? (int) ceil($totalCount / $limit) : 1;
+        $page       = min($page, max(1, $totalPages));
+        $offset     = ($page - 1) * $limit;
+        $paginated  = array_slice($filtered, $offset, $limit);
+
         ob_start();
-        renderStaffRows(array_values($filtered));
+        renderStaffRows($paginated);
         $html = ob_get_clean();
 
         echo json_encode([
-            'success' => true,
-            'html'    => $html,
-            'count'   => count($filtered),
+            'success'    => true,
+            'html'       => $html,
+            'count'      => $totalCount,
+            'page'       => $page,
+            'totalPages' => $totalPages,
+            'limit'      => $limit,
         ]);
         exit;
 
@@ -132,14 +146,22 @@ if ($result['success']) {
     $totalStaff    = count($staff);
     $activeStaff   = count(array_filter($staff, fn($s) => $s['is_active']));
 
+    $limit      = 10;
+    $paginated  = array_slice($staff, 0, $limit);
+    $totalPages = (int) ceil($totalStaff / $limit);
+
     ob_start();
-    renderStaffRows($staff);
+    renderStaffRows($paginated);
     $tableHtml = ob_get_clean();
 
-    $result['tableHtml']      = $tableHtml;
-    $result['totalStaff']     = $totalStaff;
-    $result['activeStaff']    = $activeStaff;
-    $result['inactiveStaff']  = $totalStaff - $activeStaff;
+    $result['tableHtml']     = $tableHtml;
+    $result['totalStaff']    = $totalStaff;
+    $result['activeStaff']   = $activeStaff;
+    $result['inactiveStaff'] = $totalStaff - $activeStaff;
+    $result['count']         = $totalStaff;
+    $result['page']          = 1;
+    $result['totalPages']    = $totalPages;
+    $result['limit']         = $limit;
 }
 
 echo json_encode($result);

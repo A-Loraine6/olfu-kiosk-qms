@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 01, 2026 at 07:46 AM
+-- Generation Time: May 01, 2026 at 03:46 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -235,7 +235,28 @@ INSERT INTO `activity_logs` (`id`, `user_id`, `activity_type`, `entity_type`, `e
 (216, 2, 'LOGOUT', 'user', 2, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 04:15:26');
 INSERT INTO `activity_logs` (`id`, `user_id`, `activity_type`, `entity_type`, `entity_id`, `old_value`, `new_value`, `description`, `ip_address`, `user_agent`, `timestamp`) VALUES
 (217, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 04:15:30'),
-(218, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 05:18:40');
+(218, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 05:18:40'),
+(219, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 3, '{\"break_start\":\"14:56\",\"break_end\":\"21:58\"}', '{\"break_start\":\"12:00\",\"break_end\":\"13:00\"}', 'Updated office schedule for \"Admissions\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 05:54:52'),
+(220, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 3, '{\"queue_cutoff\":\"21:59\"}', '{\"queue_cutoff\":\"\"}', 'Updated office schedule for \"Admissions\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 05:55:10'),
+(221, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 2, '{\"queue_cutoff\":\"12:00\"}', '{\"queue_cutoff\":\"\"}', 'Updated office schedule for \"Accounting\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 05:55:12'),
+(222, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 1, '{\"break_start\":\"14:56\",\"break_end\":\"21:57\",\"queue_cutoff\":\"21:57\"}', '{\"break_start\":\"12:00\",\"break_end\":\"13:00\",\"queue_cutoff\":\"\"}', 'Updated office schedule for \"Registrar\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 05:55:28'),
+(223, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 1, '{\"break_end\":\"13:00\"}', '{\"break_end\":\"14:00\"}', 'Updated office schedule for \"Registrar\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 05:55:33'),
+(224, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 1, '{\"break_end\":\"14:00\"}', '{\"break_end\":\"13:00\"}', 'Updated office schedule for \"Registrar\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 05:55:45'),
+(225, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 07:54:06'),
+(226, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 09:38:29'),
+(227, 1, 'OFFICE_QUEUE_MODE_TOGGLE', 'OFFICE', 3, '{\"queue_mode\":\"unified\"}', '{\"queue_mode\":\"service-based\"}', 'Queue mode switched to service-based for Admissions', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 09:38:50'),
+(228, 1, 'OFFICE_QUEUE_MODE_TOGGLE', 'OFFICE', 3, '{\"queue_mode\":\"service-based\"}', '{\"queue_mode\":\"unified\"}', 'Queue mode switched to unified for Admissions', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 09:38:56'),
+(229, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 12:28:59'),
+(230, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 3, '{\"close_time\":\"22:00\"}', '{\"close_time\":\"17:00\"}', 'Updated office schedule for \"Admissions\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 12:36:19'),
+(231, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 1, '{\"close_time\":\"22:00\"}', '{\"close_time\":\"17:00\"}', 'Updated office schedule for \"Registrar\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 12:36:22'),
+(232, 1, 'LOGOUT', 'user', 1, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 12:43:31'),
+(233, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 12:43:33'),
+(234, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 12:52:05'),
+(235, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 13:44:24'),
+(236, 1, 'LOGOUT', 'user', 1, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 13:44:27'),
+(237, 4, 'LOGIN', 'user', 4, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 13:44:31'),
+(238, 4, 'LOGOUT', 'user', 4, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 13:44:43'),
+(239, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-01 13:44:46');
 
 -- --------------------------------------------------------
 
@@ -288,9 +309,9 @@ CREATE TABLE `offices` (
 --
 
 INSERT INTO `offices` (`id`, `name`, `code`, `description`, `window_count`, `queue_mode`, `created_at`, `open_time`, `close_time`, `break_start`, `break_end`, `queue_cutoff`, `queue_prefix`, `queue_start_num`, `daily_reset`, `max_queue_limit`, `auto_close`) VALUES
-(1, 'Registrar', 'REG', 'Registrar Office', 9, 'unified', '2026-03-25 08:03:37', '08:00:00', '22:00:00', '14:56:00', '21:57:00', '21:57:00', 'REG', 1, 1, 0, 1),
-(2, 'Accounting', 'ACC', 'Accounting Office', 10, 'service-based', '2026-03-25 08:03:37', '08:00:00', '17:00:00', '12:00:00', '13:00:00', '12:00:00', 'ACC', 1, 1, 0, 1),
-(3, 'Admissions', 'ADM', 'Admissions Office', 5, 'unified', '2026-03-25 08:03:37', '08:00:00', '22:00:00', '14:56:00', '21:58:00', '21:59:00', 'ADM', 1, 1, 0, 1);
+(1, 'Registrar', 'REG', 'Registrar Office', 9, 'unified', '2026-03-25 08:03:37', '08:00:00', '17:00:00', '12:00:00', '13:00:00', NULL, 'REG', 1, 1, 0, 1),
+(2, 'Accounting', 'ACC', 'Accounting Office', 10, 'service-based', '2026-03-25 08:03:37', '08:00:00', '17:00:00', '12:00:00', '13:00:00', NULL, 'ACC', 1, 1, 0, 1),
+(3, 'Admissions', 'ADM', 'Admissions Office', 5, 'unified', '2026-03-25 08:03:37', '08:00:00', '17:00:00', '12:00:00', '13:00:00', NULL, 'ADM', 1, 1, 0, 1);
 
 -- --------------------------------------------------------
 
@@ -382,7 +403,8 @@ INSERT INTO `tickets` (`id`, `ticket_number`, `office_id`, `transaction_type`, `
 (49, 'ACC-005', 2, 'Balance Inquiry', NULL, 'skipped', '2026-04-25 03:53:03', NULL, NULL, NULL, 2, 0),
 (50, 'ACC-006', 2, 'Balance Inquiry', NULL, 'skipped', '2026-04-25 03:53:59', NULL, NULL, NULL, 2, 0),
 (51, 'ACC-001', 2, 'Balance Inquiry', NULL, 'completed', '2026-05-01 02:25:54', '2026-05-01 02:37:00', '2026-05-01 02:38:03', NULL, 2, 18),
-(52, 'ACC-002', 2, 'Balance Inquiry', NULL, 'completed', '2026-05-01 02:43:33', '2026-05-01 02:51:10', '2026-05-01 02:52:58', '2026-05-01 02:51:06', 2, 14);
+(52, 'ACC-002', 2, 'Balance Inquiry', NULL, 'completed', '2026-05-01 02:43:33', '2026-05-01 02:51:10', '2026-05-01 02:52:58', '2026-05-01 02:51:06', 2, 14),
+(53, 'ACC-003', 2, 'Balance Inquiry', 1, 'waiting', '2026-05-01 07:53:53', NULL, NULL, NULL, NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -537,7 +559,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `activity_logs`
 --
 ALTER TABLE `activity_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=219;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=240;
 
 --
 -- AUTO_INCREMENT for table `kiosk_settings`
@@ -555,7 +577,7 @@ ALTER TABLE `offices`
 -- AUTO_INCREMENT for table `tickets`
 --
 ALTER TABLE `tickets`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=53;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=54;
 
 --
 -- AUTO_INCREMENT for table `transaction_types`
