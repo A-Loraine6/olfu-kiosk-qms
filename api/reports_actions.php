@@ -28,38 +28,36 @@ if ($action === 'staff_metrics') {
         exit;
     }
 
-    $userId = (int) $currentUser['id'];
-    $from   = $input['date_from'] ?? date('Y-m-d');
-    $to     = $input['date_to']   ?? date('Y-m-d');
-
-    $from = date('Y-m-d', strtotime($from));
-    $to   = date('Y-m-d', strtotime($to));
+    $userId   = (int) $currentUser['id'];
+    $officeId = (int) ($currentUser['office_id'] ?? 0);
+    $from     = date('Y-m-d', strtotime($input['date_from'] ?? date('Y-m-d')));
+    $to       = date('Y-m-d', strtotime($input['date_to']   ?? date('Y-m-d')));
 
     $stmt = $conn->prepare("
-    SELECT
-        COUNT(*) AS served,
-        AVG(CASE
-            WHEN served_at IS NOT NULL AND completed_at IS NOT NULL
-            THEN TIMESTAMPDIFF(SECOND, served_at, completed_at)
-            ELSE NULL
-        END) AS avg_seconds
-    FROM tickets
-    WHERE served_by = ?
-      AND status = 'completed'
-      AND DATE(created_at) BETWEEN ? AND ?
-");
+        SELECT
+            COUNT(*) AS served,
+            AVG(CASE
+                WHEN served_at IS NOT NULL AND completed_at IS NOT NULL
+                THEN TIMESTAMPDIFF(SECOND, served_at, completed_at)
+                ELSE NULL
+            END) AS avg_seconds
+        FROM tickets
+        WHERE served_by = ?
+          AND status = 'completed'
+          AND DATE(created_at) BETWEEN ? AND ?
+    ");
     $stmt->bind_param('iss', $userId, $from, $to);
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
 
     $stmt2 = $conn->prepare("
-    SELECT COUNT(*) AS skipped
-    FROM tickets
-    WHERE served_by = ?
-      AND status = 'skipped'
-      AND DATE(created_at) BETWEEN ? AND ?
-");
-    $stmt2->bind_param('iss', $userId, $from, $to);
+        SELECT COUNT(*) AS skipped
+        FROM tickets
+        WHERE office_id = ?
+          AND status = 'skipped'
+          AND DATE(created_at) BETWEEN ? AND ?
+    ");
+    $stmt2->bind_param('iss', $officeId, $from, $to);
     $stmt2->execute();
     $skipped = (int) ($stmt2->get_result()->fetch_assoc()['skipped'] ?? 0);
 

@@ -85,7 +85,7 @@ function login($db, string $email, string $password, string $csrf): array
 function fetchUserByEmail($db, string $email): ?array
 {
     $stmt = $db->prepare(
-        "SELECT id, full_name, email, password, role, office_id FROM users WHERE email = ? LIMIT 1"
+        "SELECT id, full_name, email, password, role, office_id, window_number FROM users WHERE email = ? LIMIT 1"
     );
 
     if (!$stmt) {
@@ -127,6 +127,7 @@ function establishSession(array $user): void
     $_SESSION['email']           = $user['email'];
     $_SESSION['role']            = $user['role'];
     $_SESSION['office_id']     = $user['office_id'] ?? null;
+    $_SESSION['window_number'] = $user['window_number'] ?? null;
     $_SESSION['login_time']      = time();
     $_SESSION['last_activity']   = time();
 
@@ -278,6 +279,7 @@ function getCurrentUser(): ?array
         'email'     => $_SESSION['email'],
         'role'      => $_SESSION['role'],
         'office_id' => isset($_SESSION['office_id']) ? (int) $_SESSION['office_id'] : null,
+        'window_number' => isset($_SESSION['window_number']) ? (int) $_SESSION['window_number'] : null,
     ];
 }
 

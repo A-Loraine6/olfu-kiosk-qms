@@ -49,7 +49,6 @@ function updateTable(html) {
     tbody.innerHTML = html;
 
     tbody.style.opacity = "1";
-
   }, 150);
 }
 
@@ -212,6 +211,12 @@ async function openEditStaffModal(staffId) {
     document.getElementById("edit_full_name").value = s.full_name;
     document.getElementById("edit_email").value = s.email;
     document.getElementById("edit_office").value = s.office ?? "";
+
+    await loadWindowOptions("edit_office", "edit_window", "edit_window_group");
+    if (s.window_number) {
+      document.getElementById("edit_window").value = s.window_number;
+    }
+    
     openModal("editStaffModal");
   } else {
     showToast(data.message || "Failed to load staff details.", "error");
@@ -261,6 +266,7 @@ async function submitAddStaff() {
     email: document.getElementById("add_email").value,
     password: document.getElementById("add_password").value,
     office: document.getElementById("add_office").value,
+    window_number: document.getElementById("add_window").value,
   });
   setBtnLoading("addStaffBtn", false, '<i class="fas fa-plus"></i> Add Staff');
 
@@ -270,6 +276,10 @@ async function submitAddStaff() {
       (id) => (document.getElementById(id).value = ""),
     );
     document.getElementById("add_office").selectedIndex = 0;
+    document.getElementById("add_window").innerHTML =
+      '<option value="" disabled selected>Select window</option>';
+    document.getElementById("add_window_group").style.display = "none";
+
     updateTable(data.tableHtml);
     updateStats(data);
     showToast(data.message, "success");
@@ -290,6 +300,7 @@ async function submitEditStaff() {
     full_name: document.getElementById("edit_full_name").value,
     email: document.getElementById("edit_email").value,
     office: document.getElementById("edit_office").value,
+    window_number: document.getElementById("edit_window").value,
   });
   setBtnLoading(
     "editStaffBtn",
@@ -373,3 +384,35 @@ async function submitDeleteStaff() {
   }
 }
 
+async function loadWindowOptions(officeSelectId, windowSelectId, groupId) {
+  const officeVal = document.getElementById(officeSelectId).value;
+  const windowSel = document.getElementById(windowSelectId);
+  const group = document.getElementById(groupId);
+
+  windowSel.innerHTML =
+    '<option value="" disabled selected>Select window</option>';
+
+  if (!officeVal) {
+    group.style.display = "none";
+    return;
+  }
+
+  const data = await ajax({
+    action: "get_windows_for_office",
+    office: officeVal,
+  });
+
+  if (!data.success || data.window_count < 1) {
+    group.style.display = "none";
+    return;
+  }
+
+  for (let i = 1; i <= data.window_count; i++) {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = `Window ${i}`;
+    windowSel.appendChild(opt);
+  }
+
+  group.style.display = "";
+}

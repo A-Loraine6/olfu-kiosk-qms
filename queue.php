@@ -24,8 +24,29 @@ $csrf_token      = getCsrfToken();
 
 $transactionTypes = [];
 if ($queueMode === 'service-based') {
-    $stmt = $db->prepare("SELECT id, name, category FROM transaction_types WHERE office_id = ? AND is_active = 1 AND is_deleted = 0 ORDER BY name ASC");
-    $stmt->bind_param('i', $staffOfficeId);
+    $staffWindowNumber = (int) ($currentUser['window_number'] ?? 0);
+    
+    error_log("Staff ID: {$currentUser['id']}, Window: $staffWindowNumber");
+
+    if ($staffWindowNumber > 0) {
+        $stmt = $db->prepare("
+            SELECT tt.id, tt.name, tt.category
+            FROM transaction_types tt
+            INNER JOIN service_windows sw ON sw.service_id = tt.id
+            WHERE tt.office_id = ? AND tt.is_active = 1 AND tt.is_deleted = 0
+            AND sw.window_number = ?
+            ORDER BY tt.name ASC
+        ");
+        $stmt->bind_param('ii', $staffOfficeId, $staffWindowNumber);
+    } else {
+        $stmt = $db->prepare("
+            SELECT id, name, category FROM transaction_types
+            WHERE office_id = ? AND is_active = 1 AND is_deleted = 0
+            ORDER BY name ASC
+        ");
+        $stmt->bind_param('i', $staffOfficeId);
+    }
+
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) $transactionTypes[] = $row;
@@ -137,6 +158,21 @@ if ($queueMode === 'service-based') {
                                     Skip
                                 </button>
                             </div>
+                        </div>
+
+                        <div class="overflow-toggle-row" id="overflowRow">
+                            <div class="overflow-toggle-info">
+                                <span class="overflow-toggle-label">
+                                    <i class="fas fa-clock"></i>
+                                    Peak Hours Mode
+                                </span>
+                                <span class="overflow-toggle-desc" id="overflowDesc">
+                                    Pull tickets from your assigned window only
+                                </span>
+                            </div>
+                            <button id="overflowBtn" class="overflow-toggle-btn" onclick="toggleOverflow()">
+                                <span class="overflow-toggle-pill"></span>
+                            </button>
                         </div>
 
                         <button class="call-next-btn" id="callNextBtn" onclick="callNext()">

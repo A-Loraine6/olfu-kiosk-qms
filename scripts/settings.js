@@ -1,4 +1,4 @@
-const AJAX_URL   = 'api/settings_actions.php';
+const AJAX_URL = 'api/settings_actions.php';
 
 async function ajax(payload) {
     const res = await fetch(AJAX_URL, {
@@ -36,56 +36,65 @@ function setBtnLoading(btn, loading, originalHtml) {
         : originalHtml;
 }
 
-document.getElementById('scheduleForm').addEventListener('submit', async function(e) {
+function getHeaderSaveBtn(tab) {
+    const map = {
+        schedule: 'headerSaveSchedule',
+        queue:    'headerSaveQueue',
+        kiosk:    'headerSaveKiosk',
+    };
+    return document.getElementById(map[tab]);
+}
+
+document.getElementById('scheduleForm').addEventListener('submit', async function (e) {
     e.preventDefault();
-    const btn         = this.querySelector('[type=submit]');
+    const btn          = getHeaderSaveBtn('schedule');
     const originalHtml = btn.innerHTML;
     setBtnLoading(btn, true, originalHtml);
 
     const data = await ajax({
-        action:       'save_schedule',
+        action:      'save_schedule',
+        office_id:   this.querySelector('[name=office_id]').value,
+        open:        this.querySelector('[name=open]').value,
+        close:       this.querySelector('[name=close]').value,
+        break_start: this.querySelector('[name=break_start]').value,
+        break_end:   this.querySelector('[name=break_end]').value,
+        cutoff:      this.querySelector('[name=cutoff]').value,
+    });
+
+    setBtnLoading(btn, false, originalHtml);
+    showToast(data.message, data.success ? 'success' : 'error');
+});
+
+document.getElementById('queueForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const btn          = getHeaderSaveBtn('queue');
+    const originalHtml = btn.innerHTML;
+    setBtnLoading(btn, true, originalHtml);
+
+    const data = await ajax({
+        action:       'save_queue',
         office_id:    this.querySelector('[name=office_id]').value,
-        open:         this.querySelector('[name=open]').value,
-        close:        this.querySelector('[name=close]').value,
-        break_start:  this.querySelector('[name=break_start]').value,
-        break_end:    this.querySelector('[name=break_end]').value,
-        cutoff:       this.querySelector('[name=cutoff]').value,
+        queue_prefix: this.querySelector('[name=queue_prefix]').value,
+        queue_start:  this.querySelector('[name=queue_start]').value,
+        daily_reset:  this.querySelector('[name=daily_reset]').checked,
+        max_limit:    this.querySelector('[name=max_limit]').value,
+        auto_close:   this.querySelector('[name=auto_close]').checked,
     });
 
     setBtnLoading(btn, false, originalHtml);
     showToast(data.message, data.success ? 'success' : 'error');
 });
 
-document.getElementById('queueForm').addEventListener('submit', async function(e) {
+document.getElementById('kioskForm').addEventListener('submit', async function (e) {
     e.preventDefault();
-    const btn          = this.querySelector('[type=submit]');
+    const btn          = getHeaderSaveBtn('kiosk');
     const originalHtml = btn.innerHTML;
     setBtnLoading(btn, true, originalHtml);
 
     const data = await ajax({
-        action:        'save_queue',
-        office_id:     this.querySelector('[name=office_id]').value,
-        queue_prefix:  this.querySelector('[name=queue_prefix]').value,
-        queue_start:   this.querySelector('[name=queue_start]').value,
-        daily_reset:   this.querySelector('[name=daily_reset]').checked,
-        max_limit:     this.querySelector('[name=max_limit]').value,
-        auto_close:    this.querySelector('[name=auto_close]').checked,
-    });
-
-    setBtnLoading(btn, false, originalHtml);
-    showToast(data.message, data.success ? 'success' : 'error');
-});
-
-document.getElementById('kioskForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const btn          = this.querySelector('[type=submit]');
-    const originalHtml = btn.innerHTML;
-    setBtnLoading(btn, true, originalHtml);
-
-    const data = await ajax({
-        action:         'save_kiosk',
-        kiosk_enabled:  this.querySelector('[name=kiosk_enabled]').checked,
-        idle_timeout:   this.querySelector('[name=idle_timeout]').value,
+        action:        'save_kiosk',
+        kiosk_enabled: this.querySelector('[name=kiosk_enabled]').checked,
+        idle_timeout:  this.querySelector('[name=idle_timeout]').value,
     });
 
     setBtnLoading(btn, false, originalHtml);
@@ -94,6 +103,13 @@ document.getElementById('kioskForm').addEventListener('submit', async function(e
 
 const TABS = ['schedule', 'queue', 'kiosk'];
 
+function updateHeaderSaveButton(tab) {
+    TABS.forEach(t => {
+        const btn = getHeaderSaveBtn(t);
+        if (btn) btn.style.display = t === tab ? '' : 'none';
+    });
+}
+
 function switchTab(tab) {
     TABS.forEach(t => {
         document.getElementById('tab-' + t).classList.toggle('active', t === tab);
@@ -101,6 +117,7 @@ function switchTab(tab) {
     document.querySelectorAll('.settings-tab').forEach((btn, i) => {
         btn.classList.toggle('active', TABS[i] === tab);
     });
+    updateHeaderSaveButton(tab);
     history.replaceState(null, '', setParam('tab', tab));
 }
 
@@ -135,12 +152,17 @@ function updateKioskStatus(isOn) {
     const sub   = document.getElementById('kioskStatusSub');
     const icon  = card?.querySelector('.kiosk-status-icon i');
     if (!card) return;
-    card.className  = 'kiosk-status-card ' + (isOn ? 'status-on' : 'status-off');
-    if (icon)  icon.className  = 'fas fa-' + (isOn ? 'tablet-alt' : 'ban');
+    card.className = 'kiosk-status-card ' + (isOn ? 'status-on' : 'status-off');
+    if (icon)  icon.className    = 'fas fa-' + (isOn ? 'tablet-alt' : 'ban');
     if (label) label.textContent = 'Kiosk is ' + (isOn ? 'Enabled' : 'Disabled');
     if (sub)   sub.textContent   = isOn
         ? 'Users can interact with the kiosk to get queue numbers.'
         : 'The kiosk is turned off. Users cannot generate queue numbers.';
+}
+
+function clearCutoff() {
+    const el = document.getElementById('cutoffInput');
+    if (el) el.value = '';
 }
 
 document.addEventListener('DOMContentLoaded', updatePreview);

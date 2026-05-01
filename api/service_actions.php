@@ -42,7 +42,8 @@ switch ($action) {
             $input['name']        ?? '',
             $input['office_id']   ?? 0,
             $input['category']    ?? null,
-            $input['description'] ?? ''
+            $input['description'] ?? '',
+            array_map('intval', $input['windows'] ?? [])
         );
         break;
 
@@ -53,9 +54,33 @@ switch ($action) {
             $input['name']        ?? '',
             $input['office_id']   ?? 0,
             $input['category']    ?? null,
-            $input['description'] ?? ''
+            $input['description'] ?? '',
+            array_map('intval', $input['windows'] ?? [])
         );
         break;
+
+    case 'get_windows_for_service':
+        $serviceId = (int) ($input['service_id'] ?? 0);
+        $windows   = $serviceId ? getWindowsForService($conn, $serviceId) : [];
+        echo json_encode(['success' => true, 'windows' => $windows]);
+        exit;
+
+    case 'get_windows_for_office':
+        $officeId = (int) ($input['office_id'] ?? 0);
+        if (!$officeId) {
+            echo json_encode(['success' => false, 'window_count' => 0]);
+            exit;
+        }
+        $stmt = $conn->prepare("SELECT window_count FROM offices WHERE id = ? LIMIT 1");
+        $stmt->bind_param('i', $officeId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        echo json_encode([
+            'success'      => (bool) $row,
+            'window_count' => (int) ($row['window_count'] ?? 0),
+        ]);
+        exit;
 
     case 'toggle_service':
         $result = toggleServiceStatus($conn, (int) ($input['service_id'] ?? 0));
@@ -91,7 +116,7 @@ switch ($action) {
         });
 
         ob_start();
-        renderServiceRows(array_values($filtered), $isStaff);
+        renderServiceRows(array_values($filtered), $isStaff, $conn);
         $html = ob_get_clean();
 
         echo json_encode([
@@ -112,7 +137,7 @@ if ($result['success']) {
     $activeServices = count(array_filter($services, fn($s) => $s['is_active']));
 
     ob_start();
-    renderServiceRows($services, $isStaff);
+    renderServiceRows($services, $isStaff, $conn);
     $tableHtml = ob_get_clean();
 
     $result['tableHtml']        = $tableHtml;
@@ -133,7 +158,7 @@ function getCategoryColor(?string $cat): string
     };
 }
 
-function renderServiceRows(array $services, bool $isStaff = false): void
+function renderServiceRows(array $services, bool $isStaff = false, ?mysqli $conn = null): void
 {
     if (empty($services)) { ?>
         <tr>
@@ -149,16 +174,27 @@ function renderServiceRows(array $services, bool $isStaff = false): void
     }
 
     foreach ($services as $svc):
-        $catColor = getCategoryColor($svc['category'] ?? null);
+        $catColor        = getCategoryColor($svc['category'] ?? null);
+        $assignedWindows = ($conn && $svc['id']) ? getWindowsForService($conn, $svc['id']) : [];
     ?>
         <tr>
             <td>
                 <div class="service-name-cell">
-                    <div class="service-icon-dot" style="background:<?php echo $catColor; ?>"></div>
                     <div>
                         <div class="svc-name"><?php echo htmlspecialchars($svc['name']); ?></div>
                         <?php if ($svc['description']): ?>
                             <div class="svc-desc"><?php echo htmlspecialchars($svc['description']); ?></div>
+                        <?php endif; ?>
+                        <?php if (!empty($assignedWindows)): ?>
+                            <div class="svc-windows-hint">
+                                <i class="fas fa-desktop"></i>
+                                Windows: <?php echo implode(', ', $assignedWindows); ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="svc-windows-hint svc-windows-all">
+                                <i class="fas fa-desktop"></i>
+                                All windows
+                            </div>
                         <?php endif; ?>
                     </div>
                 </div>

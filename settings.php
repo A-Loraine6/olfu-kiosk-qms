@@ -61,6 +61,26 @@ if (!$activeOffice && !empty($offices)) {
                         <i class="fas fa-cog"></i> System Settings
                     </h2>
                 </div>
+                <div class="header-right">
+                    <button type="button" id="headerSaveSchedule"
+                        class="btn-primary header-save-btn"
+                        style="<?php echo $activeTab !== 'schedule' ? 'display:none;' : ''; ?>"
+                        onclick="document.getElementById('scheduleForm').requestSubmit()">
+                        <i class="fas fa-save"></i> Save Schedule
+                    </button>
+                    <button type="button" id="headerSaveQueue"
+                        class="btn-primary header-save-btn"
+                        style="<?php echo $activeTab !== 'queue' ? 'display:none;' : ''; ?>"
+                        onclick="document.getElementById('queueForm').requestSubmit()">
+                        <i class="fas fa-save"></i> Save Queue Config
+                    </button>
+                    <button type="button" id="headerSaveKiosk"
+                        class="btn-primary header-save-btn"
+                        style="<?php echo $activeTab !== 'kiosk' ? 'display:none;' : ''; ?>"
+                        onclick="document.getElementById('kioskForm').requestSubmit()">
+                        <i class="fas fa-save"></i> Save Kiosk Settings
+                    </button>
+                </div>
             </header>
 
             <nav class="settings-tabs">
@@ -185,16 +205,18 @@ if (!$activeOffice && !empty($offices)) {
                                                 <div class="settings-row" style="grid-template-columns:1fr 1fr;">
                                                     <div class="field">
                                                         <label class="field-label">Cut-off Time</label>
-                                                        <input type="time" name="cutoff"
-                                                            value="<?php echo htmlspecialchars($activeOffice['queue_cutoff']); ?>">
-                                                        <div class="field-hint">Leave blank to disable. Must be before closing time.</div>
+                                                        <div style="display:flex; align-items:center; gap:8px;">
+                                                            <input type="time" name="cutoff" id="cutoffInput"
+                                                                value="<?php echo htmlspecialchars($activeOffice['queue_cutoff']); ?>">
+                                                            <button type="button" onclick="clearCutoff()"
+                                                                title="Clear cut-off time"
+                                                                style="background:none; border:1px solid var(--border); border-radius:8px; padding:13px 16px; cursor:pointer; color:var(--text-muted); font-size:14px;">
+                                                                <i class="fas fa-times"></i> 
+                                                            </button>
+                                                        </div>
+                                                        <div class="field-hint">Press clear to leave blank. Time must be before closing.</div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            <div class="settings-section-footer">
-                                                <button type="submit" class="btn-primary">
-                                                    <i class="fas fa-save"></i> Save Schedule
-                                                </button>
                                             </div>
                                         </div>
                                     </form>
@@ -316,11 +338,6 @@ if (!$activeOffice && !empty($offices)) {
                                                     </label>
                                                 </div>
                                             </div>
-                                            <div class="settings-section-footer">
-                                                <button type="submit" class="btn-primary">
-                                                    <i class="fas fa-save"></i> Save Queue Config
-                                                </button>
-                                            </div>
                                         </div>
 
                                     </form>
@@ -408,11 +425,6 @@ if (!$activeOffice && !empty($offices)) {
                                                 <div class="field-hint">Between 10 – 600 seconds. After this idle period the kiosk returns to the welcome screen automatically.</div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div class="settings-section-footer">
-                                        <button type="submit" class="btn-primary">
-                                            <i class="fas fa-save"></i> Save Kiosk Settings
-                                        </button>
                                     </div>
                                 </div>
 

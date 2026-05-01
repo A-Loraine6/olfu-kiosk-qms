@@ -769,8 +769,105 @@ function applyFilters() {
   });
 }
 
-function exportReport(type) {
-  if (type === "pdf") window.print();
+async function exportReport(type) {
+  if (type !== "pdf") return;
+
+  const btn = document.querySelector(".btn-export");
+  const originalLabel = btn.innerHTML;
+
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating…';
+  btn.disabled = true;
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const exportArea = document.getElementById("pdf-export-area");
+
+    if (!exportArea) {
+      alert("Export area not found.");
+      return;
+    }
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "visible";
+
+    const canvas = await html2canvas(exportArea, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: "#f4f7f5",
+      scrollX: 0,
+      scrollY: -window.scrollY,
+      windowWidth: exportArea.scrollWidth,
+      windowHeight: exportArea.scrollHeight,
+      ignoreElements: (el) =>
+        el.classList.contains("btn-export") || 
+        el.classList.contains("filter-actions"),
+    });
+
+    document.body.style.overflow = originalOverflow;
+
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    const pageWidth  = pdf.internal.pageSize.getWidth(); 
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin     = 10;
+    const usableWidth  = pageWidth - margin * 2;
+    const usableHeight = pageHeight - margin * 2;
+
+    const imgWidthPx  = canvas.width;
+    const imgHeightPx = canvas.height;
+    const ratio       = usableWidth / (imgWidthPx / (canvas.width / usableWidth));
+
+    const imgWidthMm  = usableWidth;
+    const imgHeightMm = (imgHeightPx / imgWidthPx) * imgWidthMm;
+
+    let yOffset = 0;
+
+    while (yOffset < imgHeightMm) {
+      if (yOffset > 0) pdf.addPage();
+
+      const sliceHeightMm = Math.min(usableHeight, imgHeightMm - yOffset);
+      const sliceHeightPx = (sliceHeightMm / imgHeightMm) * imgHeightPx;
+      const sliceYPx      = (yOffset / imgHeightMm) * imgHeightPx;
+
+      const sliceCanvas = document.createElement("canvas");
+      sliceCanvas.width  = imgWidthPx;
+      sliceCanvas.height = Math.ceil(sliceHeightPx);
+
+      const sliceCtx = sliceCanvas.getContext("2d");
+      sliceCtx.drawImage(
+        canvas,
+        0, sliceYPx,
+        imgWidthPx, sliceHeightPx, 
+        0, 0,                   
+        imgWidthPx, sliceHeightPx 
+      );
+
+      const sliceData = sliceCanvas.toDataURL("image/png");
+      pdf.addImage(sliceData, "PNG", margin, margin, imgWidthMm, sliceHeightMm);
+
+      yOffset += usableHeight;
+    }
+
+    const dateFrom = document.getElementById("dateFrom")?.value || "";
+    const dateTo   = document.getElementById("dateTo")?.value   || "";
+    const suffix   = dateFrom === dateTo ? dateFrom : `${dateFrom}_to_${dateTo}`;
+    const filename = `Report_${suffix || "export"}.pdf`;
+
+    pdf.save(filename);
+
+  } catch (err) {
+    console.error("PDF export failed:", err);
+    alert("PDF export failed. Please try again.");
+  } finally {
+    btn.innerHTML = originalLabel;
+    btn.disabled  = false;
+  }
 }
 
 function refreshReports() {
