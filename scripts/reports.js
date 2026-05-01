@@ -27,8 +27,14 @@ setInterval(updateTime, 1000);
   const today = new Date().toISOString().split("T")[0];
   const from = document.getElementById("dateFrom");
   const to = document.getElementById("dateTo");
-  if (from) { from.value = today; from.max = today; }
-  if (to)   { to.value = today;   to.max = today;   }
+  if (from) {
+    from.value = today;
+    from.max = today;
+  }
+  if (to) {
+    to.value = today;
+    to.max = today;
+  }
 })();
 
 function formatLabel(from, to) {
@@ -310,7 +316,13 @@ function renderPeakHours(data) {
           legend: { display: false },
         },
         scales: {
-          y: { beginAtZero: true },
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 1,
+              precision: 0,
+            },
+          },
         },
       },
     });
@@ -605,7 +617,7 @@ async function fetchAndRenderTransactionTypes(from, to, officeId = null) {
 
 function renderDayBreakdown(data) {
   data = [...data].sort((a, b) => b.count - a.count);
-  
+
   const labels = data.map((d) => {
     if (d.date) {
       const dateObj = new Date(d.date + "T00:00:00");
@@ -772,8 +784,12 @@ function applyFilters() {
 async function exportReport(type) {
   if (type !== "pdf") return;
 
-  const from = document.getElementById("dateFrom")?.value || new Date().toISOString().split("T")[0];
-  const to   = document.getElementById("dateTo")?.value   || new Date().toISOString().split("T")[0];
+  const from =
+    document.getElementById("dateFrom")?.value ||
+    new Date().toISOString().split("T")[0];
+  const to =
+    document.getElementById("dateTo")?.value ||
+    new Date().toISOString().split("T")[0];
   const officeId = document.getElementById("officeFilter")?.value || "";
 
   const btn = document.querySelector(".btn-export");
@@ -784,19 +800,19 @@ async function exportReport(type) {
     const form = document.createElement("form");
     form.method = "POST";
     form.action = "api/export_pdf.php";
-    form.target = "_blank"; 
+    form.target = "_blank";
 
     const fields = {
-      date_from:  from,
-      date_to:    to,
-      office_id:  officeId,
+      date_from: from,
+      date_to: to,
+      office_id: officeId,
       csrf_token: CSRF_TOKEN,
     };
 
     Object.entries(fields).forEach(([key, val]) => {
       const input = document.createElement("input");
-      input.type  = "hidden";
-      input.name  = key;
+      input.type = "hidden";
+      input.name = key;
       input.value = val;
       form.appendChild(input);
     });
@@ -807,7 +823,7 @@ async function exportReport(type) {
   } finally {
     setTimeout(() => {
       btn.innerHTML = '<i class="fas fa-file-pdf"></i> Export as PDF';
-      btn.disabled  = false;
+      btn.disabled = false;
     }, 1500);
   }
 }

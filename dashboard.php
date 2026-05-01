@@ -213,17 +213,17 @@ $currentTime = date('l, F j, Y \a\t g:i A');
                         },
                         options: {
                             responsive: true,
-                            maintainAspectRatio: true,
-                            cutout: '62%',
+                            maintainAspectRatio: false,
+                            cutout: '72%',
                             plugins: {
                                 legend: {
                                     position: 'bottom',
                                     labels: {
-                                        padding: 20,
+                                        padding: 12,
                                         usePointStyle: true,
                                         pointStyleWidth: 10,
                                         font: {
-                                            size: 12
+                                            size: 10
                                         }
                                     }
                                 }
@@ -237,7 +237,11 @@ $currentTime = date('l, F j, Y \a\t g:i A');
                 (function() {
                     var trendData = <?php echo $trendChartData; ?>;
                     var labels = trendData.map(function(d) {
-                        return d.hour || d.label || '';
+                        var parts = d.time.split(':');
+                        var h = parseInt(parts[0], 10);
+                        var suffix = h >= 12 ? 'PM' : 'AM';
+                        var h12 = h % 12 || 12;
+                        return h12 + ':00 ' + suffix;
                     });
                     var counts = trendData.map(function(d) {
                         return parseInt(d.count || d.total || 0, 10);
@@ -292,7 +296,9 @@ $currentTime = date('l, F j, Y \a\t g:i A');
                                         font: {
                                             size: 12
                                         },
-                                        padding: 8
+                                        padding: 8,
+                                        stepSize: 1,
+                                        precision: 0
                                     }
                                 },
                                 x: {
@@ -301,9 +307,12 @@ $currentTime = date('l, F j, Y \a\t g:i A');
                                     },
                                     ticks: {
                                         font: {
-                                            size: 12
+                                            size: 10
                                         },
-                                        padding: 4
+                                        padding: 4,
+                                        maxRotation: 0,
+                                        minRotation: 0,
+                                        maxTicksLimit: 7,
                                     }
                                 }
                             }
