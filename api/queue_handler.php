@@ -81,7 +81,7 @@ if ($action === 'get_stats') {
         FROM tickets
         WHERE office_id=? AND status='completed'
           AND served_at IS NOT NULL AND completed_at IS NOT NULL
-          AND DATE(CONVERT_TZ(completed_at, '+00:00', '+08:00')) = ?
+          AND DATE(completed_at) = ?
     ");
     $stmt->bind_param('is', $officeId, $today);
     $stmt->execute();

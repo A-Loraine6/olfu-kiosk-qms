@@ -27,8 +27,8 @@ setInterval(updateTime, 1000);
   const today = new Date().toISOString().split("T")[0];
   const from = document.getElementById("dateFrom");
   const to = document.getElementById("dateTo");
-  if (from) from.value = today;
-  if (to) to.value = today;
+  if (from) { from.value = today; from.max = today; }
+  if (to)   { to.value = today;   to.max = today;   }
 })();
 
 function formatLabel(from, to) {
@@ -772,101 +772,43 @@ function applyFilters() {
 async function exportReport(type) {
   if (type !== "pdf") return;
 
-  const btn = document.querySelector(".btn-export");
-  const originalLabel = btn.innerHTML;
+  const from = document.getElementById("dateFrom")?.value || new Date().toISOString().split("T")[0];
+  const to   = document.getElementById("dateTo")?.value   || new Date().toISOString().split("T")[0];
+  const officeId = document.getElementById("officeFilter")?.value || "";
 
+  const btn = document.querySelector(".btn-export");
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating…';
   btn.disabled = true;
 
   try {
-    const { jsPDF } = window.jspdf;
-    const exportArea = document.getElementById("pdf-export-area");
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = "api/export_pdf.php";
+    form.target = "_blank"; 
 
-    if (!exportArea) {
-      alert("Export area not found.");
-      return;
-    }
+    const fields = {
+      date_from:  from,
+      date_to:    to,
+      office_id:  officeId,
+      csrf_token: CSRF_TOKEN,
+    };
 
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = "visible";
-
-    const canvas = await html2canvas(exportArea, {
-      scale: 2,
-      useCORS: true,
-      allowTaint: false,
-      backgroundColor: "#f4f7f5",
-      scrollX: 0,
-      scrollY: -window.scrollY,
-      windowWidth: exportArea.scrollWidth,
-      windowHeight: exportArea.scrollHeight,
-      ignoreElements: (el) =>
-        el.classList.contains("btn-export") || 
-        el.classList.contains("filter-actions"),
+    Object.entries(fields).forEach(([key, val]) => {
+      const input = document.createElement("input");
+      input.type  = "hidden";
+      input.name  = key;
+      input.value = val;
+      form.appendChild(input);
     });
 
-    document.body.style.overflow = originalOverflow;
-
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: "a4",
-    });
-
-    const pageWidth  = pdf.internal.pageSize.getWidth(); 
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin     = 10;
-    const usableWidth  = pageWidth - margin * 2;
-    const usableHeight = pageHeight - margin * 2;
-
-    const imgWidthPx  = canvas.width;
-    const imgHeightPx = canvas.height;
-    const ratio       = usableWidth / (imgWidthPx / (canvas.width / usableWidth));
-
-    const imgWidthMm  = usableWidth;
-    const imgHeightMm = (imgHeightPx / imgWidthPx) * imgWidthMm;
-
-    let yOffset = 0;
-
-    while (yOffset < imgHeightMm) {
-      if (yOffset > 0) pdf.addPage();
-
-      const sliceHeightMm = Math.min(usableHeight, imgHeightMm - yOffset);
-      const sliceHeightPx = (sliceHeightMm / imgHeightMm) * imgHeightPx;
-      const sliceYPx      = (yOffset / imgHeightMm) * imgHeightPx;
-
-      const sliceCanvas = document.createElement("canvas");
-      sliceCanvas.width  = imgWidthPx;
-      sliceCanvas.height = Math.ceil(sliceHeightPx);
-
-      const sliceCtx = sliceCanvas.getContext("2d");
-      sliceCtx.drawImage(
-        canvas,
-        0, sliceYPx,
-        imgWidthPx, sliceHeightPx, 
-        0, 0,                   
-        imgWidthPx, sliceHeightPx 
-      );
-
-      const sliceData = sliceCanvas.toDataURL("image/png");
-      pdf.addImage(sliceData, "PNG", margin, margin, imgWidthMm, sliceHeightMm);
-
-      yOffset += usableHeight;
-    }
-
-    const dateFrom = document.getElementById("dateFrom")?.value || "";
-    const dateTo   = document.getElementById("dateTo")?.value   || "";
-    const suffix   = dateFrom === dateTo ? dateFrom : `${dateFrom}_to_${dateTo}`;
-    const filename = `Report_${suffix || "export"}.pdf`;
-
-    pdf.save(filename);
-
-  } catch (err) {
-    console.error("PDF export failed:", err);
-    alert("PDF export failed. Please try again.");
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
   } finally {
-    btn.innerHTML = originalLabel;
-    btn.disabled  = false;
+    setTimeout(() => {
+      btn.innerHTML = '<i class="fas fa-file-pdf"></i> Export as PDF';
+      btn.disabled  = false;
+    }, 1500);
   }
 }
 
