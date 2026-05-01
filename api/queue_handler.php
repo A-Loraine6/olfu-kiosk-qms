@@ -247,13 +247,46 @@ if ($action === 'call_next') {
         respond(['success' => false, 'message' => $msg]);
     }
 
+    // Scenario 2 & 3: Assign window_id at serve time if not already assigned
+    $assignedWindowId = $ticket['window_id'];
+    if ($assignedWindowId === null && $ticket['transaction_type'] !== null) {
+        // Service has multiple windows or no windows → assign based on calling staff's window
+        // Get the service's windows to check if multi-window scenario
+        $serviceStmt = $db->prepare("
+            SELECT sw.window_number
+            FROM service_windows sw
+            LEFT JOIN transaction_types tt ON tt.id = sw.service_id
+            WHERE tt.name = ? AND tt.office_id = ? AND sw.office_id = ?
+        ");
+        $serviceStmt->bind_param('sii', $ticket['transaction_type'], $officeId, $officeId);
+        $serviceStmt->execute();
+        $serviceWindows = $serviceStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $serviceStmt->close();
+
+        // If service is tied to specific window(s), use the calling staff's window if applicable
+        if (count($serviceWindows) > 0 && $windowNumber > 0) {
+            // Check if staff's window is valid for this service
+            $validWindows = array_column($serviceWindows, 'window_number');
+            if (in_array($windowNumber, $validWindows)) {
+                $assignedWindowId = $windowNumber;
+            } else {
+                // Staff's window is not assigned to this service, pick first available
+                $assignedWindowId = (int)$serviceWindows[0]['window_number'];
+            }
+        } elseif ($windowNumber > 0) {
+            // Service has no specific windows, use calling staff's window
+            $assignedWindowId = $windowNumber;
+        }
+    }
+
     $now  = date(DATETIME_FORMAT);
-    $stmt = $db->prepare("UPDATE tickets SET status='serving', served_at=?, served_by=? WHERE id=?");
-    $stmt->bind_param('sii', $now, $staffId, $ticket['id']);
+    $stmt = $db->prepare("UPDATE tickets SET status='serving', served_at=?, served_by=?, window_id=? WHERE id=?");
+    $stmt->bind_param('siii', $now, $staffId, $assignedWindowId, $ticket['id']);
     $stmt->execute();
 
     $ticket['status']    = 'serving';
     $ticket['served_at'] = $now;
+    $ticket['window_id'] = $assignedWindowId;
     respond(['success' => true, 'ticket' => $ticket]);
 }
 
@@ -315,13 +348,46 @@ if ($action === 'recall_ticket') {
         respond(['success' => false, 'message' => 'Skipped ticket not found.']);
     }
 
+    // Same window assignment logic as call_next
+    $assignedWindowId = $ticket['window_id'];
+    if ($assignedWindowId === null && $ticket['transaction_type'] !== null) {
+        $stmt = $db->prepare("SELECT window_number FROM users WHERE id = ? LIMIT 1");
+        $stmt->bind_param('i', $staffId);
+        $stmt->execute();
+        $staffData    = $stmt->get_result()->fetch_assoc();
+        $windowNumber = (int)  ($staffData['window_number']  ?? 0);
+
+        $serviceStmt = $db->prepare("
+            SELECT sw.window_number
+            FROM service_windows sw
+            LEFT JOIN transaction_types tt ON tt.id = sw.service_id
+            WHERE tt.name = ? AND tt.office_id = ? AND sw.office_id = ?
+        ");
+        $serviceStmt->bind_param('sii', $ticket['transaction_type'], $officeId, $officeId);
+        $serviceStmt->execute();
+        $serviceWindows = $serviceStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $serviceStmt->close();
+
+        if (count($serviceWindows) > 0 && $windowNumber > 0) {
+            $validWindows = array_column($serviceWindows, 'window_number');
+            if (in_array($windowNumber, $validWindows)) {
+                $assignedWindowId = $windowNumber;
+            } else {
+                $assignedWindowId = (int)$serviceWindows[0]['window_number'];
+            }
+        } elseif ($windowNumber > 0) {
+            $assignedWindowId = $windowNumber;
+        }
+    }
+
     $now  = date(DATETIME_FORMAT);
-    $stmt = $db->prepare("UPDATE tickets SET status='serving', served_at=?, served_by=? WHERE id=?");
-    $stmt->bind_param('sii', $now, $staffId, $ticketId);
+    $stmt = $db->prepare("UPDATE tickets SET status='serving', served_at=?, served_by=?, window_id=? WHERE id=?");
+    $stmt->bind_param('siii', $now, $staffId, $assignedWindowId, $ticketId);
     $stmt->execute();
 
     $ticket['status']    = 'serving';
     $ticket['served_at'] = $now;
+    $ticket['window_id'] = $assignedWindowId;
     respond(['success' => true, 'ticket' => $ticket]);
 }
 

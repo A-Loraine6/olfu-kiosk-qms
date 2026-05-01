@@ -17,6 +17,12 @@ class TicketGenerator
 
         $transaction_type = ($service_name !== '') ? $service_name : null;
 
+        // Scenario 1: If service has exactly 1 window assigned, get it now
+        $window_id = null;
+        if ($transaction_type !== null) {
+            $window_id = $this->getServiceWindowIdIfSingle($office_id, $transaction_type);
+        }
+
         $lockName = "ticket_gen_{$office_id}";
 
         $lockStmt = $this->db->prepare("SELECT GET_LOCK(?, 5) AS acquired");
@@ -40,11 +46,11 @@ class TicketGenerator
 
             $insert = $this->db->prepare("
                 INSERT INTO tickets
-                    (office_id, transaction_type, ticket_number, status, created_at)
+                    (office_id, transaction_type, ticket_number, window_id, status, created_at)
                 VALUES
-                    (?, ?, ?, 'waiting', NOW())
+                    (?, ?, ?, ?, 'waiting', NOW())
             ");
-            $insert->bind_param('iss', $office_id, $transaction_type, $ticketNumber);
+            $insert->bind_param('issi', $office_id, $transaction_type, $ticketNumber, $window_id);
 
             if (!$insert->execute()) {
                 throw new RuntimeException('Failed to insert ticket: ' . $insert->error);
@@ -61,7 +67,8 @@ class TicketGenerator
             'success'       => true,
             'ticket_number' => $ticketNumber,
             'people_ahead'  => $peopleAhead,
-            'waiting_count' => $waitingCount + 1
+            'waiting_count' => $waitingCount + 1,
+            'window_id'     => $window_id
         ];
     }
 
@@ -105,6 +112,37 @@ class TicketGenerator
         $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         return $row ? (int)$row['id'] : null;
+    }
+
+    /**
+     * If service has exactly 1 window assigned, return that window_number.
+     * If service has 0 or multiple windows, return null (will be assigned at serve time).
+     */
+    private function getServiceWindowIdIfSingle(int $office_id, string $service_name): ?int
+    {
+        $service_id = $this->resolveServiceId($office_id, $service_name);
+        if (!$service_id) {
+            return null;
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT window_number
+            FROM   service_windows
+            WHERE  service_id = ? AND office_id = ?
+        ");
+        $stmt->bind_param('ii', $service_id, $office_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $rows = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        // Scenario 1: Exactly 1 window assigned
+        if (count($rows) === 1) {
+            return (int)$rows[0]['window_number'];
+        }
+
+        // Scenario 2 & 3: Multiple windows or no windows → assign at serve time
+        return null;
     }
     
     private function generateTicketNumber(array $office): string

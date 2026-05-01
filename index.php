@@ -42,18 +42,18 @@ foreach ($servicesResult->fetch_all(MYSQLI_ASSOC) as $svc) {
 $officesForJs = [];
 foreach ($offices as $office) {
     $officesForJs[] = [
-    'id'          => $office['id'],
-    'name'        => $office['name'],
-    'code'        => $office['code'],
-    'mode'        => $office['queue_mode'],
-    'prefix'      => $office['queue_prefix'],
-    'waiting'     => $waitingCounts[$office['id']] ?? 0,
-    'services'    => $servicesByOffice[$office['id']] ?? [],
-    'open_time'   => $office['open_time'],
-    'close_time'  => $office['close_time'],
-    'break_start' => $office['break_start'],
-    'break_end'   => $office['break_end'],
-    'queue_cutoff'=> $office['queue_cutoff'],  // ← add
+        'id'          => $office['id'],
+        'name'        => $office['name'],
+        'code'        => $office['code'],
+        'mode'        => $office['queue_mode'],
+        'prefix'      => $office['queue_prefix'],
+        'waiting'     => $waitingCounts[$office['id']] ?? 0,
+        'services'    => $servicesByOffice[$office['id']] ?? [],
+        'open_time'   => $office['open_time'],
+        'close_time'  => $office['close_time'],
+        'break_start' => $office['break_start'],
+        'break_end'   => $office['break_end'],
+        'queue_cutoff' => $office['queue_cutoff'],  // ← add
     ];
 }
 
@@ -117,32 +117,39 @@ $kioskEnabled = (bool)($kioskSettings['kiosk_enabled'] ?? true);
         </div>
 
         <div class="screen" id="screen2">
-            <div class="screen-head" style="padding-bottom:0">
-                <div class="eyebrow">Step 2 of 3</div>
-                <h1 class="screen-title">Select a Service</h1>
-                <div style="margin-top:14px;text-align:center">
-                    <div class="office-label-pill">
-                        <i class="fas fa-building" style="font-size:12px"></i>
-                        <span id="s2OfficeName"></span>
+            <div class="screen-head screen-head-with-nav">
+                <button class="btn-nav-back" onclick="goBack()">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+
+                <div style="text-align:center">
+                    <div class="eyebrow">Step 2 of 3</div>
+                    <h1 class="screen-title">Select a Service</h1>
+                    <div style="margin-top:14px">
+                        <div class="office-label-pill">
+                            <i class="fas fa-building" style="font-size:12px"></i>
+                            <span id="s2OfficeName"></span>
+                        </div>
                     </div>
                 </div>
+
+                <div style="width:48px"></div>
             </div>
 
             <div class="screen-body" style="padding-top:12px">
                 <div class="service-grid stagger" id="serviceGrid"></div>
             </div>
-
-            <div class="screen-foot">
-                <button class="btn btn-ghost" onclick="goBack()">
-                    <i class="fas fa-arrow-left"></i> Back
-                </button>
-            </div>
         </div>
 
         <div class="screen" id="screen3">
-            <div class="screen-head">
-                <div class="eyebrow">Step 3 of 3</div>
-                <h1 class="screen-title">Confirm Your Queue</h1>
+            <div class="screen-head screen-head-with-nav">
+                <button class="btn-nav-back" onclick="goBack()">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <div style="text-align:center">
+                    <div class="eyebrow">Step 3 of 3</div>
+                    <h1 class="screen-title">Confirm Your Queue</h1>
+                </div>
             </div>
 
             <div class="screen-body">
@@ -158,9 +165,6 @@ $kioskEnabled = (bool)($kioskSettings['kiosk_enabled'] ?? true);
                 </div>
             </div>
             <div class="screen-foot">
-                <button class="btn btn-ghost" onclick="goBack()">
-                    <i class="fas fa-arrow-left"></i> Back
-                </button>
                 <button class="btn btn-primary" id="confirmBtn" onclick="confirmQueue()">
                     <i class="fas fa-check-circle"></i> Confirm &amp; Get Ticket
                 </button>
