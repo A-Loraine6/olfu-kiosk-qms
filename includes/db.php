@@ -17,6 +17,7 @@ class Database
         }
 
         $this->conn->set_charset('utf8mb4');
+        $this->conn->query("SET time_zone = '+08:00'");
     }
 
     public function getConnection()
