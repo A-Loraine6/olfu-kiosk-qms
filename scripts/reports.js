@@ -25,17 +25,109 @@ setInterval(updateTime, 1000);
 
 (function () {
   const today = new Date().toISOString().split("T")[0];
-  const from = document.getElementById("dateFrom");
-  const to = document.getElementById("dateTo");
-  if (from) {
-    from.value = today;
-    from.max = today;
-  }
-  if (to) {
-    to.value = today;
-    to.max = today;
-  }
+  ["dateFrom", "dateTo"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.value = today;
+      el.max = today;
+    }
+  });
 })();
+
+function showToast(message, type = "success") {
+  let toast = document.getElementById("reportsToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "reportsToast";
+    toast.className = "reports-toast";
+    toast.innerHTML = `<div class="toast-dot"></div><span id="reportsToastMsg"></span>`;
+    document.body.appendChild(toast);
+  }
+  toast.className = `reports-toast toast-${type}`;
+  document.getElementById("reportsToastMsg").textContent = message;
+  void toast.offsetWidth;
+  toast.classList.add("show");
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => toast.classList.remove("show"), 3500);
+}
+
+function setRange(preset) {
+  const today = new Date();
+  const fmt = (d) => d.toISOString().split("T")[0];
+  let from, to;
+
+  const dayOfWeek = today.getDay();
+  const diffToMon = (dayOfWeek + 6) % 7;
+
+  switch (preset) {
+    case "today":
+      from = to = fmt(today);
+      break;
+    case "yesterday": {
+      const y = new Date(today);
+      y.setDate(today.getDate() - 1);
+      from = to = fmt(y);
+      break;
+    }
+    case "week": {
+      const mon = new Date(today);
+      mon.setDate(today.getDate() - diffToMon);
+      from = fmt(mon);
+      to = fmt(today);
+      break;
+    }
+    case "lastweek": {
+      const lMon = new Date(today);
+      lMon.setDate(today.getDate() - diffToMon - 7);
+      const lSun = new Date(today);
+      lSun.setDate(today.getDate() - diffToMon - 1);
+      from = fmt(lMon);
+      to = fmt(lSun);
+      break;
+    }
+    case "month": {
+      const m = new Date(today.getFullYear(), today.getMonth(), 1);
+      from = fmt(m);
+      to = fmt(today);
+      break;
+    }
+    default:
+      return;
+  }
+
+  const fromEl = document.getElementById("dateFrom");
+  const toEl = document.getElementById("dateTo");
+  if (fromEl) fromEl.value = from;
+  if (toEl) toEl.value = to;
+
+  document.querySelectorAll(".range-pill").forEach((p) => {
+    p.classList.toggle("active", p.dataset.range === preset);
+  });
+
+  if (IS_PERSONAL_VIEW) {
+    applyStaffFilters();
+  } else {
+    applyFilters();
+  }
+}
+
+function skeletonCard() {
+  return `
+    <div class="skeleton-card">
+      <div class="skel skel-sm" style="width:55%"></div>
+      <div class="skel skel-lg" style="width:45%"></div>
+      <div class="skel skel-sm" style="width:75%"></div>
+      <div class="skel skel-sm" style="width:40%"></div>
+    </div>`;
+}
+
+function showSkeletonRow(containerId, cols = 4) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = Array(cols).fill(skeletonCard()).join("");
+  el.className = "skeleton-row";
+  el.style.display = "";
+}
 
 function formatLabel(from, to) {
   const fmt = (d) => {
@@ -49,15 +141,27 @@ function formatLabel(from, to) {
   return from === to ? fmt(from) : `${fmt(from)} — ${fmt(to)}`;
 }
 
-function statCard(label, value, sub, colorClass, isMuted, isNa) {
+function trendBadge(pct) {
+  if (pct === 0 || pct === null || pct === undefined)
+    return `<span class="trend-badge trend-neutral"><i class="fas fa-minus"></i> No change</span>`;
+  const up = pct > 0;
+  const icon = up ? "fa-arrow-up" : "fa-arrow-down";
+  const cls = up ? "trend-up" : "trend-down";
+  return `<span class="trend-badge ${cls}"><i class="fas ${icon}"></i> ${Math.abs(pct)}% vs prev period</span>`;
+}
+
+function statCard(label, value, sub, colorClass, isMuted, isNa, trendPct) {
   const mutedClass = isMuted ? " stat-muted" : "";
   const naClass = isNa ? " stat-na" : "";
+  const trend =
+    trendPct !== undefined && trendPct !== null ? trendBadge(trendPct) : "";
   return `
-        <div class="summary-stat ${colorClass}">
-            <div class="summary-stat-label">${label}</div>
-            <div class="summary-stat-value${mutedClass}${naClass}">${value}</div>
-            <div class="summary-stat-sub">${sub}</div>
-        </div>`;
+    <div class="summary-stat ${colorClass}">
+      <div class="summary-stat-label">${label}</div>
+      <div class="summary-stat-value${mutedClass}${naClass}">${value}</div>
+      <div class="summary-stat-sub">${sub}</div>
+      ${trend}
+    </div>`;
 }
 
 function renderStaffCards(d) {
@@ -113,17 +217,16 @@ function setStaffBlock(d, from, to) {
   pill.textContent = hasData ? "Has Data" : "No Data";
   pill.className = "pill " + (hasData ? "pill-green" : "pill-orange");
 
-  const loading = document.getElementById("staffResultsLoading");
+  document.getElementById("staffResultsLoading").style.display = "none";
   const cards = document.getElementById("staffResultsCards");
-  loading.style.display = "none";
+  cards.className = "daily-summary-row";
   cards.style.display = "";
 
   if (!hasData) {
     cards.innerHTML = `
-            <div class="no-data-notice" style="grid-column:1/-1; margin-bottom:0;">
-                <i class="fas fa-info-circle"></i>
-                No transactions found for this period.
-            </div>`;
+      <div class="no-data-notice" style="grid-column:1/-1;margin-bottom:0;">
+        <i class="fas fa-info-circle"></i> No transactions found for this period.
+      </div>`;
   } else {
     cards.innerHTML = renderStaffCards(d);
   }
@@ -134,12 +237,11 @@ function renderDailyReport(data) {
   if (!block) return;
 
   const hasData = data.total_queued > 0;
-  const container = block.querySelector(".daily-summary-row");
   const pill = block.querySelector(".pill");
-
   pill.textContent = hasData ? "Has Data" : "No Data";
   pill.className = "pill " + (hasData ? "pill-green" : "pill-orange");
 
+  const container = block.querySelector(".daily-summary-row");
   if (container) {
     container.style.display = "";
     container.innerHTML =
@@ -180,9 +282,17 @@ function renderDailyReport(data) {
   }
 }
 
+let _officeSortCol = -1;
+let _officeSortAsc = false;
+let _officeData = [];
+
 function renderOfficePerformance(data) {
   const block = document.getElementById("block-office");
   if (!block) return;
+
+  _officeData = data;
+  _officeSortCol = -1; 
+  _officeSortAsc = false;
 
   const hasData = data.some((d) => d.total_transactions > 0);
   const table = block.querySelector(".perf-table");
@@ -196,69 +306,91 @@ function renderOfficePerformance(data) {
 
   if (table) {
     table.style.display = "";
-    const tbody = table.querySelector("tbody");
-    tbody.innerHTML = "";
-    data.forEach((office) => {
-      const row = document.createElement("tr");
-      let statusClass, statusLabel;
+    _buildOfficeTable(table, _officeData, _officeSortCol, _officeSortAsc);
 
-      if (office.total_transactions === 0) {
-        statusClass = "status-inactive";
-        statusLabel = "Inactive";
-      } else if (office.volume_share > 30) {
-        statusClass = "status-high";
-        statusLabel = "High";
-      } else if (office.volume_share > 15) {
-        statusClass = "status-medium";
-        statusLabel = "Normal";
-      } else {
-        statusClass = "status-low";
-        statusLabel = "Low";
+    table.querySelectorAll("thead th").forEach((th, i) => {
+      const newTh = th.cloneNode(true); 
+      if (!newTh.querySelector(".sort-icon")) {
+        newTh.innerHTML += ` <span class="sort-icon">↕</span>`;
       }
-
-      row.innerHTML = `
-        <td>${office.name}</td>
-        <td>${office.served}</td>
-        <td>${office.skipped}</td>
-        <td>${office.avg_service_time > 0 ? office.avg_service_time + " min" : "—"}</td>
-        <td>${office.volume_share.toFixed(1)}%</td>
-        <td><span class="status-badge ${statusClass}">
-          ${statusLabel}
-        </span></td>
-      `;
-      tbody.appendChild(row);
-    });
-
-    const headers = table.querySelectorAll("thead th");
-    headers.forEach((header, index) => {
-      header.style.cursor = "pointer";
-      header.title = "Click to sort";
-      header.addEventListener("click", () => sortTable(table, index));
+      newTh.addEventListener("click", () => {
+        if (_officeSortCol === i) _officeSortAsc = !_officeSortAsc;
+        else {
+          _officeSortCol = i;
+          _officeSortAsc = false;
+        }
+        _buildOfficeTable(table, _officeData, _officeSortCol, _officeSortAsc);
+      });
+      th.parentNode.replaceChild(newTh, th);
     });
   }
 }
 
-function sortTable(table, columnIndex) {
-  const tbody = table.querySelector("tbody");
-  const rows = Array.from(tbody.querySelectorAll("tr"));
-
-  rows.sort((a, b) => {
-    const aVal = a.querySelectorAll("td")[columnIndex].textContent.trim();
-    const bVal = b.querySelectorAll("td")[columnIndex].textContent.trim();
-
-    const aNum = parseFloat(aVal);
-    const bNum = parseFloat(bVal);
-    if (!isNaN(aNum) && !isNaN(bNum)) {
-      return bNum - aNum;
-    }
-    return aVal.localeCompare(bVal);
+function _buildOfficeTable(table, data, sortCol, sortAsc) {
+  table.querySelectorAll("thead th").forEach((th, i) => {
+    const icon = th.querySelector(".sort-icon");
+    if (!icon) return;
+    th.classList.toggle("sorted", i === sortCol);
+    icon.textContent = i === sortCol ? (sortAsc ? "↑" : "↓") : "↕";
   });
 
-  rows.forEach((row) => tbody.appendChild(row));
+  let rows = [...data];
+  if (sortCol >= 0) {
+    rows.sort((a, b) => {
+      const keys = [
+        "name",
+        "served",
+        "skipped",
+        "avg_service_time",
+        "volume_share",
+        "total_transactions",
+      ];
+      const key = keys[sortCol] ?? "name";
+      const av = a[key];
+      const bv = b[key];
+
+      let cmp;
+      if (typeof av === "number" && typeof bv === "number") {
+        cmp = av - bv;
+      } else {
+        cmp = String(av).localeCompare(String(bv));
+      }
+
+      return sortAsc ? cmp : -cmp;
+    });
+  }
+
+  const tbody = table.querySelector("tbody");
+  tbody.innerHTML = "";
+  rows.forEach((office) => {
+    let statusClass, statusLabel;
+    if (office.total_transactions === 0) {
+      statusClass = "status-inactive";
+      statusLabel = "Inactive";
+    } else if (office.volume_share > 30) {
+      statusClass = "status-high";
+      statusLabel = "High";
+    } else if (office.volume_share > 15) {
+      statusClass = "status-medium";
+      statusLabel = "Normal";
+    } else {
+      statusClass = "status-low";
+      statusLabel = "Low";
+    }
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${office.name}</td>
+      <td>${office.served}</td>
+      <td>${office.skipped}</td>
+      <td>${office.avg_service_time > 0 ? office.avg_service_time + " min" : "—"}</td>
+      <td>${office.volume_share.toFixed(1)}%</td>
+      <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>`;
+    tbody.appendChild(tr);
+  });
 }
 
 let peakHoursChart = null;
-let deptChart = null;
 
 function renderPeakHours(data) {
   const block = document.getElementById("block-peaks");
@@ -267,8 +399,8 @@ function renderPeakHours(data) {
   const hasData = data.some((d) => d > 0);
   const canvas = block.querySelector("#peakHoursChart");
   const emptyState = canvas
-    .closest(".sub-chart-box")
-    .querySelector(".empty-state");
+    ?.closest(".sub-chart-box")
+    ?.querySelector(".empty-state");
   const pill = block.querySelector(".pill");
 
   if (pill) {
@@ -279,55 +411,49 @@ function renderPeakHours(data) {
   if (!hasData) {
     if (emptyState) emptyState.style.display = "";
     if (canvas) canvas.style.display = "none";
-  } else {
-    if (emptyState) emptyState.style.display = "none";
-    if (canvas) canvas.style.display = "";
-
-    const hours = Array.from({ length: 24 }, (_, i) => {
-      const h = String(i).padStart(2, "0");
-      return h + ":00";
-    });
-
-    const ctx = canvas.getContext("2d");
-    if (peakHoursChart) peakHoursChart.destroy();
-    peakHoursChart = new Chart(ctx, {
-      type: "line",
-      data: {
-        labels: hours,
-        datasets: [
-          {
-            label: "Queue Volume",
-            data: data,
-            borderColor: "#008b43",
-            backgroundColor: "rgba(0, 139, 67, 0.1)",
-            tension: 0.3,
-            fill: true,
-            pointRadius: 4,
-            pointBackgroundColor: "#008b43",
-            pointBorderColor: "#008b43",
-            pointBorderWidth: 0,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-          legend: { display: false },
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              stepSize: 1,
-              precision: 0,
-            },
-          },
-        },
-      },
-    });
+    return;
   }
+
+  if (emptyState) emptyState.style.display = "none";
+  if (canvas) canvas.style.display = "";
+
+  const hours = Array.from(
+    { length: 24 },
+    (_, i) => String(i).padStart(2, "0") + ":00",
+  );
+  const ctx = canvas.getContext("2d");
+  if (peakHoursChart) peakHoursChart.destroy();
+  peakHoursChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: hours,
+      datasets: [
+        {
+          label: "Queue Volume",
+          data,
+          borderColor: "#008b43",
+          backgroundColor: "rgba(0,139,67,0.1)",
+          tension: 0.3,
+          fill: true,
+          pointRadius: 4,
+          pointBackgroundColor: "#008b43",
+          pointBorderColor: "#008b43",
+          pointBorderWidth: 0,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } },
+      },
+    },
+  });
 }
+
+let deptChart = null;
 
 function renderDepartmentDemand(data) {
   const block = document.getElementById("block-peaks");
@@ -336,283 +462,71 @@ function renderDepartmentDemand(data) {
   const hasData = data.some((d) => d.count > 0);
   const canvas = block.querySelector("#deptChart");
   const emptyState = canvas
-    .closest(".sub-chart-box")
-    .querySelector(".empty-state");
-  const pill = block.querySelector(".pill");
-
-  if (pill) {
-    pill.textContent = hasData ? "Has Data" : "No Data";
-    pill.className = "pill " + (hasData ? "pill-green" : "pill-orange");
-  }
+    ?.closest(".sub-chart-box")
+    ?.querySelector(".empty-state");
 
   if (!hasData) {
     if (emptyState) emptyState.style.display = "";
     if (canvas) canvas.style.display = "none";
-  } else {
-    if (emptyState) emptyState.style.display = "none";
-    if (canvas) canvas.style.display = "";
+    return;
+  }
 
-    const greenShades = [
-      "#008b43",
-      "#00a652",
-      "#00c166",
-      "#10b981",
-      "#14b8a6",
-      "#06b6d4",
-    ];
-    const borderShades = [
-      "#006633",
-      "#007a3d",
-      "#009950",
-      "#0e9060",
-      "#0f9e7e",
-      "#0396a8",
-    ];
+  if (emptyState) emptyState.style.display = "none";
+  if (canvas) canvas.style.display = "";
 
-    const ctx = canvas.getContext("2d");
-    if (deptChart) deptChart.destroy();
-    deptChart = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: data.map((d) => d.name),
-        datasets: [
-          {
-            label: "Queue Demand",
-            data: data.map((d) => d.count),
-            backgroundColor: data.map(
-              (_, i) => greenShades[i % greenShades.length],
-            ),
-            borderColor: data.map(
-              (_, i) => borderShades[i % borderShades.length],
-            ),
-            borderWidth: 0,
-            borderRadius: 4,
-          },
-        ],
-      },
-      options: {
-        indexAxis: "y",
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-          legend: { display: false },
-          datalabels: { display: false },
+  const greens = [
+    "#008b43",
+    "#00a652",
+    "#00c166",
+    "#10b981",
+    "#14b8a6",
+    "#06b6d4",
+  ];
+  const borders = [
+    "#006633",
+    "#007a3d",
+    "#009950",
+    "#0e9060",
+    "#0f9e7e",
+    "#0396a8",
+  ];
+  const ctx = canvas.getContext("2d");
+  if (deptChart) deptChart.destroy();
+  deptChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: data.map((d) => d.name),
+      datasets: [
+        {
+          label: "Queue Demand",
+          data: data.map((d) => d.count),
+          backgroundColor: data.map((_, i) => greens[i % greens.length]),
+          borderColor: data.map((_, i) => borders[i % borders.length]),
+          borderWidth: 0,
+          borderRadius: 4,
         },
-        scales: {
-          x: {
-            beginAtZero: true,
-            ticks: { stepSize: 1 },
-            grid: { drawBorder: false, display: false },
-          },
-          y: {
-            categoryPercentage: 0.5,
-            barPercentage: 0.6,
-            grid: { display: false, drawBorder: false },
-            ticks: { font: { size: 11, weight: "600" } },
-          },
+      ],
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: { stepSize: 1 },
+          grid: { drawBorder: false, display: false },
+        },
+        y: {
+          categoryPercentage: 0.5,
+          barPercentage: 0.6,
+          grid: { display: false, drawBorder: false },
+          ticks: { font: { size: 11, weight: "600" } },
         },
       },
-    });
-  }
-}
-
-async function fetchAndRenderDailyReport(from, to, officeId = null) {
-  try {
-    const res = await fetch("api/reports_actions.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "daily_report",
-        date_from: from,
-        date_to: to,
-        office_id: officeId,
-        csrf_token: CSRF_TOKEN,
-      }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      renderDailyReport(data.report);
-    }
-  } catch (e) {
-    console.error("Error fetching daily report:", e);
-  }
-}
-
-async function fetchAndRenderOfficePerformance(from, to, officeId = null) {
-  try {
-    const res = await fetch("api/reports_actions.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "office_performance",
-        date_from: from,
-        date_to: to,
-        office_id: officeId,
-        csrf_token: CSRF_TOKEN,
-      }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      renderOfficePerformance(data.performance);
-    }
-  } catch (e) {
-    console.error("Error fetching office performance:", e);
-  }
-}
-
-async function fetchAndRenderPeakHours(from, to, officeId = null) {
-  try {
-    const res = await fetch("api/reports_actions.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "peak_hours",
-        date_from: from,
-        date_to: to,
-        office_id: officeId,
-        csrf_token: CSRF_TOKEN,
-      }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      renderPeakHours(data.peak_hours);
-    }
-  } catch (e) {
-    console.error("Error fetching peak hours:", e);
-  }
-}
-
-async function fetchAndRenderDepartmentDemand(from, to, officeId = null) {
-  try {
-    const res = await fetch("api/reports_actions.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "department_demand",
-        date_from: from,
-        date_to: to,
-        office_id: officeId,
-        csrf_token: CSRF_TOKEN,
-      }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      renderDepartmentDemand(data.department_demand);
-    }
-  } catch (e) {
-    console.error("Error fetching department demand:", e);
-  }
-}
-
-async function applyStaffFilters() {
-  const from = document.getElementById("dateFrom").value;
-  const to = document.getElementById("dateTo").value;
-
-  if (!from || !to) {
-    alert("Please select both a start and end date.");
-    return;
-  }
-  if (from > to) {
-    alert("'Date From' cannot be after 'Date To'.");
-    return;
-  }
-
-  const btn = document.getElementById("applyBtn");
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading…';
-  btn.disabled = true;
-
-  const loading = document.getElementById("staffResultsLoading");
-  const cards = document.getElementById("staffResultsCards");
-  loading.style.display = "";
-  cards.style.display = "none";
-  document.getElementById("staffResultsLabel").textContent = "Loading…";
-  document.getElementById("staffResultsPill").textContent = "";
-
-  let data;
-  try {
-    const res = await fetch("api/reports_actions.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "staff_metrics",
-        date_from: from,
-        date_to: to,
-        csrf_token: CSRF_TOKEN,
-      }),
-    });
-    data = await res.json();
-  } catch (e) {
-    btn.innerHTML = '<i class="fas fa-search"></i> Apply';
-    btn.disabled = false;
-    alert("Network error. Please try again.");
-    return;
-  }
-
-  btn.innerHTML = '<i class="fas fa-search"></i> Apply';
-  btn.disabled = false;
-
-  if (!data.success) {
-    alert(data.message ?? "Failed to load metrics.");
-    return;
-  }
-
-  setStaffBlock(data.metrics, from, to);
-}
-
-async function fetchAndRenderDayBreakdown(from, to, officeId = null) {
-  try {
-    const res = await fetch("api/reports_actions.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "day_of_week_volume",
-        date_from: from,
-        date_to: to,
-        office_id: officeId,
-        csrf_token: CSRF_TOKEN,
-      }),
-    });
-    const data = await res.json();
-    console.log("day_of_week_volume response:", data);
-    if (
-      data.success &&
-      data.day_of_week_volume &&
-      data.day_of_week_volume.length > 0
-    ) {
-      renderDayBreakdown(data.day_of_week_volume);
-    } else {
-      const canvas = document.getElementById("busyDaysChart");
-      const emptyState = canvas
-        ?.closest(".sub-chart-box")
-        ?.querySelector(".empty-state");
-      if (emptyState) emptyState.style.display = "";
-      if (canvas) canvas.style.display = "none";
-    }
-  } catch (e) {
-    console.error("Error fetching day breakdown:", e);
-  }
-}
-
-async function fetchAndRenderTransactionTypes(from, to, officeId = null) {
-  try {
-    const res = await fetch("api/reports_actions.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "transaction_types",
-        date_from: from,
-        date_to: to,
-        office_id: officeId,
-        csrf_token: CSRF_TOKEN,
-      }),
-    });
-    const data = await res.json();
-    if (data.success && data.transaction_types.length > 0) {
-      renderTransactionTypes(data.transaction_types);
-    }
-  } catch (e) {
-    console.error("Error fetching transaction types:", e);
-  }
+    },
+  });
 }
 
 function renderDayBreakdown(data) {
@@ -621,16 +535,10 @@ function renderDayBreakdown(data) {
   const labels = data.map((d) => {
     if (d.date) {
       const dateObj = new Date(d.date + "T00:00:00");
-      const dateStr = dateObj.toLocaleDateString("en-PH", {
-        month: "short",
-        day: "numeric",
-      });
-      return `${d.day.substring(0, 3)} (${dateStr})`;
-    } else {
-      return d.day.substring(0, 3);
+      return `${d.day.substring(0, 3)} (${dateObj.toLocaleDateString("en-PH", { month: "short", day: "numeric" })})`;
     }
+    return d.day.substring(0, 3);
   });
-  const counts = data.map((d) => d.count);
 
   const canvas = document.getElementById("busyDaysChart");
   if (!canvas) return;
@@ -641,11 +549,11 @@ function renderDayBreakdown(data) {
   window.busyDaysChartInstance = new Chart(ctx, {
     type: "bar",
     data: {
-      labels: labels,
+      labels,
       datasets: [
         {
           label: "Queue Volume by Day",
-          data: counts,
+          data: data.map((d) => d.count),
           backgroundColor: [
             "#006633",
             "#007a3d",
@@ -669,11 +577,7 @@ function renderDayBreakdown(data) {
       plugins: {
         legend: { display: false },
         tooltip: {
-          callbacks: {
-            label: function (context) {
-              return "Queue Volume: " + context.parsed.y;
-            },
-          },
+          callbacks: { label: (ctx) => "Queue Volume: " + ctx.parsed.y },
         },
       },
       scales: {
@@ -693,41 +597,293 @@ function renderDayBreakdown(data) {
   canvas.style.display = "";
   const emptyState = canvas
     .closest(".sub-chart-box")
-    .querySelector(".empty-state");
+    ?.querySelector(".empty-state");
   if (emptyState) emptyState.style.display = "none";
 }
 
 function renderTransactionTypes(data) {
-  const labels = data.map((d) => d.type);
-  const totals = data.map((d) => d.total);
+  const block = document.getElementById("block-types");
+  if (!block) return;
 
-  const canvas = document.getElementById("transactionTypesChart");
-  if (!canvas) {
-    console.warn("Transaction types chart not found");
+  const hasData = data.length > 0 && data.some((d) => d.total > 0);
+  const pill = document.getElementById("typesPill");
+  const content = document.getElementById("typesContent");
+  const emptyState = document.getElementById("emptyTypes");
+
+  pill.textContent = hasData ? "Has Data" : "No Data";
+  pill.className = "pill " + (hasData ? "pill-green" : "pill-orange");
+
+  if (!hasData) {
+    if (content) content.style.display = "none";
+    if (emptyState) emptyState.style.display = "";
     return;
   }
 
-  const ctx = canvas.getContext("2d");
-  if (window.transactionTypesChart) window.transactionTypesChart.destroy();
+  if (content) content.style.display = "";
+  if (emptyState) emptyState.style.display = "none";
 
-  window.transactionTypesChart = new Chart(ctx, {
-    type: "doughnut",
+  const canvas = document.getElementById("transactionTypesChart");
+  if (canvas) {
+    const ctx = canvas.getContext("2d");
+    if (window.transactionTypesChart) window.transactionTypesChart.destroy();
+    window.transactionTypesChart = new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels: data.map((d) => d.type),
+        datasets: [
+          {
+            data: data.map((d) => d.total),
+            backgroundColor: [
+              "#ec4899",
+              "#f59e0b",
+              "#10b981",
+              "#3b82f6",
+              "#8b5cf6",
+              "#06b6d4",
+            ],
+            borderColor: "#fff",
+            borderWidth: 2,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: { legend: { position: "bottom" } },
+      },
+    });
+  }
+
+  const tbody = document.querySelector("#typesTable tbody");
+  if (tbody) {
+    tbody.innerHTML = "";
+    data.forEach((d) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${d.type || "—"}</td>
+        <td>${d.total}</td>
+        <td>${d.completed}</td>
+        <td>${d.skipped}</td>
+        <td>${d.waiting}</td>`;
+      tbody.appendChild(row);
+    });
+  }
+}
+
+let wowChart = null;
+
+async function fetchAndRenderWoW(officeId = null) {
+  const block = document.getElementById("block-wow");
+  const loading = document.getElementById("wowLoading");
+  const content = document.getElementById("wowContent");
+  const pill = document.getElementById("wowPill");
+  if (!block) return;
+
+  loading.style.display = "";
+  content.style.display = "none";
+
+  const todayDate = new Date();
+  const dayOfWeek = todayDate.getDay();
+  const diffToMon = (dayOfWeek + 6) % 7;
+
+  const thisMonday = new Date(todayDate);
+  thisMonday.setDate(todayDate.getDate() - diffToMon);
+  const thisWeekFrom = thisMonday.toISOString().split("T")[0];
+  const thisWeekTo = todayDate.toISOString().split("T")[0];
+
+  const lastMonday = new Date(thisMonday);
+  lastMonday.setDate(thisMonday.getDate() - 7);
+  const lastSunday = new Date(thisMonday);
+  lastSunday.setDate(thisMonday.getDate() - 1);
+  const lastWeekFrom = lastMonday.toISOString().split("T")[0];
+  const lastWeekTo = lastSunday.toISOString().split("T")[0];
+
+  try {
+    const [thisRes, lastRes] = await Promise.all([
+      fetch("api/reports_actions.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "daily_report",
+          date_from: thisWeekFrom,
+          date_to: thisWeekTo,
+          office_id: officeId,
+          csrf_token: CSRF_TOKEN,
+        }),
+      }),
+      fetch("api/reports_actions.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "daily_report",
+          date_from: lastWeekFrom,
+          date_to: lastWeekTo,
+          office_id: officeId,
+          csrf_token: CSRF_TOKEN,
+        }),
+      }),
+    ]);
+
+    const thisData = await thisRes.json();
+    const lastData = await lastRes.json();
+    if (!thisData.success || !lastData.success) {
+      loading.style.display = "none";
+      return;
+    }
+
+    const tw = thisData.report;
+    const lw = lastData.report;
+    loading.style.display = "none";
+    content.style.display = "";
+
+    const hasAny = tw.total_queued > 0 || lw.total_queued > 0;
+    pill.textContent = hasAny ? "Has Data" : "No Data";
+    pill.className = "pill " + (hasAny ? "pill-green" : "pill-orange");
+
+    const delta = (a, b) =>
+      b > 0 ? Math.round(((a - b) / b) * 100) : a > 0 ? 100 : 0;
+    const diffSign = (n) =>
+      n > 0
+        ? `<span class="wow-delta wow-up">▲ ${n}%</span>`
+        : n < 0
+          ? `<span class="wow-delta wow-down">▼ ${Math.abs(n)}%</span>`
+          : `<span class="wow-delta wow-flat">— 0%</span>`;
+
+    const metrics = [
+      {
+        label: "Total Queued",
+        icon: "fa-users",
+        tw: tw.total_queued,
+        lw: lw.total_queued,
+        color: "stat-green",
+      },
+      {
+        label: "Total Served",
+        icon: "fa-check-circle",
+        tw: tw.total_served,
+        lw: lw.total_served,
+        color: "stat-green",
+      },
+      {
+        label: "Total Skipped",
+        icon: "fa-user-slash",
+        tw: tw.total_skipped,
+        lw: lw.total_skipped,
+        color: "stat-orange",
+      },
+      {
+        label: "Completion Rate",
+        icon: "fa-percentage",
+        tw: Math.round(tw.completion_rate) + "%",
+        lw: Math.round(lw.completion_rate) + "%",
+        twRaw: tw.completion_rate,
+        lwRaw: lw.completion_rate,
+        color: "stat-blue",
+        isRate: true,
+      },
+    ];
+
+    document.getElementById("wowCards").innerHTML = metrics
+      .map((m) => {
+        const pct = m.isRate
+          ? delta(m.twRaw, m.lwRaw)
+          : delta(
+              typeof m.tw === "string" ? parseInt(m.tw) : m.tw,
+              typeof m.lw === "string" ? parseInt(m.lw) : m.lw,
+            );
+        return `
+        <div class="wow-card ${m.color}">
+          <div class="wow-card-icon"><i class="fas ${m.icon}"></i></div>
+          <div class="wow-card-label">${m.label}</div>
+          <div class="wow-weeks">
+            <div class="wow-week"><div class="wow-week-label">This Week</div><div class="wow-week-value">${m.tw}</div></div>
+            <div class="wow-divider"></div>
+            <div class="wow-week"><div class="wow-week-label">Last Week</div><div class="wow-week-value wow-muted">${m.lw}</div></div>
+          </div>
+          <div class="wow-trend">${diffSign(pct)}</div>
+        </div>`;
+      })
+      .join("");
+
+    await renderWowChart(
+      thisWeekFrom,
+      thisWeekTo,
+      lastWeekFrom,
+      lastWeekTo,
+      officeId,
+    );
+  } catch (e) {
+    console.error("WoW fetch error:", e);
+    loading.style.display = "none";
+  }
+}
+
+async function renderWowChart(twFrom, twTo, lwFrom, lwTo, officeId) {
+  const canvas = document.getElementById("wowChart");
+  if (!canvas) return;
+
+  const fetchBreakdown = async (from, to) => {
+    const res = await fetch("api/reports_actions.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "day_of_week_volume",
+        date_from: from,
+        date_to: to,
+        office_id: officeId,
+        csrf_token: CSRF_TOKEN,
+      }),
+    });
+    const data = await res.json();
+    return data.success ? data.day_of_week_volume : [];
+  };
+
+  const [twDays, lwDays] = await Promise.all([
+    fetchBreakdown(twFrom, twTo),
+    fetchBreakdown(lwFrom, lwTo),
+  ]);
+
+  const dayOrder = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+  ];
+  const toMap = (arr) => Object.fromEntries(arr.map((d) => [d.day, d.count]));
+  const twMap = toMap(twDays),
+    lwMap = toMap(lwDays);
+  const labels = dayOrder.map((d) => d.substring(0, 3));
+  const twCounts = dayOrder.map((d) => twMap[d] ?? 0);
+  const lwCounts = dayOrder.map((d) => lwMap[d] ?? 0);
+
+  const ctx = canvas.getContext("2d");
+  if (wowChart) wowChart.destroy();
+
+  wowChart = new Chart(ctx, {
+    type: "bar",
     data: {
-      labels: labels,
+      labels,
       datasets: [
         {
-          label: "Transactions by Type",
-          data: totals,
-          backgroundColor: [
-            "#ec4899",
-            "#f59e0b",
-            "#10b981",
-            "#3b82f6",
-            "#8b5cf6",
-            "#06b6d4",
-          ],
-          borderColor: "#fff",
-          borderWidth: 2,
+          label: "This Week",
+          data: twCounts,
+          backgroundColor: "rgba(0,139,67,0.85)",
+          borderColor: "#008b43",
+          borderWidth: 0,
+          borderRadius: 5,
+          maxBarThickness: 32,
+        },
+        {
+          label: "Last Week",
+          data: lwCounts,
+          backgroundColor: "rgba(0,139,67,0.22)",
+          borderColor: "rgba(0,139,67,0.4)",
+          borderWidth: 1,
+          borderRadius: 5,
+          maxBarThickness: 32,
         },
       ],
     },
@@ -736,17 +892,210 @@ function renderTransactionTypes(data) {
       maintainAspectRatio: true,
       plugins: {
         legend: {
-          position: "bottom",
+          position: "top",
+          labels: { boxWidth: 12, font: { size: 11 } },
         },
+        tooltip: { mode: "index", intersect: false },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1 },
+          grid: { color: "rgba(0,0,0,0.05)" },
+        },
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
       },
     },
   });
+}
 
-  canvas.style.display = "";
-  const emptyState = canvas
-    .closest(".sub-chart-box")
-    .querySelector(".empty-state");
-  if (emptyState) emptyState.style.display = "none";
+async function fetchAndRenderDailyReport(from, to, officeId = null) {
+  try {
+    const res = await fetch("api/reports_actions.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "daily_report",
+        date_from: from,
+        date_to: to,
+        office_id: officeId,
+        csrf_token: CSRF_TOKEN,
+      }),
+    });
+    const data = await res.json();
+    if (data.success) renderDailyReport(data.report);
+  } catch (e) {
+    console.error("Error fetching daily report:", e);
+  }
+}
+
+async function fetchAndRenderOfficePerformance(from, to, officeId = null) {
+  try {
+    const res = await fetch("api/reports_actions.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "office_performance",
+        date_from: from,
+        date_to: to,
+        office_id: officeId,
+        csrf_token: CSRF_TOKEN,
+      }),
+    });
+    const data = await res.json();
+    if (data.success) renderOfficePerformance(data.performance);
+  } catch (e) {
+    console.error("Error fetching office performance:", e);
+  }
+}
+
+async function fetchAndRenderPeakHours(from, to, officeId = null) {
+  try {
+    const res = await fetch("api/reports_actions.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "peak_hours",
+        date_from: from,
+        date_to: to,
+        office_id: officeId,
+        csrf_token: CSRF_TOKEN,
+      }),
+    });
+    const data = await res.json();
+    if (data.success) renderPeakHours(data.peak_hours);
+  } catch (e) {
+    console.error("Error fetching peak hours:", e);
+  }
+}
+
+async function fetchAndRenderDepartmentDemand(from, to, officeId = null) {
+  try {
+    const res = await fetch("api/reports_actions.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "department_demand",
+        date_from: from,
+        date_to: to,
+        office_id: officeId,
+        csrf_token: CSRF_TOKEN,
+      }),
+    });
+    const data = await res.json();
+    if (data.success) renderDepartmentDemand(data.department_demand);
+  } catch (e) {
+    console.error("Error fetching department demand:", e);
+  }
+}
+
+async function fetchAndRenderDayBreakdown(from, to, officeId = null) {
+  try {
+    const res = await fetch("api/reports_actions.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "day_of_week_volume",
+        date_from: from,
+        date_to: to,
+        office_id: officeId,
+        csrf_token: CSRF_TOKEN,
+      }),
+    });
+    const data = await res.json();
+    if (data.success && data.day_of_week_volume?.length > 0) {
+      renderDayBreakdown(data.day_of_week_volume);
+    } else {
+      const canvas = document.getElementById("busyDaysChart");
+      const empty = canvas
+        ?.closest(".sub-chart-box")
+        ?.querySelector(".empty-state");
+      if (empty) empty.style.display = "";
+      if (canvas) canvas.style.display = "none";
+    }
+  } catch (e) {
+    console.error("Error fetching day breakdown:", e);
+  }
+}
+
+async function fetchAndRenderTransactionTypes(from, to, officeId = null) {
+  try {
+    const res = await fetch("api/reports_actions.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "transaction_types",
+        date_from: from,
+        date_to: to,
+        office_id: officeId,
+        csrf_token: CSRF_TOKEN,
+      }),
+    });
+    const data = await res.json();
+    if (data.success) renderTransactionTypes(data.transaction_types);
+  } catch (e) {
+    console.error("Error fetching transaction types:", e);
+  }
+}
+
+async function applyStaffFilters() {
+  const from = document.getElementById("dateFrom").value;
+  const to = document.getElementById("dateTo").value;
+  if (!from || !to) {
+    alert("Please select both a start and end date.");
+    return;
+  }
+  if (from > to) {
+    alert("'Date From' cannot be after 'Date To'.");
+    return;
+  }
+
+  const btn = document.getElementById("applyBtn");
+  if (btn) {
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading…';
+    btn.disabled = true;
+  }
+
+  const loading = document.getElementById("staffResultsLoading");
+  const cards = document.getElementById("staffResultsCards");
+  if (loading) loading.style.display = "";
+  if (cards) {
+    cards.style.display = "none";
+  }
+  document.getElementById("staffResultsLabel").textContent = "Loading…";
+  document.getElementById("staffResultsPill").textContent = "";
+
+  let data;
+  try {
+    const res = await fetch("api/reports_actions.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "staff_metrics",
+        date_from: from,
+        date_to: to,
+        csrf_token: CSRF_TOKEN,
+      }),
+    });
+    data = await res.json();
+  } catch (e) {
+    if (btn) {
+      btn.innerHTML = '<i class="fas fa-search"></i> Apply';
+      btn.disabled = false;
+    }
+    showToast("Network error. Please try again.", "error");
+    return;
+  }
+
+  if (btn) {
+    btn.innerHTML = '<i class="fas fa-search"></i> Apply';
+    btn.disabled = false;
+  }
+  if (!data.success) {
+    showToast(data.message ?? "Failed to load metrics.", "error");
+    return;
+  }
+  setStaffBlock(data.metrics, from, to);
 }
 
 function applyFilters() {
@@ -766,11 +1115,13 @@ function applyFilters() {
   }
 
   const btn = document.querySelector(".btn-apply");
-  if (!btn) return;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying…';
-  btn.disabled = true;
+  if (btn) {
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying…';
+    btn.disabled = true;
+  }
 
   Promise.all([
+    fetchAndRenderWoW(officeId),
     fetchAndRenderDailyReport(from, to, officeId),
     fetchAndRenderOfficePerformance(from, to, officeId),
     fetchAndRenderPeakHours(from, to, officeId),
@@ -778,8 +1129,10 @@ function applyFilters() {
     fetchAndRenderDayBreakdown(from, to, officeId),
     fetchAndRenderTransactionTypes(from, to, officeId),
   ]).finally(() => {
-    btn.innerHTML = '<i class="fas fa-search"></i> Apply';
-    btn.disabled = false;
+    if (btn) {
+      btn.innerHTML = '<i class="fas fa-search"></i> View Report';
+      btn.disabled = false;
+    }
   });
 }
 
@@ -796,38 +1149,62 @@ async function exportReport(type) {
     SCOPED_OFFICE_ID ?? (document.getElementById("officeFilter")?.value || "");
 
   const btn = document.querySelector(".btn-export");
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating…';
-  btn.disabled = true;
+  const progWrap = btn?.querySelector(".export-progress-bar");
+
+  if (btn) {
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating…';
+    btn.disabled = true;
+  }
+
+  if (progWrap) {
+    progWrap.style.display = "block";
+    let w = 0;
+    const iv = setInterval(() => {
+      w = Math.min(w + Math.random() * 15, 90);
+      progWrap.style.width = Math.round(w) + "%";
+    }, 200);
+    progWrap._interval = iv;
+  }
 
   try {
     const form = document.createElement("form");
     form.method = "POST";
     form.action = "api/export_pdf.php";
     form.target = "_blank";
-
-    const fields = {
+    Object.entries({
       date_from: from,
       date_to: to,
       office_id: officeId,
       csrf_token: CSRF_TOKEN,
-    };
-
-    Object.entries(fields).forEach(([key, val]) => {
-      const input = document.createElement("input");
-      input.type = "hidden";
-      input.name = key;
-      input.value = val;
-      form.appendChild(input);
+    }).forEach(([k, v]) => {
+      const inp = document.createElement("input");
+      inp.type = "hidden";
+      inp.name = k;
+      inp.value = v;
+      form.appendChild(inp);
     });
-
     document.body.appendChild(form);
     form.submit();
     document.body.removeChild(form);
+
+    if (progWrap) {
+      clearInterval(progWrap._interval);
+      progWrap.style.width = "100%";
+      setTimeout(() => {
+        progWrap.style.width = "0%";
+        progWrap.style.display = "none";
+      }, 600);
+    }
+    showToast("PDF is being generated — check your downloads.", "success");
+  } catch (e) {
+    showToast("Export failed. Please try again.", "error");
   } finally {
     setTimeout(() => {
-      btn.innerHTML = '<i class="fas fa-file-pdf"></i> Export as PDF';
-      btn.disabled = false;
-    }, 1500);
+      if (btn) {
+        btn.innerHTML = '<i class="fas fa-file-pdf"></i> Export as PDF';
+        btn.disabled = false;
+      }
+    }, 1200);
   }
 }
 
@@ -841,7 +1218,6 @@ function refreshReports() {
   const officeId =
     SCOPED_OFFICE_ID ??
     (document.getElementById("officeFilter")?.value || null);
-
   const btn = event?.target;
   if (btn) {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -849,6 +1225,7 @@ function refreshReports() {
   }
 
   Promise.all([
+    fetchAndRenderWoW(officeId),
     fetchAndRenderDailyReport(from, to, officeId),
     fetchAndRenderOfficePerformance(from, to, officeId),
     fetchAndRenderPeakHours(from, to, officeId),
@@ -860,6 +1237,7 @@ function refreshReports() {
       btn.innerHTML = '<i class="fas fa-redo"></i> Refresh';
       btn.disabled = false;
     }
+    showToast("Report refreshed.", "success");
   });
 }
 
@@ -880,12 +1258,13 @@ if (IS_PERSONAL_VIEW) {
       if (data.success) setStaffBlock(data.metrics, today, today);
     })
     .catch(() => {
-      document.getElementById("staffResultsLoading").textContent =
-        "Failed to load. Try refreshing.";
+      const el = document.getElementById("staffResultsLoading");
+      if (el) el.textContent = "Failed to load. Try refreshing.";
     });
 } else {
   const today = new Date().toISOString().split("T")[0];
   const officeId = SCOPED_OFFICE_ID ?? null;
+  fetchAndRenderWoW(officeId);
   fetchAndRenderDailyReport(today, today, officeId);
   fetchAndRenderOfficePerformance(today, today, officeId);
   fetchAndRenderPeakHours(today, today, officeId);

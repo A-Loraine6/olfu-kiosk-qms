@@ -26,7 +26,10 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </a>
             </li>
 
-            <?php if (hasPermission('view_queue') || hasPermission('manage_queue')): ?>
+            <?php if (
+                ($_SESSION['role'] ?? '') !== 'admin' &&
+                (hasPermission('view_queue') || hasPermission('manage_queue'))
+            ): ?>
                 <li>
                     <a href="queue.php" class="<?php echo $currentPage === 'queue.php' ? 'active' : ''; ?>">
                         <i class="fas fa-list-ol"></i>
