@@ -22,6 +22,20 @@ if (!verifyCsrfToken($csrf)) {
     exit;
 }
 
+$canManage = hasPermission('manage_staff');
+$canView   = $canManage || hasPermission('view_staff');
+
+if (!$canView) {
+    echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
+    exit;
+}
+
+$writeActions = ['add_staff', 'edit_staff', 'toggle_staff', 'delete_staff', 'reset_password'];
+if (in_array($action, $writeActions) && !$canManage) {
+    echo json_encode(['success' => false, 'message' => 'You do not have permission to perform this action.']);
+    exit;
+}
+
 $conn = $db->getConnection();
 
 switch ($action) {
@@ -35,6 +49,9 @@ switch ($action) {
             $input['office']        ?? '',
             isset($input['window_number']) && $input['window_number'] !== ''
                 ? (int) $input['window_number']
+                : null,
+            isset($input['role_id']) && $input['role_id'] !== ''
+                ? (int) $input['role_id']
                 : null
         );
         break;
@@ -48,6 +65,9 @@ switch ($action) {
             $input['office']        ?? '',
             isset($input['window_number']) && $input['window_number'] !== ''
                 ? (int) $input['window_number']
+                : null,
+            isset($input['role_id']) && $input['role_id'] !== ''
+                ? (int) $input['role_id']
                 : null
         );
         break;
@@ -123,7 +143,7 @@ switch ($action) {
         $paginated  = array_slice($filtered, $offset, $limit);
 
         ob_start();
-        renderStaffRows($paginated);
+        renderStaffRows($paginated, $canManage);
         $html = ob_get_clean();
 
         echo json_encode([
@@ -151,7 +171,7 @@ if ($result['success']) {
     $totalPages = (int) ceil($totalStaff / $limit);
 
     ob_start();
-    renderStaffRows($paginated);
+    renderStaffRows($paginated, $canManage);
     $tableHtml = ob_get_clean();
 
     $result['tableHtml']     = $tableHtml;
@@ -166,11 +186,11 @@ if ($result['success']) {
 
 echo json_encode($result);
 
-function renderStaffRows(array $staff): void
+function renderStaffRows(array $staff, bool $canManage = false): void
 {
     if (empty($staff)) { ?>
         <tr>
-            <td colspan="6">
+            <td colspan="<?php echo $canManage ? '7' : '6'; ?>">
                 <div class="empty-state">
                     <div class="empty-state-icon"><i class="fas fa-users"></i></div>
                     <div class="empty-state-title">No staff found</div>
@@ -194,31 +214,34 @@ function renderStaffRows(array $staff): void
             <td><?php echo htmlspecialchars($member['email']); ?></td>
             <td><?php echo htmlspecialchars($member['office_name'] ?? '—'); ?></td>
             <td><?php echo $member['window_number'] ? 'Window ' . (int)$member['window_number'] : '—'; ?></td>
+            <td><?php echo htmlspecialchars(ucfirst($member['role_name'] ?? '—')); ?></td>
             <td>
                 <span class="status-badge <?php echo $member['is_active'] ? 'status-active' : 'status-inactive'; ?>">
                     <?php echo $member['is_active'] ? 'Active' : 'Inactive'; ?>
                 </span>
             </td>
-            <td>
-                <div class="dropdown">
-                    <button class="dropdown-toggle"><i class="fas fa-ellipsis-h"></i></button>
-                    <div class="dropdown-menu">
-                        <button onclick="openEditStaffModal(<?php echo $member['id']; ?>)">
-                            <i class="fas fa-pen"></i> Edit
-                        </button>
-                        <button onclick="openToggleModal(<?php echo $member['id']; ?>, <?php echo $member['is_active'] ? 'true' : 'false'; ?>)">
-                            <i class="fas fa-<?php echo $member['is_active'] ? 'toggle-off' : 'toggle-on'; ?>"></i>
-                            <?php echo $member['is_active'] ? 'Deactivate' : 'Activate'; ?>
-                        </button>
-                        <button onclick="openResetPasswordModal(<?php echo $member['id']; ?>)">
-                            <i class="fas fa-key"></i> Reset Password
-                        </button>
-                        <button class="danger" onclick="openDeleteModal(<?php echo $member['id']; ?>)">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
+            <?php if ($canManage): ?>
+                <td>
+                    <div class="dropdown">
+                        <button class="dropdown-toggle"><i class="fas fa-ellipsis-h"></i></button>
+                        <div class="dropdown-menu">
+                            <button onclick="openEditStaffModal(<?php echo $member['id']; ?>)">
+                                <i class="fas fa-pen"></i> Edit
+                            </button>
+                            <button onclick="openToggleModal(<?php echo $member['id']; ?>, <?php echo $member['is_active'] ? 'true' : 'false'; ?>)">
+                                <i class="fas fa-<?php echo $member['is_active'] ? 'toggle-off' : 'toggle-on'; ?>"></i>
+                                <?php echo $member['is_active'] ? 'Deactivate' : 'Activate'; ?>
+                            </button>
+                            <button onclick="openResetPasswordModal(<?php echo $member['id']; ?>)">
+                                <i class="fas fa-key"></i> Reset Password
+                            </button>
+                            <button class="danger" onclick="openDeleteModal(<?php echo $member['id']; ?>)">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
                     </div>
-                </div>
-            </td>
+                </td>
+            <?php endif; ?>
         </tr>
 <?php endforeach;
 }

@@ -247,11 +247,8 @@ if ($action === 'call_next') {
         respond(['success' => false, 'message' => $msg]);
     }
 
-    // Scenario 2 & 3: Assign window_id at serve time if not already assigned
     $assignedWindowId = $ticket['window_id'];
     if ($assignedWindowId === null && $ticket['transaction_type'] !== null) {
-        // Service has multiple windows or no windows → assign based on calling staff's window
-        // Get the service's windows to check if multi-window scenario
         $serviceStmt = $db->prepare("
             SELECT sw.window_number
             FROM service_windows sw
@@ -263,18 +260,14 @@ if ($action === 'call_next') {
         $serviceWindows = $serviceStmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $serviceStmt->close();
 
-        // If service is tied to specific window(s), use the calling staff's window if applicable
         if (count($serviceWindows) > 0 && $windowNumber > 0) {
-            // Check if staff's window is valid for this service
             $validWindows = array_column($serviceWindows, 'window_number');
             if (in_array($windowNumber, $validWindows)) {
                 $assignedWindowId = $windowNumber;
             } else {
-                // Staff's window is not assigned to this service, pick first available
                 $assignedWindowId = (int)$serviceWindows[0]['window_number'];
             }
         } elseif ($windowNumber > 0) {
-            // Service has no specific windows, use calling staff's window
             $assignedWindowId = $windowNumber;
         }
     }
@@ -348,7 +341,6 @@ if ($action === 'recall_ticket') {
         respond(['success' => false, 'message' => 'Skipped ticket not found.']);
     }
 
-    // Same window assignment logic as call_next
     $assignedWindowId = $ticket['window_id'];
     if ($assignedWindowId === null && $ticket['transaction_type'] !== null) {
         $stmt = $db->prepare("SELECT window_number FROM users WHERE id = ? LIMIT 1");

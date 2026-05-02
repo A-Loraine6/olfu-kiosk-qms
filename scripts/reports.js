@@ -752,7 +752,9 @@ function renderTransactionTypes(data) {
 function applyFilters() {
   const from = document.getElementById("dateFrom").value;
   const to = document.getElementById("dateTo").value;
-  const officeId = document.getElementById("officeFilter")?.value || null;
+  const officeId =
+    SCOPED_OFFICE_ID ??
+    (document.getElementById("officeFilter")?.value || null);
 
   if (!from || !to) {
     alert("Please select both a start and end date.");
@@ -790,7 +792,8 @@ async function exportReport(type) {
   const to =
     document.getElementById("dateTo")?.value ||
     new Date().toISOString().split("T")[0];
-  const officeId = document.getElementById("officeFilter")?.value || "";
+  const officeId =
+    SCOPED_OFFICE_ID ?? (document.getElementById("officeFilter")?.value || "");
 
   const btn = document.querySelector(".btn-export");
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating…';
@@ -835,7 +838,9 @@ function refreshReports() {
   const to =
     document.getElementById("dateTo")?.value ||
     new Date().toISOString().split("T")[0];
-  const officeId = document.getElementById("officeFilter")?.value || null;
+  const officeId =
+    SCOPED_OFFICE_ID ??
+    (document.getElementById("officeFilter")?.value || null);
 
   const btn = event?.target;
   if (btn) {
@@ -858,7 +863,7 @@ function refreshReports() {
   });
 }
 
-if (IS_STAFF) {
+if (IS_PERSONAL_VIEW) {
   const today = new Date().toISOString().split("T")[0];
   fetch("api/reports_actions.php", {
     method: "POST",
@@ -880,10 +885,11 @@ if (IS_STAFF) {
     });
 } else {
   const today = new Date().toISOString().split("T")[0];
-  fetchAndRenderDailyReport(today, today);
-  fetchAndRenderOfficePerformance(today, today);
-  fetchAndRenderPeakHours(today, today);
-  fetchAndRenderDepartmentDemand(today, today);
-  fetchAndRenderDayBreakdown(today, today);
-  fetchAndRenderTransactionTypes(today, today);
+  const officeId = SCOPED_OFFICE_ID ?? null;
+  fetchAndRenderDailyReport(today, today, officeId);
+  fetchAndRenderOfficePerformance(today, today, officeId);
+  fetchAndRenderPeakHours(today, today, officeId);
+  fetchAndRenderDepartmentDemand(today, today, officeId);
+  fetchAndRenderDayBreakdown(today, today, officeId);
+  fetchAndRenderTransactionTypes(today, today, officeId);
 }

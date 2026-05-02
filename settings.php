@@ -11,6 +11,11 @@ if (!isLoggedIn()) {
 
 $currentUser = getCurrentUser();
 
+if (!hasPermission('manage_settings')) {
+    header('Location: ' . BASE_URL . 'dashboard.php');
+    exit;
+}
+
 $csrf_token = getCsrfToken();
 
 $offices      = getAllOffices($db->getConnection());
