@@ -21,10 +21,11 @@ function diffSnapshot(array $before, array $after): array
 function getAllStaff($db, int $limit = 100, int $offset = 0): array
 {
     $stmt = $db->prepare(
-        "SELECT u.id, u.full_name, u.email, u.role, o.name AS office_name,
-            u.window_number, u.is_active, u.created_at, u.created_by
+        "SELECT u.id, u.full_name, u.email, u.role, u.role_id, o.name AS office_name,
+            r.name AS role_name, u.window_number, u.is_active, u.created_at, u.created_by
          FROM users u
          LEFT JOIN offices o ON u.office_id = o.id
+         LEFT JOIN roles r ON u.role_id = r.id
          WHERE u.role = 'staff' AND u.is_deleted = 0
          ORDER BY u.full_name ASC
          LIMIT ? OFFSET ?"
@@ -58,12 +59,12 @@ function getTotalStaffCount($db): int
 function getStaffById($db, int $id): ?array
 {
     $stmt = $db->prepare(
-        "SELECT u.id, u.full_name, u.email, u.office_id,
-                o.name AS office, u.window_number, u.is_active, u.created_at, u.created_by
-         FROM users u
-         LEFT JOIN offices o ON u.office_id = o.id
-         WHERE u.id = ? AND u.is_deleted = 0
-         LIMIT 1"
+        "SELECT u.id, u.full_name, u.email, u.office_id, u.role_id,
+            o.name AS office, u.window_number, u.is_active, u.created_at, u.created_by
+            FROM users u
+            LEFT JOIN offices o ON u.office_id = o.id
+            WHERE u.id = ? AND u.is_deleted = 0
+            LIMIT 1"
     );
     if (!$stmt) return null;
 
@@ -74,7 +75,7 @@ function getStaffById($db, int $id): ?array
     return $row ?: null;
 }
 
-function addStaff($db, string $full_name, string $email, string $password, string $office, ?int $window_number): array
+function addStaff($db, string $full_name, string $email, string $password, string $office, ?int $window_number, ?int $role_id = null): array
 {
     $full_name = trim($full_name);
     $email     = strtolower(trim($email));
@@ -125,10 +126,10 @@ function addStaff($db, string $full_name, string $email, string $password, strin
     $created_at      = date('Y-m-d H:i:s');
 
     $insertStmt = $db->prepare(
-        "INSERT INTO users (full_name, email, password, role, office_id, window_number, is_active, created_by, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO users (full_name, email, password, role, role_id, office_id, window_number, is_active, created_by, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
-    $insertStmt->bind_param('ssssiiiis', $full_name, $email, $hashed_password, $role, $office_id, $window_number, $is_active, $created_by, $created_at);
+    $insertStmt->bind_param('ssssiiiiis', $full_name, $email, $hashed_password, $role, $role_id, $office_id, $window_number, $is_active, $created_by, $created_at);
 
     if (!$insertStmt->execute()) {
         $insertStmt->close();
@@ -151,7 +152,7 @@ function addStaff($db, string $full_name, string $email, string $password, strin
     return ['success' => true, 'message' => 'Staff member added successfully.', 'staff_id' => $new_id];
 }
 
-function updateStaff($db, int $id, string $full_name, string $email, string $office, ?int $window_number): array
+function updateStaff($db, int $id, string $full_name, string $email, string $office, ?int $window_number, ?int $role_id = null): array
 {
     $full_name = trim($full_name);
     $email     = strtolower(trim($email));
@@ -199,9 +200,9 @@ function updateStaff($db, int $id, string $full_name, string $email, string $off
     if (!$office_id) return ['success' => false, 'message' => 'Invalid office selected.'];
 
     $updateStmt = $db->prepare(
-        "UPDATE users SET full_name = ?, email = ?, role = ?, office_id = ?, window_number = ? WHERE id = ?"
+        "UPDATE users SET full_name = ?, email = ?, role = ?, role_id = ?, office_id = ?, window_number = ? WHERE id = ?"
     );
-    $updateStmt->bind_param('sssiii', $full_name, $email, $role, $office_id, $window_number, $id);
+    $updateStmt->bind_param('sssiiii', $full_name, $email, $role, $role_id, $office_id, $window_number, $id);
 
     if (!$updateStmt->execute()) {
         $updateStmt->close();

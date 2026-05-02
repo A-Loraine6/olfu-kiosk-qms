@@ -85,7 +85,8 @@ function login($db, string $email, string $password, string $csrf): array
 function fetchUserByEmail($db, string $email): ?array
 {
     $stmt = $db->prepare(
-        "SELECT id, full_name, email, password, role, office_id, window_number FROM users WHERE email = ? LIMIT 1"
+        "SELECT id, full_name, email, password, role, role_id, office_id, window_number
+        FROM users WHERE email = ? LIMIT 1"
     );
 
     if (!$stmt) {
@@ -122,19 +123,42 @@ function establishSession(array $user): void
 {
     session_regenerate_id(true);
 
-    $_SESSION['user_id']         = $user['id'];
-    $_SESSION['full_name']       = $user['full_name'];
-    $_SESSION['email']           = $user['email'];
-    $_SESSION['role']            = $user['role'];
+    $_SESSION['user_id']       = $user['id'];
+    $_SESSION['full_name']     = $user['full_name'];
+    $_SESSION['email']         = $user['email'];
+    $_SESSION['role']          = $user['role'];
+    $_SESSION['role_id']       = $user['role_id'];
     $_SESSION['office_id']     = $user['office_id'] ?? null;
     $_SESSION['window_number'] = $user['window_number'] ?? null;
-    $_SESSION['login_time']      = time();
-    $_SESSION['last_activity']   = time();
+    $_SESSION['login_time']    = time();
+    $_SESSION['last_activity'] = time();
+
+    $_SESSION['permissions']   = fetchPermissionsForRole($user['role_id']);
 
     bindSessionFingerprint();
-
     unset($_SESSION['csrf_token']);
     getCsrfToken();
+}
+
+function fetchPermissionsForRole(?int $roleId): array
+{
+    if (!$roleId) return [];
+
+    global $db;
+    $stmt = $db->prepare("
+        SELECT p.key
+        FROM role_permissions rp
+        JOIN permissions p ON p.id = rp.permission_id
+        WHERE rp.role_id = ?
+    ");
+    if (!$stmt) return [];
+
+    $stmt->bind_param('i', $roleId);
+    $stmt->execute();
+    $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    return array_column($rows, 'key');
 }
 
 function validateRegistrationInputs(
@@ -280,7 +304,17 @@ function getCurrentUser(): ?array
         'role'      => $_SESSION['role'],
         'office_id' => isset($_SESSION['office_id']) ? (int) $_SESSION['office_id'] : null,
         'window_number' => isset($_SESSION['window_number']) ? (int) $_SESSION['window_number'] : null,
+        'role_id'     => isset($_SESSION['role_id']) ? (int) $_SESSION['role_id'] : null,
+        'permissions' => $_SESSION['permissions'] ?? [],
     ];
+}
+
+function hasPermission(string $key): bool
+{
+    if (($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin') {
+        return true;
+    }
+    return in_array($key, $_SESSION['permissions'] ?? [], true);
 }
 
 function hashPassword(string $password): string

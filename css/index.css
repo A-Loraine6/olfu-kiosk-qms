@@ -1224,9 +1224,9 @@ body {
 }
 
 .screen-head-with-nav {
-  position: relative; /* add this */
+  position: relative;
   display: flex;
-  align-items: center; /* change from flex-start */
+  align-items: center;
   justify-content: center;
   padding: 36px 48px 28px !important;
 }
@@ -1248,7 +1248,6 @@ body {
   align-items: center;
   gap: 8px;
   transition: all var(--t) var(--ease);
-  /* remove margin-top: 24px */
 }
 
 @media (max-width: 600px) {

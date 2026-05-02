@@ -1,7 +1,6 @@
 <?php
 $currentUser = getCurrentUser();
 $currentPage = basename($_SERVER['PHP_SELF']);
-$isStaff = isset($currentUser['role']) && $currentUser['role'] === 'staff';
 ?>
 
 <aside class="dashboard-sidebar">
@@ -27,7 +26,7 @@ $isStaff = isset($currentUser['role']) && $currentUser['role'] === 'staff';
                 </a>
             </li>
 
-            <?php if ($isStaff): ?>
+            <?php if (hasPermission('view_queue') || hasPermission('manage_queue')): ?>
                 <li>
                     <a href="queue.php" class="<?php echo $currentPage === 'queue.php' ? 'active' : ''; ?>">
                         <i class="fas fa-list-ol"></i>
@@ -36,28 +35,58 @@ $isStaff = isset($currentUser['role']) && $currentUser['role'] === 'staff';
                 </li>
             <?php endif; ?>
 
-            <li>
-                <a href="services.php" class="<?php echo $currentPage === 'services.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-concierge-bell"></i>
-                    <span><?php echo $isStaff ? 'My Services' : 'Service Management'; ?></span>
-                </a>
-            </li>
+            <?php if (hasPermission('view_services') || hasPermission('manage_services')): ?>
+                <li>
+                    <a href="services.php" class="<?php echo $currentPage === 'services.php' ? 'active' : ''; ?>">
+                        <i class="fas fa-concierge-bell"></i>
+                        <span><?php echo hasPermission('manage_services') ? 'Service Management' : 'My Services'; ?></span>
+                    </a>
+                </li>
+            <?php endif; ?>
 
-            <li>
-                <a href="reports.php" class="<?php echo $currentPage === 'reports.php' ? 'active' : ''; ?>">
-                    <i class="fas fa-chart-line"></i>
-                    <span><?php echo $isStaff ? 'My Metrics' : 'Reports & Analytics'; ?></span>
-                </a>
-            </li>
+            <?php if (hasPermission('view_reports') || hasPermission('view_reports_office') || hasPermission('view_own_metrics')): ?>
+                <li>
+                    <a href="reports.php" class="<?php echo $currentPage === 'reports.php' ? 'active' : ''; ?>">
+                        <i class="fas fa-chart-line"></i>
+                        <span>
+                            <?php
+                            if (hasPermission('view_reports'))         echo 'Reports & Analytics';
+                            elseif (hasPermission('view_reports_office')) echo 'Office Reports';
+                            else                                          echo 'My Metrics';
+                            ?>
+                        </span>
+                    </a>
+                </li>
+            <?php endif; ?>
 
-            <?php if (!$isStaff): ?>
+            <?php if (hasPermission('manage_staff')): ?>
                 <li>
                     <a href="staff.php" class="<?php echo $currentPage === 'staff.php' ? 'active' : ''; ?>">
                         <i class="fas fa-users"></i>
                         <span>Staff Management</span>
                     </a>
                 </li>
+            <?php endif; ?>
 
+            <?php if (hasPermission('view_staff') && !hasPermission('manage_staff')): ?>
+                <li>
+                    <a href="staff.php" class="<?php echo $currentPage === 'staff.php' ? 'active' : ''; ?>">
+                        <i class="fas fa-users"></i>
+                        <span>Staff List</span>
+                    </a>
+                </li>
+            <?php endif; ?>
+
+            <?php if (!in_array($_SESSION['role'] ?? '', ['staff', 'supervisor'])): ?>
+                <li>
+                    <a href="roles.php" class="<?php echo $currentPage === 'roles.php' ? 'active' : ''; ?>">
+                        <i class="fas fa-user-shield"></i>
+                        <span>Roles & Permissions</span>
+                    </a>
+                </li>
+            <?php endif; ?>
+
+            <?php if (hasPermission('manage_settings')): ?>
                 <li>
                     <a href="settings.php" class="<?php echo $currentPage === 'settings.php' ? 'active' : ''; ?>">
                         <i class="fas fa-cog"></i>

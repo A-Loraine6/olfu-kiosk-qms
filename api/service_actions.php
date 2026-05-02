@@ -14,8 +14,9 @@ if (!isLoggedIn()) {
 }
 
 $currentUser = getCurrentUser();
-$isStaff     = ($currentUser['role'] ?? '') === 'staff';
-$staffOffice = $isStaff ? (int) ($currentUser['office_id'] ?? 0) : null;
+$canManageServices = hasPermission('manage_services');
+$isOfficeScoped    = !$canManageServices && !empty($currentUser['office_id']);
+$staffOffice       = $isOfficeScoped ? (int) ($currentUser['office_id'] ?? 0) : null;
 
 $input  = json_decode(file_get_contents('php://input'), true) ?? $_POST;
 $action = $input['action'] ?? '';
@@ -28,8 +29,13 @@ if (!verifyCsrfToken($csrf)) {
 
 $conn = $db->getConnection();
 
-$mutatingActions = ['add_service', 'edit_service', 'toggle_service', 'delete_service', 'toggle_queue_mode'];
-if ($isStaff && in_array($action, $mutatingActions)) {
+$mutatingActions = ['add_service', 'edit_service', 'toggle_service', 'delete_service'];
+if (!$canManageServices && in_array($action, $mutatingActions)) {
+    echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
+    exit;
+}
+
+if ($action === 'toggle_queue_mode' && !hasPermission('manage_settings')) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
     exit;
 }
@@ -97,7 +103,7 @@ switch ($action) {
     case 'get_services':
         $services     = getAllServicesWithOffice($conn, $staffOffice);
         $search       = strtolower(trim($input['search'] ?? ''));
-        $filterOffice = $isStaff ? $staffOffice : (int) ($input['office'] ?? 0);
+        $filterOffice = $isOfficeScoped ? $staffOffice : (int) ($input['office'] ?? 0);
         $filterStatus = $input['status'] ?? '';
 
         $page  = max(1, (int) ($input['page']  ?? 1));
@@ -127,7 +133,7 @@ switch ($action) {
         $paginated    = array_slice($filtered, $offset, $limit);
 
         ob_start();
-        renderServiceRows($paginated, $isStaff, $conn);
+        renderServiceRows($paginated, $canManageServices, $conn);
         $html = ob_get_clean();
 
         echo json_encode([
@@ -155,7 +161,7 @@ if ($result['success']) {
     $totalPages = (int) ceil($totalServices / $limit);
 
     ob_start();
-    renderServiceRows($paginated, $isStaff, $conn);
+    renderServiceRows($paginated, $canManageServices, $conn);
     $tableHtml = ob_get_clean();
 
     $result['tableHtml']        = $tableHtml;
@@ -180,11 +186,11 @@ function getCategoryColor(?string $cat): string
     };
 }
 
-function renderServiceRows(array $services, bool $isStaff = false, ?mysqli $conn = null): void
+function renderServiceRows(array $services, bool $canManage = false, ?mysqli $conn = null): void
 {
     if (empty($services)) { ?>
         <tr>
-            <td colspan="<?php echo $isStaff ? 4 : 5; ?>">
+            <td colspan="<?php echo $canManage ? 5 : 4; ?>">
                 <div class="empty-state">
                     <div class="empty-state-icon"><i class="fas fa-concierge-bell"></i></div>
                     <div class="empty-state-title">No services found</div>
@@ -236,7 +242,7 @@ function renderServiceRows(array $services, bool $isStaff = false, ?mysqli $conn
                     <?php echo $svc['is_active'] ? 'Active' : 'Inactive'; ?>
                 </span>
             </td>
-            <?php if (!$isStaff): ?>
+            <?php if ($canManage): ?>
                 <td>
                     <div class="dropdown">
                         <button class="dropdown-toggle"><i class="fas fa-ellipsis-h"></i></button>

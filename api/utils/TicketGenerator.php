@@ -17,7 +17,6 @@ class TicketGenerator
 
         $transaction_type = ($service_name !== '') ? $service_name : null;
 
-        // Scenario 1: If service has exactly 1 window assigned, get it now
         $window_id = null;
         if ($transaction_type !== null) {
             $window_id = $this->getServiceWindowIdIfSingle($office_id, $transaction_type);
@@ -136,12 +135,10 @@ class TicketGenerator
         $rows = $result->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
-        // Scenario 1: Exactly 1 window assigned
         if (count($rows) === 1) {
             return (int)$rows[0]['window_number'];
         }
 
-        // Scenario 2 & 3: Multiple windows or no windows → assign at serve time
         return null;
     }
     

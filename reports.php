@@ -9,19 +9,29 @@ if (!isLoggedIn()) {
     exit;
 }
 
-$currentUser = getCurrentUser();
-$isStaff     = ($currentUser['role'] ?? '') === 'staff';
-$csrf_token  = getCsrfToken();
+$currentUser     = getCurrentUser();
+$csrf_token      = getCsrfToken();
 
-if ($isStaff) {
-    $staffOfficeId   = (int) ($currentUser['office_id'] ?? 0);
-    $officeInfo      = getOfficeInfo($db, $staffOfficeId);
-    $staffOfficeName = $officeInfo['name'] ?? 'My Office';
-    $offices         = [];
+$isFullView      = ($_SESSION['role_id'] ?? null) === 1
+    || ($_SESSION['role'] ?? '') === 'admin'
+    || hasPermission('view_reports');
+$isScopedView    = !$isFullView && hasPermission('view_reports_office');
+$isPersonalView  = !$isFullView && !$isScopedView && hasPermission('view_own_metrics');
+
+if (!$isPersonalView && !$isScopedView && !$isFullView) {
+    header('Location: ' . BASE_URL . 'dashboard.php');
+    exit;
+}
+
+$scopedOfficeId   = null;
+$scopedOfficeName = null;
+$offices          = [];
+
+if ($isPersonalView || $isScopedView) {
+    $scopedOfficeId   = (int) ($currentUser['office_id'] ?? 0);
+    $officeInfo       = getOfficeInfo($db, $scopedOfficeId);
+    $scopedOfficeName = $officeInfo['name'] ?? 'My Office';
 } else {
-    $staffOfficeId   = null;
-    $staffOfficeName = null;
-    $offices         = [];
     $result = $db->query("SELECT id, name FROM offices ORDER BY name ASC");
     if ($result) {
         while ($row = $result->fetch_assoc()) $offices[] = $row;
@@ -34,7 +44,13 @@ if ($isStaff) {
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><?php echo $isStaff ? 'My Reports & Metrics' : 'Reports & Analytics'; ?></title>
+    <title>
+        <?php
+        if ($isPersonalView)     echo 'My Reports &amp; Metrics';
+        elseif ($isScopedView)   echo htmlspecialchars($scopedOfficeName) . ' — Reports';
+        else                     echo 'Reports &amp; Analytics';
+        ?>
+    </title>
     <link rel="shortcut icon" href="img/olfu-logo.png" type="image/x-icon" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -60,12 +76,16 @@ if ($isStaff) {
                 <div class="header-left">
                     <h2 class="header-page-title">
                         <i class="fas fa-chart-bar"></i>
-                        <?php echo $isStaff ? 'My Reports &amp; Metrics' : 'Reports &amp; Analytics'; ?>
+                        <?php
+                        if ($isPersonalView)     echo 'My Reports &amp; Metrics';
+                        elseif ($isScopedView)   echo htmlspecialchars($scopedOfficeName) . ' &mdash; Reports';
+                        else                     echo 'Reports &amp; Analytics';
+                        ?>
                     </h2>
-                    <?php if ($isStaff): ?>
+                    <?php if ($isPersonalView || $isScopedView): ?>
                         <span class="office-badge">
                             <i class="fas fa-building"></i>
-                            <?php echo htmlspecialchars($staffOfficeName); ?>
+                            <?php echo htmlspecialchars($scopedOfficeName); ?>
                         </span>
                     <?php endif; ?>
                 </div>
@@ -80,7 +100,7 @@ if ($isStaff) {
             <main class="dashboard-main">
                 <div class="dashboard-content">
 
-                    <?php if ($isStaff): ?>
+                    <?php if ($isPersonalView): ?>
 
                         <div class="filter-bar">
                             <div class="filter-group">
@@ -92,7 +112,7 @@ if ($isStaff) {
                                 <input type="date" id="dateTo" />
                             </div>
                             <div class="filter-actions">
-                                <button class="btn-filter btn-apply" onclick="applyFilters()">
+                                <button class="btn-filter btn-apply" id="applyBtn" onclick="applyStaffFilters()">
                                     <i class="fas fa-search"></i> Apply
                                 </button>
                                 <button class="btn-filter" onclick="refreshReports()" title="Refresh data">
@@ -131,17 +151,19 @@ if ($isStaff) {
                                 <label><i class="fas fa-calendar-alt"></i> Date To</label>
                                 <input type="date" id="dateTo" />
                             </div>
-                            <div class="filter-group">
-                                <label><i class="fas fa-building"></i> Office</label>
-                                <select id="officeFilter">
-                                    <option value="">All Offices</option>
-                                    <?php foreach ($offices as $office): ?>
-                                        <option value="<?= $office['id']; ?>">
-                                            <?= htmlspecialchars($office['name']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
+                            <?php if ($isFullView): ?>
+                                <div class="filter-group">
+                                    <label><i class="fas fa-building"></i> Office</label>
+                                    <select id="officeFilter">
+                                        <option value="">All Offices</option>
+                                        <?php foreach ($offices as $office): ?>
+                                            <option value="<?= $office['id']; ?>">
+                                                <?= htmlspecialchars($office['name']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            <?php endif; ?>
                             <div class="filter-actions">
                                 <button class="btn-filter btn-apply" onclick="applyFilters()">
                                     <i class="fas fa-search"></i> Apply
@@ -196,11 +218,6 @@ if ($isStaff) {
                                 <span class="pill pill-orange">No Data</span>
                             </div>
                             <div class="report-block-body">
-                                <div class="empty-state">
-                                    <div class="empty-state-icon"><i class="fas fa-building"></i></div>
-                                    <div class="empty-state-title">No Office Data Available</div>
-                                    <div class="empty-state-message">Office-level performance metrics will appear here once transactions are recorded in the system.</div>
-                                </div>
                                 <table class="perf-table" style="display:none;" id="officeTable">
                                     <thead>
                                         <tr>
@@ -268,7 +285,9 @@ if ($isStaff) {
     </div>
 
     <script>
-        const IS_STAFF = <?php echo json_encode($isStaff); ?>;
+        const IS_PERSONAL_VIEW = <?php echo json_encode($isPersonalView); ?>;
+        const IS_SCOPED_VIEW = <?php echo json_encode($isScopedView); ?>;
+        const SCOPED_OFFICE_ID = <?php echo json_encode($scopedOfficeId); ?>;
         const CSRF_TOKEN = <?php echo json_encode($csrf_token); ?>;
     </script>
     <script src="scripts/reports.js"></script>

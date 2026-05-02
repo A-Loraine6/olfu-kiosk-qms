@@ -20,6 +20,11 @@ if (!verifyCsrfToken($csrf)) {
     exit;
 }
 
+if (!hasPermission('manage_settings')) {
+    echo json_encode(['success' => false, 'message' => 'You do not have permission to change system settings.']);
+    exit;
+}
+
 switch ($action) {
 
     case 'save_schedule':

@@ -19,11 +19,19 @@ if (!verifyCsrfToken($input['csrf_token'] ?? '')) {
 }
 
 $currentUser = getCurrentUser();
-$isStaff     = ($currentUser['role'] ?? '') === 'staff';
+$isFullView     = ($_SESSION['role_id'] ?? null) === 1
+    || ($_SESSION['role'] ?? '') === 'admin'
+    || hasPermission('view_reports');
+$isScopedView   = !$isFullView && hasPermission('view_reports_office');
+$isPersonalView = !$isFullView && !$isScopedView && hasPermission('view_own_metrics');
+
+if ($isScopedView) {
+    $input['office_id'] = (int) ($currentUser['office_id'] ?? 0);
+}
 $conn        = $db->getConnection();
 
 if ($action === 'staff_metrics') {
-    if (!$isStaff) {
+    if (!$isPersonalView) {
         echo json_encode(['success' => false]);
         exit;
     }
@@ -74,7 +82,7 @@ if ($action === 'staff_metrics') {
 }
 
 if ($action === 'daily_report') {
-    if ($isStaff) {
+    if ($isPersonalView) {
         echo json_encode(['success' => false]);
         exit;
     }
@@ -91,7 +99,7 @@ if ($action === 'daily_report') {
         $office_id = (int) $office_id;
         $where .= " AND office_id = $office_id";
     }
-    
+
     $stmt = $conn->prepare("
     SELECT
         COUNT(*) AS total_queued,
@@ -152,7 +160,7 @@ if ($action === 'daily_report') {
 }
 
 if ($action === 'office_performance') {
-    if ($isStaff) {
+    if ($isPersonalView) {
         echo json_encode(['success' => false]);
         exit;
     }
@@ -164,10 +172,12 @@ if ($action === 'office_performance') {
     $from = date('Y-m-d', strtotime($from));
     $to   = date('Y-m-d', strtotime($to));
 
-    $stmt = $conn->prepare("
+    $office_id = $input['office_id'] ?? null;
+    if ($office_id) {
+        $office_id = (int) $office_id;
+        $stmt = $conn->prepare("
     SELECT
-        o.id,
-        o.name,
+        o.id, o.name,
         COUNT(t.id) AS total_transactions,
         COUNT(CASE WHEN t.status = 'completed' THEN 1 END) AS served,
         COUNT(CASE WHEN t.status = 'skipped' THEN 1 END) AS skipped,
@@ -176,19 +186,37 @@ if ($action === 'office_performance') {
             THEN TIMESTAMPDIFF(SECOND, t.served_at, t.completed_at)
             ELSE NULL
         END) AS avg_service_seconds,
-        ROUND(
-            COUNT(t.id) * 100.0 / (SELECT COUNT(*) FROM tickets WHERE DATE(created_at) BETWEEN ? AND ?),
-            1
-        ) AS volume_share
+        ROUND(COUNT(t.id) * 100.0 / NULLIF((SELECT COUNT(*) FROM tickets WHERE DATE(created_at) BETWEEN ? AND ? AND office_id = ?), 0), 1) AS volume_share
+    FROM offices o
+    LEFT JOIN tickets t ON o.id = t.office_id AND DATE(t.created_at) BETWEEN ? AND ?
+    WHERE o.id = ?
+    GROUP BY o.id, o.name
+    ORDER BY total_transactions DESC
+    ");
+        $stmt->bind_param('ssissi', $from, $to, $office_id, $from, $to, $office_id);
+    } else {
+        $stmt = $conn->prepare("
+    SELECT
+        o.id, o.name,
+        COUNT(t.id) AS total_transactions,
+        COUNT(CASE WHEN t.status = 'completed' THEN 1 END) AS served,
+        COUNT(CASE WHEN t.status = 'skipped' THEN 1 END) AS skipped,
+        AVG(CASE
+            WHEN t.served_at IS NOT NULL AND t.completed_at IS NOT NULL
+            THEN TIMESTAMPDIFF(SECOND, t.served_at, t.completed_at)
+            ELSE NULL
+        END) AS avg_service_seconds,
+        ROUND(COUNT(t.id) * 100.0 / NULLIF((SELECT COUNT(*) FROM tickets WHERE DATE(created_at) BETWEEN ? AND ?), 0), 1) AS volume_share
     FROM offices o
     LEFT JOIN tickets t ON o.id = t.office_id AND DATE(t.created_at) BETWEEN ? AND ?
     GROUP BY o.id, o.name
     ORDER BY total_transactions DESC
     ");
-    $stmt->bind_param('ssss', $from, $to, $from, $to);
+        $stmt->bind_param('ssss', $from, $to, $from, $to);
+    }
     $stmt->execute();
     $result = $stmt->get_result();
-    
+
     $data = [];
     while ($row = $result->fetch_assoc()) {
         $avg_seconds = $row['avg_service_seconds'];
@@ -211,7 +239,7 @@ if ($action === 'office_performance') {
 }
 
 if ($action === 'peak_hours') {
-    if ($isStaff) {
+    if ($isPersonalView) {
         echo json_encode(['success' => false]);
         exit;
     }
@@ -222,7 +250,7 @@ if ($action === 'peak_hours') {
 
     $from = date('Y-m-d', strtotime($from));
     $to   = date('Y-m-d', strtotime($to));
-    
+
     $where = "DATE(created_at) BETWEEN ? AND ?";
     if ($office_id) {
         $office_id = (int) $office_id;
@@ -258,7 +286,7 @@ if ($action === 'peak_hours') {
 }
 
 if ($action === 'department_demand') {
-    if ($isStaff) {
+    if ($isPersonalView) {
         echo json_encode(['success' => false]);
         exit;
     }
@@ -299,7 +327,7 @@ if ($action === 'department_demand') {
 }
 
 if ($action === 'day_breakdown') {
-    if ($isStaff) {
+    if ($isPersonalView) {
         echo json_encode(['success' => false]);
         exit;
     }
@@ -310,7 +338,7 @@ if ($action === 'day_breakdown') {
 
     $from = date('Y-m-d', strtotime($from));
     $to   = date('Y-m-d', strtotime($to));
-    
+
     $where = "DATE(created_at) BETWEEN ? AND ?";
     if ($office_id) {
         $office_id = (int) $office_id;
@@ -348,7 +376,7 @@ if ($action === 'day_breakdown') {
 }
 
 if ($action === 'day_of_week_volume') {
-    if ($isStaff) {
+    if ($isPersonalView) {
         echo json_encode(['success' => false]);
         exit;
     }
@@ -359,7 +387,7 @@ if ($action === 'day_of_week_volume') {
 
     $from = date('Y-m-d', strtotime($from));
     $to   = date('Y-m-d', strtotime($to));
-    
+
     $where = "DATE(created_at) BETWEEN ? AND ?";
     if ($office_id) {
         $office_id = (int) $office_id;
@@ -396,7 +424,7 @@ if ($action === 'day_of_week_volume') {
 }
 
 if ($action === 'transaction_types') {
-    if ($isStaff) {
+    if ($isPersonalView) {
         echo json_encode(['success' => false]);
         exit;
     }
@@ -407,7 +435,7 @@ if ($action === 'transaction_types') {
 
     $from = date('Y-m-d', strtotime($from));
     $to   = date('Y-m-d', strtotime($to));
-    
+
     $where = "DATE(created_at) BETWEEN ? AND ?";
     if ($office_id) {
         $office_id = (int) $office_id;

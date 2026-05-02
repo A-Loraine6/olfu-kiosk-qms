@@ -85,7 +85,7 @@ function renderPagination(page, totalPages, total, limit) {
   infoEl.textContent =
     total === 0
       ? "No results"
-      : `Showing ${from}–${to} of ${total} service${total !== 1 ? "s" : ""}`;
+      : `Showing ${from}–${to} of ${total} staff member${total !== 1 ? "s" : ""}`;
 
   ctrlEl.innerHTML = "";
 
@@ -314,6 +314,7 @@ async function openEditStaffModal(staffId) {
     document.getElementById("edit_full_name").value = s.full_name;
     document.getElementById("edit_email").value = s.email;
     document.getElementById("edit_office").value = s.office ?? "";
+    document.getElementById("edit_role").value      = s.role_id ?? "";
 
     await loadWindowOptions("edit_office", "edit_window", "edit_window_group");
     if (s.window_number)
@@ -367,6 +368,7 @@ async function submitAddStaff() {
     password: document.getElementById("add_password").value,
     office: document.getElementById("add_office").value,
     window_number: document.getElementById("add_window").value,
+    role_id: document.getElementById("add_role").value,
   });
   setBtnLoading("addStaffBtn", false, '<i class="fas fa-plus"></i> Add Staff');
 
@@ -403,6 +405,7 @@ async function submitEditStaff() {
     email: document.getElementById("edit_email").value,
     office: document.getElementById("edit_office").value,
     window_number: document.getElementById("edit_window").value,
+    role_id: document.getElementById("edit_role").value,
   });
   setBtnLoading(
     "editStaffBtn",

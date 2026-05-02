@@ -1,9 +1,15 @@
 <?php
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'qms_db');
-define('DB_PORT', 3306);
+if ($_SERVER['HTTP_HOST'] == 'localhost') {
+    define('DB_HOST', 'localhost');
+    define('DB_USER', 'root');
+    define('DB_PASS', '');
+    define('DB_NAME', 'qms_db');
+} else {
+    define('DB_HOST', 'localhost');
+    define('DB_USER', 'u584867080_olfu_qms');
+    define('DB_PASS', 'K0*@|1wK/');
+    define('DB_NAME', 'u584867080_qms_db');
+}
 
 define('APP_NAME', 'Queue Management System');
 define('APP_VERSION', '1.0.0');

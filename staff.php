@@ -12,11 +12,30 @@ if (!isLoggedIn()) {
 $currentUser = getCurrentUser();
 $csrf_token  = getCsrfToken();
 
+$canManage = hasPermission('manage_staff');
+$canView   = $canManage || hasPermission('view_staff');
+
+if (!$canView) {
+    header('Location: ' . BASE_URL . 'dashboard.php');
+    exit;
+}
+
 $offices    = getAvailableOffices($db->getConnection());
 $staff      = getAllStaff($db->getConnection());
 $totalStaff = count($staff);
 $activeStaff   = count(array_filter($staff, fn($s) => $s['is_active']));
 $inactiveStaff = $totalStaff - $activeStaff;
+
+$roles = [];
+$roleStmt = $db->getConnection()->prepare("SELECT id, name FROM roles WHERE id != 1 ORDER BY name ASC");
+if ($roleStmt) {
+    $roleStmt->execute();
+    $roleResult = $roleStmt->get_result();
+    while ($row = $roleResult->fetch_assoc()) {
+        $roles[] = $row;
+    }
+    $roleStmt->close();
+}
 
 $pageLimit = 10;
 ?>
@@ -49,9 +68,11 @@ $pageLimit = 10;
                     </h2>
                 </div>
                 <div class="header-right">
-                    <button class="btn-primary" onclick="openModal('addStaffModal')">
-                        <i class="fas fa-plus"></i> Add New Staff
-                    </button>
+                    <?php if ($canManage): ?>
+                        <button class="btn-primary" onclick="openModal('addStaffModal')">
+                            <i class="fas fa-plus"></i> Add New Staff
+                        </button>
+                    <?php endif; ?>
                 </div>
             </header>
 
@@ -123,14 +144,15 @@ $pageLimit = 10;
                                     <th>Email</th>
                                     <th>Office</th>
                                     <th>Window</th>
+                                    <th>Role</th>
                                     <th>Status</th>
-                                    <th>Actions</th>
+                                    <?php if ($canManage): ?><th>Actions</th><?php endif; ?>
                                 </tr>
                             </thead>
                             <tbody id="staffTableBody">
                                 <?php if (empty($staff)): ?>
                                     <tr>
-                                        <td colspan="6">
+                                        <td colspan="<?php echo $canManage ? '7' : '6'; ?>">
                                             <div class="empty-state">
                                                 <div class="empty-state-icon"><i class="fas fa-users"></i></div>
                                                 <div class="empty-state-title">No staff found</div>
@@ -152,38 +174,34 @@ $pageLimit = 10;
                                             <td><?php echo htmlspecialchars($member['email']); ?></td>
                                             <td><?php echo htmlspecialchars($member['office_name'] ?? '—'); ?></td>
                                             <td><?php echo $member['window_number'] ? 'Window ' . (int)$member['window_number'] : '—'; ?></td>
+                                            <td><?php echo htmlspecialchars(ucfirst($member['role_name'] ?? '—')); ?></td>
                                             <td>
                                                 <span class="status-badge <?php echo $member['is_active'] ? 'status-active' : 'status-inactive'; ?>">
                                                     <?php echo $member['is_active'] ? 'Active' : 'Inactive'; ?>
                                                 </span>
                                             </td>
-                                            <td>
-                                                <div class="dropdown">
-                                                    <button class="dropdown-toggle">
-                                                        <i class="fas fa-ellipsis-h"></i>
-                                                    </button>
-                                                    <div class="dropdown-menu">
-                                                        <button onclick="openEditStaffModal(<?php echo $member['id']; ?>)">
-                                                            <i class="fas fa-pen"></i> Edit
-                                                        </button>
-                                                        <button onclick="openResetPasswordModal(<?php echo $member['id']; ?>)">
-                                                            <i class="fas fa-key"></i> Reset Password
-                                                        </button>
-                                                        <?php if ($member['is_active']): ?>
-                                                            <button onclick="openToggleModal(<?php echo $member['id']; ?>, true)">
-                                                                <i class="fas fa-toggle-off"></i> Deactivate
+                                            <?php if ($canManage): ?>
+                                                <td>
+                                                    <div class="dropdown">
+                                                        <button class="dropdown-toggle"><i class="fas fa-ellipsis-h"></i></button>
+                                                        <div class="dropdown-menu">
+                                                            <button onclick="openEditStaffModal(<?php echo $member['id']; ?>)">
+                                                                <i class="fas fa-pen"></i> Edit
                                                             </button>
-                                                        <?php else: ?>
-                                                            <button onclick="openToggleModal(<?php echo $member['id']; ?>, false)">
-                                                                <i class="fas fa-toggle-on"></i> Activate
+                                                            <button onclick="openToggleModal(<?php echo $member['id']; ?>, <?php echo $member['is_active'] ? 'true' : 'false'; ?>)">
+                                                                <i class="fas fa-<?php echo $member['is_active'] ? 'toggle-off' : 'toggle-on'; ?>"></i>
+                                                                <?php echo $member['is_active'] ? 'Deactivate' : 'Activate'; ?>
                                                             </button>
-                                                        <?php endif; ?>
-                                                        <button class="danger" onclick="openDeleteModal(<?php echo $member['id']; ?>)">
-                                                            <i class="fas fa-trash"></i> Delete
-                                                        </button>
+                                                            <button onclick="openResetPasswordModal(<?php echo $member['id']; ?>)">
+                                                                <i class="fas fa-key"></i> Reset Password
+                                                            </button>
+                                                            <button class="danger" onclick="openDeleteModal(<?php echo $member['id']; ?>)">
+                                                                <i class="fas fa-trash"></i> Delete
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </td>
+                                                </td>
+                                            <?php endif; ?>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
@@ -243,6 +261,17 @@ $pageLimit = 10;
             </div>
 
             <div class="form-group">
+                <label for="add_role">Role <span class="required">*</span></label>
+                <select id="add_role">
+                    <option value="" disabled selected>Select role</option>
+                    <?php foreach ($roles as $r): ?>
+                        <option value="<?php echo $r['id']; ?>">
+                            <?php echo htmlspecialchars(ucfirst($r['name'])); ?> </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label for="add_office">Office <span class="required">*</span></label>
                 <select id="add_office" onchange="loadWindowOptions('add_office', 'add_window', 'add_window_group')">
                     <option value="" disabled selected>Select office</option>
@@ -255,7 +284,7 @@ $pageLimit = 10;
             </div>
 
             <div class="form-group" id="add_window_group" style="display:none;">
-                <label for="add_window">Window <span class="required">*</span></label>
+                <label for="add_window">Window</label>
                 <select id="add_window">
                     <option value="" disabled selected>Select window</option>
                 </select>
@@ -284,6 +313,18 @@ $pageLimit = 10;
                 <input type="email" id="edit_email">
             </div>
             <div class="form-group">
+                <label for="edit_role">Role <span class="required">*</span></label>
+                <select id="edit_role">
+                    <?php foreach ($roles as $r): ?>
+                        <?php if ($r['id'] != 1): ?>
+                            <option value="<?php echo $r['id']; ?>">
+                                <?php echo htmlspecialchars(ucfirst($r['name'])); ?>
+                            </option>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
                 <label for="edit_office">Office <span class="required">*</span></label>
                 <select id="edit_office" onchange="loadWindowOptions('edit_office', 'edit_window', 'edit_window_group')">
                     <option value="" disabled>Select Office</option>
@@ -293,7 +334,7 @@ $pageLimit = 10;
                 </select>
             </div>
             <div class="form-group" id="edit_window_group" style="display:none;">
-                <label for="edit_window">Window <span class="required">*</span></label>
+                <label for="edit_window">Window</label>
                 <select id="edit_window">
                     <option value="" disabled selected>Select window</option>
                 </select>
@@ -369,6 +410,7 @@ $pageLimit = 10;
         const CSRF_TOKEN = <?php echo json_encode($csrf_token); ?>;
         const PAGINATION_LIMIT = 10;
         const TOTAL_STAFF = <?php echo (int)$totalStaff; ?>;
+        const CAN_MANAGE = <?php echo json_encode($canManage); ?>;
     </script>
 </body>
 

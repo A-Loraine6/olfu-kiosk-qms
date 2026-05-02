@@ -13,14 +13,15 @@ if (!isLoggedIn()) {
 $currentUser = getCurrentUser();
 $csrf_token  = getCsrfToken();
 
-$isStaff         = ($currentUser['role'] ?? '') === 'staff';
-$staffOfficeId   = $currentUser['office_id'] ?? null;
-$officeInfo      = ($isStaff && $staffOfficeId) ? getOfficeInfo($db, $staffOfficeId) : null;
-$staffOfficeName = $officeInfo['name'] ?? null;
+$canManageServices = hasPermission('manage_services');
+$isOfficeScoped    = !$canManageServices && !empty($currentUser['office_id']);
+$staffOfficeId     = $currentUser['office_id'] ?? null;
+$officeInfo        = ($isOfficeScoped && $staffOfficeId) ? getOfficeInfo($db, $staffOfficeId) : null;
+$staffOfficeName   = $officeInfo['name'] ?? null;
 
-$offices     = getAllOffices($db->getConnection());
-$services    = ($currentUser['role'] === 'staff')
-    ? getAllServicesWithOffice($db->getConnection(), $currentUser['office_id'] ?? null)
+$offices  = getAllOffices($db->getConnection());
+$services = $isOfficeScoped
+    ? getAllServicesWithOffice($db->getConnection(), $staffOfficeId)
     : getAllServicesWithOffice($db->getConnection());
 $totalServices  = count($services);
 $activeServices = count(array_filter($services, fn($s) => $s['is_active']));
@@ -69,7 +70,7 @@ function getCategoryColor(?string $cat): string
                     <h2 class="header-page-title">
                         <i class="fas fa-concierge-bell"></i> Service Management
                     </h2>
-                    <?php if ($isStaff && $staffOfficeName): ?>
+                    <?php if ($isOfficeScoped && $staffOfficeName): ?>
                         <span class="office-badge">
                             <i class="fas fa-building"></i>
                             <?php echo htmlspecialchars($staffOfficeName); ?>
@@ -77,7 +78,7 @@ function getCategoryColor(?string $cat): string
                     <?php endif; ?>
                 </div>
                 <div class="header-right">
-                    <?php if (($currentUser['role'] ?? '') !== 'staff'): ?>
+                    <?php if ($canManageServices): ?>
                         <button class="btn-primary" onclick="openModal('addServiceModal')">
                             <i class="fas fa-plus"></i> Add New Service
                         </button>
@@ -97,7 +98,7 @@ function getCategoryColor(?string $cat): string
                             </div>
                             <div class="card-value" id="stat-total"><?php echo $totalServices; ?></div>
                             <div class="card-description">
-                                <?php echo $isStaff ? 'Services in your office' : 'All registered transaction types'; ?>
+                                <?php echo $isOfficeScoped ? 'Services in your office' : 'All registered transaction types'; ?>
                             </div>
                         </div>
                         <div class="card card-active-services">
@@ -107,7 +108,7 @@ function getCategoryColor(?string $cat): string
                             </div>
                             <div class="card-value" id="stat-active"><?php echo $activeServices; ?></div>
                             <div class="card-description">
-                                <?php echo $isStaff ? 'Active in your office' : 'Currently shown in kiosk'; ?>
+                                <?php echo $isOfficeScoped ? 'Active in your office' : 'Currently shown in kiosk'; ?>
                             </div>
                         </div>
                         <div class="card card-inactive-services">
@@ -117,12 +118,12 @@ function getCategoryColor(?string $cat): string
                             </div>
                             <div class="card-value" id="stat-inactive"><?php echo $totalServices - $activeServices; ?></div>
                             <div class="card-description">
-                                <?php echo $isStaff ? 'Inactive in your office' : 'Hidden from kiosk'; ?>
+                                <?php echo $isOfficeScoped ? 'Inactive in your office' : 'Hidden from kiosk'; ?>
                             </div>
                         </div>
                     </div>
 
-                    <?php if (($currentUser['role'] ?? '') !== 'staff'): ?>
+                    <?php if (hasPermission('manage_settings')): ?>
                         <h2 class="section-title"><i class="fas fa-building"></i> Office Queue Mode</h2>
                         <div class="office-mode-grid">
                             <?php foreach ($offices as $office): ?>
@@ -172,7 +173,7 @@ function getCategoryColor(?string $cat): string
 
                     <h2 class="section-title">
                         <i class="fas fa-th-list"></i>
-                        <?php echo $isStaff ? htmlspecialchars($staffOfficeName) . ' — Services' : 'All Services'; ?>
+                        <?php echo $isOfficeScoped ? htmlspecialchars($staffOfficeName) . ' — Services' : 'All Services'; ?>
                     </h2>
                     <div class="services-table-section">
                         <div class="services-table-toolbar">
@@ -187,7 +188,7 @@ function getCategoryColor(?string $cat): string
                             </div>
 
                             <div class="filter-group">
-                                <?php if (($currentUser['role'] ?? '') !== 'staff'): ?>
+                                <?php if ($canManageServices): ?>
                                     <select id="filterOffice" class="filter-select" onchange="applyFilters()">
                                         <option value="">All Offices</option>
                                         <?php foreach ($offices as $o): ?>
@@ -214,7 +215,7 @@ function getCategoryColor(?string $cat): string
                                     <th>Office</th>
                                     <th>Category</th>
                                     <th>Status</th>
-                                    <?php if (($currentUser['role'] ?? '') !== 'staff'): ?>
+                                    <?php if ($canManageServices): ?>
                                         <th>Actions</th>
                                     <?php endif; ?>
                                 </tr>
@@ -270,7 +271,7 @@ function getCategoryColor(?string $cat): string
                                                     <?php echo $svc['is_active'] ? 'Active' : 'Inactive'; ?>
                                                 </span>
                                             </td>
-                                            <?php if (($currentUser['role'] ?? '') !== 'staff'): ?>
+                                            <?php if ($canManageServices): ?>
                                                 <td>
                                                     <div class="dropdown">
                                                         <button class="dropdown-toggle">
