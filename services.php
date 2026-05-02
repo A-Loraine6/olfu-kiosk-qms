@@ -304,6 +304,15 @@ function getCategoryColor(?string $cat): string
                         <div class="pagination-bar" id="paginationBar">
                             <div class="pagination-info" id="paginationInfo"></div>
                             <div class="pagination-controls" id="paginationControls"></div>
+                            <div class="pagination-limit">
+                                <label>Show:</label>
+                                <select id="pageLimitSelect" onchange="changePageLimit()">
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
