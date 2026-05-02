@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 02, 2026 at 09:14 AM
+-- Generation Time: May 02, 2026 at 02:31 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -330,7 +330,33 @@ INSERT INTO `activity_logs` (`id`, `user_id`, `activity_type`, `entity_type`, `e
 (310, 5, 'LOGOUT', 'user', 5, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 07:10:59'),
 (311, 5, 'LOGIN', 'user', 5, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 07:11:26'),
 (312, 5, 'LOGOUT', 'user', 5, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 07:11:27'),
-(313, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 07:11:31');
+(313, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 07:11:31'),
+(314, 1, 'LOGOUT', 'user', 1, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 07:19:55'),
+(315, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 07:29:18'),
+(316, 1, 'LOGOUT', 'user', 1, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 07:29:21'),
+(317, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 10:02:55'),
+(318, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 2, '{\"close_time\":\"17:00\"}', '{\"close_time\":\"19:00\"}', 'Updated office schedule for \"Accounting\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 10:21:28'),
+(319, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 3, '{\"close_time\":\"17:00\"}', '{\"close_time\":\"19:00\"}', 'Updated office schedule for \"Admissions\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 10:21:33'),
+(320, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 1, '{\"close_time\":\"17:00\"}', '{\"close_time\":\"19:00\"}', 'Updated office schedule for \"Registrar\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 10:21:35'),
+(321, 1, 'LOGOUT', 'user', 1, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 10:28:10'),
+(322, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 10:28:13'),
+(323, 1, 'LOGOUT', 'user', 1, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 11:20:50'),
+(324, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 11:20:53'),
+(325, 2, 'LOGOUT', 'user', 2, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 11:21:02'),
+(326, 5, 'LOGIN', 'user', 5, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 11:21:14'),
+(327, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 11:21:33'),
+(328, 1, 'STAFF_EDIT', 'USER', 5, '{\"office\":\"Accounting\"}', '{\"office\":\"Admissions\"}', 'Updated staff member: Angel Loraine Reobilo', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 11:21:45'),
+(329, 5, 'LOGOUT', 'user', 5, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 11:22:07'),
+(330, 5, 'LOGIN', 'user', 5, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 11:22:11'),
+(331, 5, 'LOGOUT', 'user', 5, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 11:50:23'),
+(332, 1, 'STAFF_EDIT', 'USER', 5, '{\"office\":\"Admissions\"}', '{\"office\":\"Accounting\"}', 'Updated staff member: Angel Loraine Reobilo', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 11:50:30'),
+(333, 5, 'LOGIN', 'user', 5, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 11:50:35'),
+(334, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 2, '{\"close_time\":\"19:00\"}', '{\"close_time\":\"17:00\"}', 'Updated office schedule for \"Accounting\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 11:54:55'),
+(335, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 3, '{\"close_time\":\"19:00\"}', '{\"close_time\":\"17:00\"}', 'Updated office schedule for \"Admissions\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 11:54:57'),
+(336, 1, 'SETTINGS_SCHEDULE_UPDATE', 'OFFICE', 1, '{\"close_time\":\"19:00\"}', '{\"close_time\":\"17:00\"}', 'Updated office schedule for \"Registrar\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 11:54:59'),
+(337, 5, 'LOGOUT', 'user', 5, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 12:01:13'),
+(338, 5, 'LOGIN', 'user', 5, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 12:01:16'),
+(339, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '2026-05-02 12:22:58');
 
 -- --------------------------------------------------------
 
@@ -552,7 +578,10 @@ INSERT INTO `tickets` (`id`, `ticket_number`, `office_id`, `transaction_type`, `
 (50, 'ACC-006', 2, 'Balance Inquiry', NULL, 'skipped', '2026-04-25 03:53:59', NULL, NULL, NULL, 2, 0),
 (51, 'ACC-001', 2, 'Balance Inquiry', NULL, 'completed', '2026-05-01 02:25:54', '2026-05-01 02:37:00', '2026-05-01 02:38:03', NULL, 2, 18),
 (52, 'ACC-002', 2, 'Balance Inquiry', NULL, 'completed', '2026-05-01 02:43:33', '2026-05-01 02:51:10', '2026-05-01 02:52:58', '2026-05-01 02:51:06', 2, 14),
-(53, 'ACC-003', 2, 'Balance Inquiry', 1, 'completed', '2026-05-01 07:53:53', '2026-05-01 02:51:10', '2026-05-01 02:51:10', NULL, 2, 0);
+(53, 'ACC-003', 2, 'Balance Inquiry', 1, 'completed', '2026-05-01 07:53:53', '2026-05-01 02:51:10', '2026-05-01 02:51:10', NULL, 2, 0),
+(54, 'ACC-001', 2, 'Tuition Fee', 1, 'skipped', '2026-05-02 08:21:40', NULL, NULL, NULL, 2, 0),
+(55, 'ACC-002', 2, 'Promissory Note', NULL, 'skipped', '2026-05-02 08:21:55', NULL, NULL, NULL, 2, 0),
+(56, 'ACC-003', 2, 'Online Payment Validation', NULL, 'skipped', '2026-05-02 08:22:02', NULL, NULL, NULL, 2, 0);
 
 -- --------------------------------------------------------
 
@@ -631,7 +660,7 @@ INSERT INTO `users` (`id`, `full_name`, `email`, `password`, `role`, `role_id`, 
 (2, 'Liezel Mae Torres', 'liezelmaetorres@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$YXhxRll3ZmdaTm5DVDA4Yg$VJFkcE3j0F94U7yijmPOZlZy40u1Rk+ykwO7wjDhyHQ', 'staff', 2, 2, 1, '2026-03-25 05:35:57', 1, NULL, NULL, NULL, 1, 0, 0),
 (3, 'Liz Margaret Santiago', 'santiagolizmargaret4@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$eHlxUGk5M2k1bHNuSVduQg$C5b+IZ3QeQWzwS/aEsxR99HUSkD2VGxzYgDzOGjqZ14', 'staff', 2, 3, 1, '2026-04-20 01:15:54', 1, NULL, NULL, NULL, 1, 0, 0),
 (4, 'Iris Remorosa', 'irisremorosa@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$MEdPcUIuNUU5VGtWdHdZWQ$cvMgQFjhW2ibPedFPl91ye66BsSgXIbouMkzIkDK0/4', 'staff', 2, 1, 1, '2026-04-20 01:16:16', 1, NULL, NULL, NULL, 1, 0, 0),
-(5, 'Angel Loraine Reobilo', 'reobiloloraine@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$N25HMHVBQjlMNUVMQXFhbQ$VgCRXHrEM9GxDwa0hapRyuaJrR8/4FlkRsKPpZeQS0o', 'staff', 3, 2, NULL, '2026-05-02 02:40:15', 1, NULL, NULL, NULL, 1, 0, 0);
+(5, 'Angel Loraine Reobilo', 'reobiloloraine@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$N25HMHVBQjlMNUVMQXFhbQ$VgCRXHrEM9GxDwa0hapRyuaJrR8/4FlkRsKPpZeQS0o', 'supervisor', 3, 2, NULL, '2026-05-02 02:40:15', 1, NULL, NULL, NULL, 1, 0, 0);
 
 --
 -- Indexes for dumped tables
@@ -731,7 +760,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `activity_logs`
 --
 ALTER TABLE `activity_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=314;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=340;
 
 --
 -- AUTO_INCREMENT for table `kiosk_settings`
@@ -761,7 +790,7 @@ ALTER TABLE `roles`
 -- AUTO_INCREMENT for table `tickets`
 --
 ALTER TABLE `tickets`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=54;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=57;
 
 --
 -- AUTO_INCREMENT for table `transaction_types`

@@ -91,9 +91,12 @@ if ($isPersonalView || $isScopedView) {
                 </div>
                 <div class="header-right">
                     <div class="header-timestamp" id="currentTime"></div>
-                    <button class="btn-filter btn-export" onclick="exportReport('pdf')">
-                        <i class="fas fa-file-pdf"></i> Export as PDF
-                    </button>
+                    <div class="export-progress-wrap">
+                        <button class="btn-filter btn-export" onclick="exportReport('pdf')">
+                            <i class="fas fa-file-pdf"></i> Export as PDF
+                        </button>
+                        <div class="export-progress-bar"></div>
+                    </div>
                 </div>
             </header>
 
@@ -101,6 +104,15 @@ if ($isPersonalView || $isScopedView) {
                 <div class="dashboard-content">
 
                     <?php if ($isPersonalView): ?>
+
+                        <!-- ── Quick ranges ── -->
+                        <div class="quick-ranges">
+                            <button class="range-pill active" data-range="today" onclick="setRange('today')">Today</button>
+                            <button class="range-pill" data-range="yesterday" onclick="setRange('yesterday')">Yesterday</button>
+                            <button class="range-pill" data-range="week" onclick="setRange('week')">This week</button>
+                            <button class="range-pill" data-range="lastweek" onclick="setRange('lastweek')">Last week</button>
+                            <button class="range-pill" data-range="month" onclick="setRange('month')">This month</button>
+                        </div>
 
                         <div class="filter-bar">
                             <div class="filter-group">
@@ -139,23 +151,52 @@ if ($isPersonalView || $isScopedView) {
 
                     <?php else: ?>
 
-                        <h3 class="section-title">
-                            <i class="fas fa-filter"></i> Report Filters
-                        </h3>
+                        <!-- ── WEEK-OVER-WEEK COMPARISON ── -->
+                        <h2 class="section-title"><i class="fas fa-calendar-week"></i> This Week vs Last Week</h2>
+
+                        <div class="report-block" id="block-wow">
+                            <div class="report-block-header">
+                                <div class="report-block-title">
+                                    <div class="report-block-icon"><i class="fas fa-exchange-alt"></i></div>
+                                    Weekly Comparison
+                                </div>
+                                <span class="pill pill-orange" id="wowPill">No Data</span>
+                            </div>
+                            <div class="report-block-body">
+                                <div class="report-block-loading" id="wowLoading">
+                                    <i class="fas fa-spinner fa-spin"></i> Loading…
+                                </div>
+                                <div id="wowContent" style="display:none;">
+                                    <div class="wow-grid" id="wowCards"></div>
+                                    <div class="sub-chart-box" style="margin-top:14px;">
+                                        <canvas id="wowChart" style="max-height:220px;"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="quick-ranges">
+                            <button class="range-pill active" data-range="today" onclick="setRange('today')">Today</button>
+                            <button class="range-pill" data-range="yesterday" onclick="setRange('yesterday')">Yesterday</button>
+                            <button class="range-pill" data-range="week" onclick="setRange('week')">This week</button>
+                            <button class="range-pill" data-range="lastweek" onclick="setRange('lastweek')">Last week</button>
+                            <button class="range-pill" data-range="month" onclick="setRange('month')">This month</button>
+                        </div>
+
                         <div class="filter-bar">
                             <div class="filter-group">
-                                <label><i class="fas fa-calendar-alt"></i> Date From</label>
+                                <label><i class="fas fa-calendar-alt"></i> From</label>
                                 <input type="date" id="dateFrom" />
                             </div>
                             <div class="filter-group">
-                                <label><i class="fas fa-calendar-alt"></i> Date To</label>
+                                <label><i class="fas fa-calendar-alt"></i> To</label>
                                 <input type="date" id="dateTo" />
                             </div>
                             <?php if ($isFullView): ?>
                                 <div class="filter-group">
-                                    <label><i class="fas fa-building"></i> Office</label>
+                                    <label><i class="fas fa-building"></i> Department</label>
                                     <select id="officeFilter">
-                                        <option value="">All Offices</option>
+                                        <option value="">All</option>
                                         <?php foreach ($offices as $office): ?>
                                             <option value="<?= $office['id']; ?>">
                                                 <?= htmlspecialchars($office['name']); ?>
@@ -166,12 +207,12 @@ if ($isPersonalView || $isScopedView) {
                             <?php endif; ?>
                             <div class="filter-actions">
                                 <button class="btn-filter btn-apply" onclick="applyFilters()">
-                                    <i class="fas fa-search"></i> Apply
+                                    <i class="fas fa-search"></i> View Report
                                 </button>
                             </div>
                         </div>
 
-                        <h2 class="section-title"><i class="fas fa-calendar-day"></i> Daily Transaction Report</h2>
+                        <h2 class="section-title" style="margin-top:28px;"><i class="fas fa-calendar-day"></i> Daily Transaction Report</h2>
 
                         <div class="report-block" id="block-daily">
                             <div class="report-block-header">
@@ -207,17 +248,22 @@ if ($isPersonalView || $isScopedView) {
                             </div>
                         </div>
 
-                        <h2 class="section-title" style="margin-top:28px;"><i class="fas fa-building"></i> Office Performance Report</h2>
+                        <h2 class="section-title" style="margin-top:28px;"><i class="fas fa-building"></i> Department Performance</h2>
 
                         <div class="report-block" id="block-office">
                             <div class="report-block-header">
                                 <div class="report-block-title">
                                     <div class="report-block-icon"><i class="fas fa-trophy"></i></div>
-                                    Transaction Count &amp; Avg. Service Time per Office
+                                    How Each Department is Performing
                                 </div>
                                 <span class="pill pill-orange">No Data</span>
                             </div>
                             <div class="report-block-body">
+                                <div class="empty-state" id="emptyOffice" style="display:none;">
+                                    <div class="empty-state-icon"><i class="fas fa-building"></i></div>
+                                    <div class="empty-state-title">No department data</div>
+                                    <div class="empty-state-message">Try a wider date range to see department performance.</div>
+                                </div>
                                 <table class="perf-table" style="display:none;" id="officeTable">
                                     <thead>
                                         <tr>
@@ -234,45 +280,44 @@ if ($isPersonalView || $isScopedView) {
                             </div>
                         </div>
 
-                        <h2 class="section-title" style="margin-top:28px;"><i class="fas fa-clock"></i> Peak Schedule Analysis</h2>
+                        <h2 class="section-title" style="margin-top:28px;"><i class="fas fa-clock"></i> When Are We Busiest?</h2>
 
                         <div class="report-block" id="block-peaks">
                             <div class="report-block-header">
                                 <div class="report-block-title">
                                     <div class="report-block-icon"><i class="fas fa-fire-alt"></i></div>
-                                    Busiest Hours &amp; Days · Queue Demand per Department
+                                    Peak Hours &amp; Days
                                 </div>
                                 <span class="pill pill-orange">No Data</span>
                             </div>
                             <div class="report-block-body">
                                 <div class="charts-2col">
                                     <div class="sub-chart-box">
-                                        <div class="sub-chart-label"><i class="fas fa-chart-line"></i> Hourly Queue Volume</div>
-                                        <div class="empty-state">
-                                            <div class="empty-state-icon"><i class="fas fa-chart-line"></i></div>
-                                            <div class="empty-state-title">No Hourly Data Yet</div>
-                                            <div class="empty-state-message">Peak hour identification will appear once the system records daily activity.</div>
-                                        </div>
                                         <canvas id="peakHoursChart" style="display:none;"></canvas>
+                                        <div class="empty-state" id="emptyPeakHours">
+                                            <div class="empty-state-icon"><i class="fas fa-chart-line"></i></div>
+                                            <div class="empty-state-title">No Data</div>
+                                            <div class="empty-state-message">Hourly trends will appear here.</div>
+                                        </div>
                                     </div>
                                     <div class="sub-chart-box">
-                                        <div class="sub-chart-label"><i class="fas fa-calendar-week"></i> Volume by Day of Week</div>
-                                        <div class="empty-state">
-                                            <div class="empty-state-icon"><i class="fas fa-calendar-week"></i></div>
-                                            <div class="empty-state-title">No Day-of-Week Data Yet</div>
-                                            <div class="empty-state-message">This chart will display the busiest days once enough data is collected.</div>
-                                        </div>
                                         <canvas id="busyDaysChart" style="display:none;"></canvas>
-                                    </div>
-                                    <div class="sub-chart-box" style="grid-column: 1 / -1;">
-                                        <div class="sub-chart-label"><i class="fas fa-layer-group"></i> Queue Demand Comparison per Department</div>
-                                        <div class="empty-state">
-                                            <div class="empty-state-icon"><i class="fas fa-layer-group"></i></div>
-                                            <div class="empty-state-title">No Department Comparison Data</div>
-                                            <div class="empty-state-message">Department-level demand comparison will be shown here once transactions are logged across offices.</div>
+                                        <div class="empty-state" id="emptyBusyDays">
+                                            <div class="empty-state-icon"><i class="fas fa-calendar-week"></i></div>
+                                            <div class="empty-state-title">No Data</div>
+                                            <div class="empty-state-message">Daily trends will appear here.</div>
                                         </div>
-                                        <canvas id="deptChart" style="display:none;"></canvas>
                                     </div>
+                                    <?php if ($isFullView): ?>
+                                        <div class="sub-chart-box" style="grid-column: 1 / -1;">
+                                            <canvas id="deptChart" style="display:none;"></canvas>
+                                            <div class="empty-state" id="emptyDept">
+                                                <div class="empty-state-icon"><i class="fas fa-layer-group"></i></div>
+                                                <div class="empty-state-title">No Data</div>
+                                                <div class="empty-state-message">Department demand will appear here.</div>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>

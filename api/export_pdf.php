@@ -13,14 +13,26 @@ if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
 }
 
 $currentUser = getCurrentUser();
-$isStaff     = ($currentUser['role'] ?? '') === 'staff';
-$userId      = (int) $currentUser['id'];
-$userOffice  = (int) ($currentUser['office_id'] ?? 0);
+$isFullView   = ($_SESSION['role_id'] ?? null) === 1
+    || ($_SESSION['role'] ?? '') === 'admin'
+    || hasPermission('view_reports');
+$isScopedView = !$isFullView && hasPermission('view_reports_office');
+$isStaff      = !$isFullView && !$isScopedView && hasPermission('view_own_metrics');
 
-$from     = date('Y-m-d', strtotime($_POST['date_from'] ?? date('Y-m-d')));
-$to       = date('Y-m-d', strtotime($_POST['date_to']   ?? date('Y-m-d')));
-$officeId = $isStaff ? $userOffice : (int)($_POST['office_id'] ?? 0);
-$conn     = $db->getConnection();
+$userId     = (int) $currentUser['id'];
+$userOffice = (int) ($currentUser['office_id'] ?? 0);
+
+$from = date('Y-m-d', strtotime($_POST['date_from'] ?? date('Y-m-d')));
+$to   = date('Y-m-d', strtotime($_POST['date_to']   ?? date('Y-m-d')));
+
+if ($isScopedView) {
+    $officeId = $userOffice;
+} else {
+    $officeId = (int) ($_POST['office_id'] ?? 0);
+}
+
+$conn = $db->getConnection();
+
 
 function fmtDate(string $d): string
 {
@@ -29,8 +41,8 @@ function fmtDate(string $d): string
 function fmtTime(?float $secs): string
 {
     if ($secs === null || $secs <= 0) return '-';
-    $m = (int)floor($secs / 60);
-    $s = (int)round($secs % 60);
+    $m = (int) floor($secs / 60);
+    $s = (int) round($secs % 60);
     return $s > 0 ? "{$m}m {$s}s" : "{$m}m";
 }
 function fmtTs(?string $ts): string
@@ -38,7 +50,6 @@ function fmtTs(?string $ts): string
     if (!$ts) return '-';
     return date('g:i A', strtotime($ts));
 }
-$ow = $officeId > 0 ? " AND office_id = {$officeId}" : '';
 
 foreach (
     [
@@ -121,10 +132,10 @@ class BaseReport extends FPDF
 
     function StatCards(array $cards, float $x0 = 10, float $totalW = 190): void
     {
-        $n = count($cards);
+        $n   = count($cards);
         $gap = 2.5;
-        $w = ($totalW - $gap * ($n - 1)) / $n;
-        $y0 = $this->GetY();
+        $w   = ($totalW - $gap * ($n - 1)) / $n;
+        $y0  = $this->GetY();
 
         foreach ($cards as $i => $c) {
             $x = $x0 + $i * ($w + $gap);
@@ -163,15 +174,15 @@ class BaseReport extends FPDF
     {
         $this->SetFont('Helvetica', '', 7);
         $this->SetFillColor(...($shade ? self::GRY : [255, 255, 255]));
-        foreach ($cells as [$v, $w, $a]) $this->Cell($w, 5.2, (string)$v, 0, 0, $a, true);
+        foreach ($cells as [$v, $w, $a]) $this->Cell($w, 5.2, (string) $v, 0, 0, $a, true);
         $this->Ln();
     }
 
     function RRect(float $x, float $y, float $w, float $h, float $r): void
     {
-        $a = 4 / 3 * (sqrt(2) - 1);
+        $a  = 4 / 3 * (sqrt(2) - 1);
         $hp = $this->h;
-        $k = $this->k;
+        $k  = $this->k;
         $this->_out(sprintf('%.2F %.2F m', ($x + $r) * $k, ($hp - $y) * $k));
         $xc = $x + $w - $r;
         $yc = $y + $r;
@@ -191,6 +202,7 @@ class BaseReport extends FPDF
         $this->_Ar($xc - $r, $yc - $r * $a, $xc - $r * $a, $yc - $r, $xc, $yc - $r);
         $this->_out('f');
     }
+
     function _Ar(float $x1, float $y1, float $x2, float $y2, float $x3, float $y3): void
     {
         $h = $this->h;
@@ -206,13 +218,15 @@ class BaseReport extends FPDF
     }
 }
 
+$genAt     = (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('F j, Y \a\t g:i A');
+$dateLabel = $from === $to ? fmtDate($from) : fmtDate($from) . ' - ' . fmtDate($to);
+
 if ($isStaff) {
     $stmt = $conn->prepare("
-        SELECT
-            COUNT(*) AS served,
-            AVG(CASE WHEN served_at IS NOT NULL AND completed_at IS NOT NULL
-                THEN COALESCE(time_spent,0) + TIMESTAMPDIFF(SECOND,served_at,completed_at)
-                END) AS avg_s
+        SELECT COUNT(*) AS served,
+               AVG(CASE WHEN served_at IS NOT NULL AND completed_at IS NOT NULL
+                   THEN COALESCE(time_spent,0) + TIMESTAMPDIFF(SECOND,served_at,completed_at)
+                   END) AS avg_s
         FROM tickets
         WHERE served_by = ? AND status = 'completed'
           AND DATE(created_at) BETWEEN ? AND ?");
@@ -226,7 +240,7 @@ if ($isStaff) {
           AND DATE(created_at) BETWEEN ? AND ?");
     $stmt2->bind_param('iss', $userId, $from, $to);
     $stmt2->execute();
-    $skippedCount = (int)$stmt2->get_result()->fetch_assoc()['skipped'];
+    $skippedCount = (int) $stmt2->get_result()->fetch_assoc()['skipped'];
 
     $stmt3 = $conn->prepare("
         SELECT ticket_number, transaction_type, status,
@@ -251,40 +265,39 @@ if ($isStaff) {
     $stmt5->execute();
     $officeName = $stmt5->get_result()->fetch_assoc()['name'] ?? 'Unknown Office';
 
-    $served    = (int)($stats['served'] ?? 0);
-    $avgS      = $stats['avg_s'] !== null ? (float)$stats['avg_s'] : null;
-    $total     = $served + $skippedCount;
-    $rate      = $total > 0 ? round($served / $total * 100, 1) . '%' : 'N/A';
-    $dateLabel = $from === $to ? fmtDate($from) : fmtDate($from) . ' - ' . fmtDate($to);
+    $served = (int) ($stats['served'] ?? 0);
+    $avgS   = $stats['avg_s'] !== null ? (float) $stats['avg_s'] : null;
+    $total  = $served + $skippedCount;
+    $rate   = $total > 0 ? round($served / $total * 100, 1) . '%' : 'N/A';
 
     $pdf = new BaseReport('P', 'mm', 'A4');
     $pdf->AliasNbPages();
     $pdf->SetAutoPageBreak(true, 14);
     $pdf->SetMargins(10, 28, 10);
     $pdf->rTitle = 'Staff Activity Report';
-    $pdf->rSub   = $staffInfo['full_name'] ?? 'Staff';;
+    $pdf->rSub   = $staffInfo['full_name'] ?? 'Staff';
     $pdf->rRange = $officeName . '   |   ' . $dateLabel
         . ($staffInfo['window_number'] ? '   |   Window ' . $staffInfo['window_number'] : '');
-    $pdf->rGenAt = (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('F j, Y \a\t g:i A');
+    $pdf->rGenAt = $genAt;
 
     $pdf->AddPage();
 
     $pdf->SecTitle('Performance Summary');
     $pdf->StatCards([
-        ['lbl' => 'Tickets Served',    'val' => (string)$served,      'sub' => 'Completed transactions',  'clr' => BaseReport::GRN],
-        ['lbl' => 'Tickets Skipped',   'val' => (string)$skippedCount, 'sub' => 'No-show / skipped',       'clr' => BaseReport::ORG],
-        ['lbl' => 'Avg. Serve Time',   'val' => fmtTime($avgS),       'sub' => 'Per completed ticket',    'clr' => BaseReport::BLU],
-        ['lbl' => 'Completion Rate',   'val' => $rate,                'sub' => 'Served / total called',   'clr' => BaseReport::PRP],
+        ['lbl' => 'Tickets Served',  'val' => (string) $served,       'sub' => 'Completed transactions', 'clr' => BaseReport::GRN],
+        ['lbl' => 'Tickets Skipped', 'val' => (string) $skippedCount,  'sub' => 'No-show / skipped',      'clr' => BaseReport::ORG],
+        ['lbl' => 'Avg. Serve Time', 'val' => fmtTime($avgS),          'sub' => 'Per completed ticket',   'clr' => BaseReport::BLU],
+        ['lbl' => 'Completion Rate', 'val' => $rate,                   'sub' => 'Served / total called',  'clr' => BaseReport::PRP],
     ]);
 
     $pdf->Ln(4);
 
     $pdf->SecTitle('Ticket Log');
-
     if (empty($tickets)) {
         $pdf->SetFont('Helvetica', 'I', 8);
         $pdf->SetTextColor(...BaseReport::MUT);
         $pdf->Cell(0, 8, 'No tickets found for this period.', 0, 1, 'C');
+        $pdf->SetTextColor(...BaseReport::TXT);
     } else {
         $pdf->THead([
             ['Ticket #',         25, 'L'],
@@ -294,27 +307,23 @@ if ($isStaff) {
             ['Duration',         25, 'C'],
             ['Status',           25, 'C'],
         ]);
-
         foreach ($tickets as $i => $t) {
             $dur = null;
             if ($t['served_at'] && $t['completed_at']) {
-                $dur = (int)$t['time_spent']
+                $dur = (int) $t['time_spent']
                     + (strtotime($t['completed_at']) - strtotime($t['served_at']));
             } elseif ($t['time_spent'] > 0) {
-                $dur = (int)$t['time_spent'];
+                $dur = (int) $t['time_spent'];
             }
-
-            $statusLabel = ucfirst($t['status']);
             $pdf->TRow([
-                [$t['ticket_number'],              25, 'L'],
-                [$t['transaction_type'] ?? '-',    55, 'L'],
-                [fmtTs($t['served_at']),           30, 'C'],
-                [fmtTs($t['completed_at']),        30, 'C'],
-                [fmtTime($dur),                    25, 'C'],
-                [$statusLabel,                     25, 'C'],
+                [$t['ticket_number'],           25, 'L'],
+                [$t['transaction_type'] ?? '-', 55, 'L'],
+                [fmtTs($t['served_at']),        30, 'C'],
+                [fmtTs($t['completed_at']),     30, 'C'],
+                [fmtTime($dur),                 25, 'C'],
+                [ucfirst($t['status']),         25, 'C'],
             ], $i % 2 === 1);
         }
-
         $pdf->SetFont('Helvetica', 'B', 7);
         $pdf->SetFillColor(...BaseReport::DRK);
         $pdf->SetTextColor(255, 255, 255);
@@ -325,11 +334,196 @@ if ($isStaff) {
         $pdf->SetTextColor(...BaseReport::TXT);
     }
 
-    $fn = 'Staff_Report_' . ($staffInfo['full_name'] ?? 'Staff') . '_' . $from . ($from !== $to ? '_to_' . $to : '') . '.pdf';
+    $fn = 'Staff_Report_' . ($staffInfo['full_name'] ?? 'Staff') . '_' . $from
+        . ($from !== $to ? '_to_' . $to : '') . '.pdf';
     $fn = preg_replace('/[^A-Za-z0-9_\-.]/', '_', $fn);
     $pdf->Output('D', $fn);
     exit;
 }
+
+if ($isScopedView) {
+    $ow = " AND office_id = {$officeId}";
+
+    $stmtON = $conn->prepare("SELECT name, open_time, close_time FROM offices WHERE id = ?");
+    $stmtON->bind_param('i', $officeId);
+    $stmtON->execute();
+    $officeRow  = $stmtON->get_result()->fetch_assoc();
+    $officeName = $officeRow['name'] ?? 'My Office';
+    $openHour   = (int) explode(':', $officeRow['open_time']  ?? '08:00:00')[0];
+    $closeHour  = (int) explode(':', $officeRow['close_time'] ?? '17:00:00')[0];
+
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) AS tq,
+               COUNT(CASE WHEN status='completed' THEN 1 END) AS ts,
+               COUNT(CASE WHEN status='skipped'   THEN 1 END) AS tsk,
+               AVG(CASE WHEN served_at IS NOT NULL AND completed_at IS NOT NULL
+                   THEN COALESCE(time_spent,0) + TIMESTAMPDIFF(SECOND,served_at,completed_at) END) AS avg_s
+        FROM tickets
+        WHERE DATE(created_at) BETWEEN ? AND ? $ow");
+    $stmt->bind_param('ss', $from, $to);
+    $stmt->execute();
+    $daily = $stmt->get_result()->fetch_assoc();
+
+    $stmt2 = $conn->prepare("
+        SELECT u.full_name, u.window_number,
+               COUNT(CASE WHEN t.status='completed' THEN 1 END) AS served,
+               COUNT(CASE WHEN t.status='skipped'   THEN 1 END) AS skipped,
+               AVG(CASE WHEN t.served_at IS NOT NULL AND t.completed_at IS NOT NULL
+                   THEN COALESCE(t.time_spent,0) + TIMESTAMPDIFF(SECOND,t.served_at,t.completed_at) END) AS avg_s
+        FROM users u
+        LEFT JOIN tickets t ON t.served_by = u.id AND DATE(t.created_at) BETWEEN ? AND ?
+        WHERE u.role = 'staff' AND u.is_deleted = 0 AND u.is_active = 1
+          AND u.office_id = ?
+        GROUP BY u.id, u.full_name, u.window_number
+        ORDER BY served DESC, u.full_name ASC");
+    $stmt2->bind_param('ssi', $from, $to, $officeId);
+    $stmt2->execute();
+    $staffRows = $stmt2->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    $stmt3 = $conn->prepare("
+        SELECT transaction_type,
+               COUNT(*) AS total,
+               COUNT(CASE WHEN status='completed' THEN 1 END) AS completed,
+               COUNT(CASE WHEN status='skipped'   THEN 1 END) AS skipped,
+               AVG(CASE WHEN served_at IS NOT NULL AND completed_at IS NOT NULL
+                   THEN COALESCE(time_spent,0) + TIMESTAMPDIFF(SECOND,served_at,completed_at) END) AS avg_s
+        FROM tickets
+        WHERE DATE(created_at) BETWEEN ? AND ? $ow
+          AND transaction_type IS NOT NULL
+        GROUP BY transaction_type ORDER BY total DESC");
+    $stmt3->bind_param('ss', $from, $to);
+    $stmt3->execute();
+    $typeRows = $stmt3->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    $stmt4 = $conn->prepare("
+        SELECT HOUR(created_at) AS hr, COUNT(*) AS cnt
+        FROM tickets
+        WHERE DATE(created_at) BETWEEN ? AND ? $ow
+          AND HOUR(created_at) BETWEEN ? AND ?
+        GROUP BY HOUR(created_at) ORDER BY hr ASC");
+    $stmt4->bind_param('ssii', $from, $to, $openHour, $closeHour);
+    $stmt4->execute();
+    $hourlyRows = $stmt4->get_result()->fetch_all(MYSQLI_ASSOC);
+    $hourlyMap  = array_column($hourlyRows, 'cnt', 'hr');
+
+    $total  = (int) ($daily['tq']  ?? 0);
+    $served = (int) ($daily['ts']  ?? 0);
+    $skip   = (int) ($daily['tsk'] ?? 0);
+    $avgS   = $daily['avg_s'] !== null ? (float) $daily['avg_s'] : null;
+    $rate   = $total > 0 ? round($served / $total * 100, 1) . '%' : 'N/A';
+
+    $pdf = new BaseReport('P', 'mm', 'A4');
+    $pdf->AliasNbPages();
+    $pdf->SetAutoPageBreak(true, 14);
+    $pdf->SetMargins(10, 28, 10);
+    $pdf->rTitle = 'Office Performance Report';
+    $pdf->rSub   = $officeName . ' - Supervisor View';
+    $pdf->rRange = $dateLabel;
+    $pdf->rGenAt = $genAt;
+
+    $pdf->AddPage();
+
+    $pdf->SecTitle('Office Summary');
+    $pdf->StatCards([
+        ['lbl' => 'Total Queued',    'val' => (string) $total,  'sub' => 'Students in queue',      'clr' => BaseReport::GRN],
+        ['lbl' => 'Total Served',    'val' => (string) $served, 'sub' => 'Completed transactions', 'clr' => BaseReport::GRN],
+        ['lbl' => 'Total Skipped',   'val' => (string) $skip,   'sub' => 'No-show / skipped',      'clr' => BaseReport::ORG],
+        ['lbl' => 'Avg. Serve Time', 'val' => fmtTime($avgS),   'sub' => 'Per completed ticket',   'clr' => BaseReport::BLU],
+        ['lbl' => 'Completion Rate', 'val' => $rate,            'sub' => 'Served / total queued',  'clr' => BaseReport::PRP],
+    ]);
+
+    $pdf->Ln(4);
+
+    $pdf->SecTitle('Staff Performance — ' . $officeName);
+    if (empty($staffRows)) {
+        $pdf->SetFont('Helvetica', 'I', 8);
+        $pdf->SetTextColor(...BaseReport::MUT);
+        $pdf->Cell(0, 8, 'No staff data for this period.', 0, 1, 'C');
+        $pdf->SetTextColor(...BaseReport::TXT);
+    } else {
+        $pdf->THead([
+            ['Name',       75, 'L'],
+            ['Window',     20, 'C'],
+            ['Served',     22, 'C'],
+            ['Skipped',    22, 'C'],
+            ['Avg. Time',  30, 'C'],
+            ['Comp. Rate', 21, 'C'],
+        ]);
+        foreach ($staffRows as $i => $row) {
+            $s   = (int) $row['served'];
+            $sk  = (int) $row['skipped'];
+            $tot = $s + $sk;
+            $cr  = $tot > 0 ? round($s / $tot * 100, 1) . '%' : 'N/A';
+            $win = $row['window_number'] ? 'W' . $row['window_number'] : '-';
+            $pdf->TRow([
+                [$row['full_name'],      75, 'L'],
+                [$win,                   20, 'C'],
+                [$s,                     22, 'C'],
+                [$sk,                    22, 'C'],
+                [fmtTime($row['avg_s']), 30, 'C'],
+                [$cr,                    21, 'C'],
+            ], $i % 2 === 1);
+        }
+    }
+
+    $pdf->Ln(5);
+
+    $pdf->SecTitle('Transaction Type Breakdown');
+    if (empty($typeRows)) {
+        $pdf->SetFont('Helvetica', 'I', 8);
+        $pdf->SetTextColor(...BaseReport::MUT);
+        $pdf->Cell(0, 8, 'No transaction type data for this period.', 0, 1, 'C');
+        $pdf->SetTextColor(...BaseReport::TXT);
+    } else {
+        $pdf->THead([
+            ['Transaction Type', 65, 'L'],
+            ['Total',            20, 'C'],
+            ['Completed',        25, 'C'],
+            ['Skipped',          25, 'C'],
+            ['Avg. Time',        30, 'C'],
+            ['Comp. Rate',       25, 'C'],
+        ]);
+        foreach ($typeRows as $i => $row) {
+            $tot = (int) $row['total'];
+            $com = (int) $row['completed'];
+            $cr  = $tot > 0 ? round($com / $tot * 100, 1) . '%' : 'N/A';
+            $pdf->TRow([
+                [$row['transaction_type'] ?? 'Unspecified', 65, 'L'],
+                [$tot,                   20, 'C'],
+                [$com,                   25, 'C'],
+                [(int) $row['skipped'],  25, 'C'],
+                [fmtTime($row['avg_s']), 30, 'C'],
+                [$cr,                    25, 'C'],
+            ], $i % 2 === 1);
+        }
+    }
+
+    $pdf->Ln(5);
+
+    $openLabel  = date('g A', mktime($openHour, 0));
+    $closeLabel = date('g A', mktime($closeHour, 0));
+    $pdf->SecTitle("Hourly Queue Volume ({$openLabel} - {$closeLabel})");
+
+    $pdf->THead([
+        ['Hour', 95, 'C'],
+        ['Queue Count', 95, 'C'],
+    ]);
+
+    for ($h = $openHour; $h <= $closeHour; $h++) {
+        $pdf->TRow([
+            [date('g A', mktime($h, 0)), 95, 'C'],
+            [(string) ($hourlyMap[$h] ?? 0), 95, 'C'],
+        ], $h % 2 === 0);
+    }
+
+    $fn = 'Office_Report_' . preg_replace('/\s+/', '_', $officeName)
+        . '_' . $from . ($from !== $to ? '_to_' . $to : '') . '.pdf';
+    $fn = preg_replace('/[^A-Za-z0-9_\-.]/', '_', $fn);
+    $pdf->Output('D', $fn);
+    exit;
+}
+
+$ow = $officeId > 0 ? " AND office_id = {$officeId}" : '';
 
 $stmt = $conn->prepare("
     SELECT COUNT(*) AS tq,
@@ -344,7 +538,7 @@ $stmt->execute();
 $daily = $stmt->get_result()->fetch_assoc();
 
 $stmt2 = $conn->prepare("
-    SELECT o.name,
+    SELECT o.id, o.name,
            COUNT(t.id) AS total,
            COUNT(CASE WHEN t.status='completed' THEN 1 END) AS served,
            COUNT(CASE WHEN t.status='skipped'   THEN 1 END) AS skipped,
@@ -353,9 +547,9 @@ $stmt2 = $conn->prepare("
            ROUND(COUNT(t.id)*100.0 /
                NULLIF((SELECT COUNT(*) FROM tickets WHERE DATE(created_at) BETWEEN ? AND ? $ow),0),1) AS share
     FROM offices o
-    LEFT JOIN tickets t ON o.id=t.office_id AND DATE(t.created_at) BETWEEN ? AND ?
-    " . ($officeId > 0 ? "WHERE o.id = {$officeId}" : "") . "
-    GROUP BY o.id,o.name ORDER BY total DESC");
+    LEFT JOIN tickets t ON o.id = t.office_id AND DATE(t.created_at) BETWEEN ? AND ?
+    " . ($officeId > 0 ? "WHERE o.id = {$officeId}" : '') . "
+    GROUP BY o.id, o.name ORDER BY total DESC");
 $stmt2->bind_param('ssss', $from, $to, $from, $to);
 $stmt2->execute();
 $offices = $stmt2->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -393,17 +587,25 @@ $stmt4->bind_param('ss', $from, $to);
 $stmt4->execute();
 $typeRows = $stmt4->get_result()->fetch_all(MYSQLI_ASSOC);
 
-$total  = (int)($daily['tq']  ?? 0);
-$served = (int)($daily['ts']  ?? 0);
-$skip   = (int)($daily['tsk'] ?? 0);
-$avgS   = $daily['avg_s'] !== null ? (float)$daily['avg_s'] : null;
+$stmt5 = $conn->prepare("
+    SELECT HOUR(created_at) AS hr, COUNT(*) AS cnt
+    FROM tickets
+    WHERE DATE(created_at) BETWEEN ? AND ? $ow
+    GROUP BY HOUR(created_at) ORDER BY cnt DESC LIMIT 10");
+$stmt5->bind_param('ss', $from, $to);
+$stmt5->execute();
+$peakRows = $stmt5->get_result()->fetch_all(MYSQLI_ASSOC);
+
+$total  = (int) ($daily['tq']  ?? 0);
+$served = (int) ($daily['ts']  ?? 0);
+$skip   = (int) ($daily['tsk'] ?? 0);
+$avgS   = $daily['avg_s'] !== null ? (float) $daily['avg_s'] : null;
 $rate   = $total > 0 ? round($served / $total * 100, 1) . '%' : 'N/A';
-$dateLabel = $from === $to ? fmtDate($from) : fmtDate($from) . ' - ' . fmtDate($to);
 
 $officeLabel = '';
 if ($officeId > 0) {
     foreach ($offices as $o) {
-        if ((int)($o['id'] ?? 0) === $officeId) {
+        if ((int) ($o['id'] ?? 0) === $officeId) {
             $officeLabel = $o['name'];
             break;
         }
@@ -421,49 +623,48 @@ $pdf->AliasNbPages();
 $pdf->SetAutoPageBreak(true, 14);
 $pdf->SetMargins(10, 28, 10);
 $pdf->rTitle = 'Queue Management Report';
-$pdf->rSub   = $officeLabel ?: 'All Offices';
+$pdf->rSub   = $officeLabel ?: 'All Offices - Admin View';
 $pdf->rRange = $dateLabel;
-$pdf->rGenAt = (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('F j, Y \a\t g:i A');
+$pdf->rGenAt = $genAt;
 
 $pdf->AddPage();
 
-$pdf->SecTitle('Daily Transaction Summary');
+$pdf->SecTitle('System-Wide Transaction Summary');
 $pdf->StatCards([
-    ['lbl' => 'Total Queued',    'val' => (string)$total,       'sub' => 'Students in queue',       'clr' => BaseReport::GRN],
-    ['lbl' => 'Total Served',    'val' => (string)$served,      'sub' => 'Completed transactions',  'clr' => BaseReport::GRN],
-    ['lbl' => 'Total Skipped',   'val' => (string)$skip,        'sub' => 'No-show / skipped',       'clr' => BaseReport::ORG],
-    ['lbl' => 'Avg. Serve Time', 'val' => fmtTime($avgS),       'sub' => 'Per completed ticket',    'clr' => BaseReport::BLU],
-    ['lbl' => 'Completion Rate', 'val' => $rate,                'sub' => 'Served / total queued',   'clr' => BaseReport::PRP],
+    ['lbl' => 'Total Queued',    'val' => (string) $total,  'sub' => 'Students in queue',      'clr' => BaseReport::GRN],
+    ['lbl' => 'Total Served',    'val' => (string) $served, 'sub' => 'Completed transactions', 'clr' => BaseReport::GRN],
+    ['lbl' => 'Total Skipped',   'val' => (string) $skip,   'sub' => 'No-show / skipped',      'clr' => BaseReport::ORG],
+    ['lbl' => 'Avg. Serve Time', 'val' => fmtTime($avgS),   'sub' => 'Per completed ticket',   'clr' => BaseReport::BLU],
+    ['lbl' => 'Completion Rate', 'val' => $rate,            'sub' => 'Served / total queued',  'clr' => BaseReport::PRP],
 ]);
 
 $pdf->Ln(4);
 
 $pdf->SecTitle('Office Performance');
 $pdf->THead([
-    ['Office',      55, 'L'],
-    ['Served', 22, 'C'],
-    ['Skipped', 22, 'C'],
-    ['Avg. Time',   36, 'C'],
+    ['Office',     55, 'L'],
+    ['Served',     22, 'C'],
+    ['Skipped',    22, 'C'],
+    ['Avg. Time',  36, 'C'],
     ['Vol. Share', 28, 'C'],
-    ['Status', 27, 'C'],
+    ['Status',     27, 'C'],
 ]);
 foreach ($offices as $i => $row) {
-    $share  = (float)($row['share'] ?? 0);
+    $share  = (float) ($row['share'] ?? 0);
     $status = $row['total'] == 0 ? 'Inactive' : ($share > 30 ? 'High' : ($share > 15 ? 'Normal' : 'Low'));
     $pdf->TRow([
-        [$row['name'], 55, 'L'],
-        [$row['served'], 22, 'C'],
-        [$row['skipped'], 22, 'C'],
-        [fmtTime($row['avg_s']), 36, 'C'],
+        [$row['name'],                   55, 'L'],
+        [(int) $row['served'],           22, 'C'],
+        [(int) $row['skipped'],          22, 'C'],
+        [fmtTime($row['avg_s']),         36, 'C'],
         [number_format($share, 1) . '%', 28, 'C'],
-        [$status, 27, 'C'],
+        [$status,                        27, 'C'],
     ], $i % 2 === 1);
 }
 
 $pdf->Ln(5);
 
 $pdf->SecTitle('Staff Performance');
-
 if (empty($staffRows)) {
     $pdf->SetFont('Helvetica', 'I', 8);
     $pdf->SetTextColor(...BaseReport::MUT);
@@ -473,50 +674,48 @@ if (empty($staffRows)) {
     $showOfficeCol = $officeId === 0;
     if ($showOfficeCol) {
         $pdf->THead([
-            ['Name',           48, 'L'],
-            ['Office', 38, 'L'],
-            ['Win.', 14, 'C'],
-            ['Served', 18, 'C'],
-            ['Skipped', 20, 'C'],
-            ['Avg. Time', 30, 'C'],
+            ['Name',       48, 'L'],
+            ['Office',     38, 'L'],
+            ['Win.',       14, 'C'],
+            ['Served',     18, 'C'],
+            ['Skipped',    20, 'C'],
+            ['Avg. Time',  30, 'C'],
             ['Comp. Rate', 22, 'C'],
         ]);
     } else {
         $pdf->THead([
-            ['Name',           65, 'L'],
-            ['Window', 20, 'C'],
-            ['Served', 25, 'C'],
-            ['Skipped', 25, 'C'],
-            ['Avg. Time', 35, 'C'],
+            ['Name',       65, 'L'],
+            ['Window',     20, 'C'],
+            ['Served',     25, 'C'],
+            ['Skipped',    25, 'C'],
+            ['Avg. Time',  35, 'C'],
             ['Comp. Rate', 20, 'C'],
         ]);
     }
-
     foreach ($staffRows as $i => $row) {
-        $s    = (int)$row['served'];
-        $sk   = (int)$row['skipped'];
-        $tot  = $s + $sk;
-        $cr   = $tot > 0 ? round($s / $tot * 100, 1) . '%' : 'N/A';
-        $win  = $row['window_number'] ? 'W' . $row['window_number'] : '-';
-
+        $s   = (int) $row['served'];
+        $sk  = (int) $row['skipped'];
+        $tot = $s + $sk;
+        $cr  = $tot > 0 ? round($s / $tot * 100, 1) . '%' : 'N/A';
+        $win = $row['window_number'] ? 'W' . $row['window_number'] : '-';
         if ($showOfficeCol) {
             $pdf->TRow([
-                [$row['full_name'], 48, 'L'],
+                [$row['full_name'],          48, 'L'],
                 [$row['office_name'] ?? '-', 38, 'L'],
-                [$win, 14, 'C'],
-                [$s, 18, 'C'],
-                [$sk, 20, 'C'],
-                [fmtTime($row['avg_s']), 30, 'C'],
-                [$cr, 22, 'C'],
+                [$win,                       14, 'C'],
+                [$s,                         18, 'C'],
+                [$sk,                        20, 'C'],
+                [fmtTime($row['avg_s']),     30, 'C'],
+                [$cr,                        22, 'C'],
             ], $i % 2 === 1);
         } else {
             $pdf->TRow([
-                [$row['full_name'], 65, 'L'],
-                [$win, 20, 'C'],
-                [$s, 25, 'C'],
-                [$sk, 25, 'C'],
+                [$row['full_name'],      65, 'L'],
+                [$win,                   20, 'C'],
+                [$s,                     25, 'C'],
+                [$sk,                    25, 'C'],
                 [fmtTime($row['avg_s']), 35, 'C'],
-                [$cr, 20, 'C'],
+                [$cr,                    20, 'C'],
             ], $i % 2 === 1);
         }
     }
@@ -525,7 +724,6 @@ if (empty($staffRows)) {
 $pdf->Ln(5);
 
 $pdf->SecTitle('Transaction Type Breakdown');
-
 if (empty($typeRows)) {
     $pdf->SetFont('Helvetica', 'I', 8);
     $pdf->SetTextColor(...BaseReport::MUT);
@@ -533,25 +731,51 @@ if (empty($typeRows)) {
     $pdf->SetTextColor(...BaseReport::TXT);
 } else {
     $pdf->THead([
-        ['Transaction Type', 65, 'L'], 
-        ['Total', 20, 'C'], 
-        ['Completed', 25, 'C'],
-        ['Skipped', 25, 'C'], 
-        ['Avg. Time', 30, 'C'],
-        ['Comp. Rate', 25, 'C'], 
+        ['Transaction Type', 65, 'L'],
+        ['Total',            20, 'C'],
+        ['Completed',        25, 'C'],
+        ['Skipped',          25, 'C'],
+        ['Avg. Time',        30, 'C'],
+        ['Comp. Rate',       25, 'C'],
     ]);
-
     foreach ($typeRows as $i => $row) {
-        $tot = (int)$row['total'];
-        $com = (int)$row['completed'];
+        $tot = (int) $row['total'];
+        $com = (int) $row['completed'];
         $cr  = $tot > 0 ? round($com / $tot * 100, 1) . '%' : 'N/A';
         $pdf->TRow([
             [$row['transaction_type'] ?? 'Unspecified', 65, 'L'],
-            [$tot, 20, 'C'],
-            [$com, 25, 'C'],
-            [(int)$row['skipped'], 25, 'C'],
+            [$tot,                   20, 'C'],
+            [$com,                   25, 'C'],
+            [(int) $row['skipped'],  25, 'C'],
             [fmtTime($row['avg_s']), 30, 'C'],
-            [$cr, 25, 'C'],
+            [$cr,                    25, 'C'],
+        ], $i % 2 === 1);
+    }
+}
+
+$pdf->Ln(5);
+
+$pdf->SecTitle('Top Peak Hours');
+if (empty($peakRows)) {
+    $pdf->SetFont('Helvetica', 'I', 8);
+    $pdf->SetTextColor(...BaseReport::MUT);
+    $pdf->Cell(0, 8, 'No hourly data for this period.', 0, 1, 'C');
+    $pdf->SetTextColor(...BaseReport::TXT);
+} else {
+    $pdf->THead([
+        ['Rank',         15, 'C'],
+        ['Hour',         50, 'C'],
+        ['Queue Volume', 50, 'C'],
+        ['% of Total',   75, 'C'],
+    ]);
+    $totalPeak = array_sum(array_column($peakRows, 'cnt'));
+    foreach ($peakRows as $i => $row) {
+        $pct = $totalPeak > 0 ? round($row['cnt'] / $totalPeak * 100, 1) . '%' : '-';
+        $pdf->TRow([
+            ['#' . ($i + 1),                        15, 'C'],
+            [date('g:00 A', mktime($row['hr'], 0)), 50, 'C'],
+            [(string) $row['cnt'],                  50, 'C'],
+            [$pct,                                  75, 'C'],
         ], $i % 2 === 1);
     }
 }
