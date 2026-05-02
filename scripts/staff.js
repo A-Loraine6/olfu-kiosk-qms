@@ -78,59 +78,73 @@ function renderPagination(page, totalPages, total, limit) {
   const ctrlEl = document.getElementById("paginationControls");
   if (!bar || !infoEl || !ctrlEl) return;
 
-  bar.style.display = totalPages <= 1 && total <= limit ? "none" : "flex";
+  bar.style.display = "flex";
 
   const from = total === 0 ? 0 : (page - 1) * limit + 1;
   const to = Math.min(page * limit, total);
   infoEl.textContent =
     total === 0
       ? "No results"
-      : `Showing ${from}–${to} of ${total} staff member${total !== 1 ? "s" : ""}`;
+      : `Showing ${from}–${to} of ${total} service${total !== 1 ? "s" : ""}`;
 
   ctrlEl.innerHTML = "";
 
-  const btn = (label, title, disabled, active, onClick) => {
+  const navBtn = (iconClass, title, disabled, onClick) => {
     const b = document.createElement("button");
-    b.className = active ? "active" : "";
+    b.className = "page-nav-btn";
     b.title = title;
     b.disabled = disabled;
-    b.innerHTML = label;
+    b.innerHTML = `<i class="${iconClass}"></i>`;
     if (!disabled) b.addEventListener("click", onClick);
     return b;
   };
 
+  const pageBtn = (label, active, onClick) => {
+    const b = document.createElement("button");
+    b.className = "page-nav-btn" + (active ? " page-nav-active" : "");
+    b.innerHTML = label;
+    if (onClick) b.addEventListener("click", onClick);
+    return b;
+  };
+
   ctrlEl.appendChild(
-    btn(
-      '<i class="fas fa-chevron-left"></i>',
-      "Previous page",
-      page <= 1,
-      false,
-      () => goToPage(page - 1),
+    navBtn("fas fa-angle-double-left", "First page", page <= 1, () =>
+      goToPage(1),
+    ),
+  );
+  ctrlEl.appendChild(
+    navBtn("fas fa-angle-left", "Previous page", page <= 1, () =>
+      goToPage(page - 1),
     ),
   );
 
   buildPageList(page, totalPages).forEach((p) => {
     if (p === "…") {
       const e = document.createElement("button");
-      e.className = "ellipsis";
+      e.className = "page-nav-btn page-ellipsis";
       e.textContent = "…";
+      e.disabled = true;
       ctrlEl.appendChild(e);
     } else {
       ctrlEl.appendChild(
-        btn(p, `Page ${p}`, false, p === page, () => goToPage(p)),
+        pageBtn(p, p === page, p !== page ? () => goToPage(p) : null),
       );
     }
   });
 
   ctrlEl.appendChild(
-    btn(
-      '<i class="fas fa-chevron-right"></i>',
-      "Next page",
-      page >= totalPages,
-      false,
-      () => goToPage(page + 1),
+    navBtn("fas fa-angle-right", "Next page", page >= totalPages, () =>
+      goToPage(page + 1),
     ),
   );
+  ctrlEl.appendChild(
+    navBtn("fas fa-angle-double-right", "Last page", page >= totalPages, () =>
+      goToPage(totalPages),
+    ),
+  );
+
+  const sel = document.getElementById("pageLimitSelect");
+  if (sel) sel.value = limit;
 }
 
 function buildPageList(current, total) {
@@ -157,6 +171,13 @@ function buildPageList(current, total) {
 
 function goToPage(page) {
   currentPage = page;
+  fetchFilteredRows();
+}
+
+function changePageLimit() {
+  const sel = document.getElementById("pageLimitSelect");
+  if (sel) currentLimit = parseInt(sel.value, 10);
+  currentPage = 1;
   fetchFilteredRows();
 }
 
