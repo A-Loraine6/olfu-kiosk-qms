@@ -13,7 +13,11 @@ if ($_SERVER['HTTP_HOST'] == 'localhost') {
 
 define('APP_NAME', 'Queue Management System');
 define('APP_VERSION', '1.0.0');
-define('BASE_URL', 'http://localhost/olfu-kiosk-qms/');
+if ($_SERVER['HTTP_HOST'] === 'localhost') {
+    define('BASE_URL', 'http://localhost/olfu-kiosk-qms/');
+} else {
+    define('BASE_URL', 'https://olfu-qms.com/');
+}
 
 define('SESSION_TIMEOUT', 3600);
 define('SESSION_NAME', 'olfu_queue_session');
