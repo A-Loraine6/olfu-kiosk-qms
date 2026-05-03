@@ -1,4 +1,5 @@
 const AJAX_URL = "api/staff_actions.php";
+const LOGS_API = "api/get_staff_logs.php";
 let currentRequest = 0;
 
 let currentPage = 1;
@@ -314,7 +315,7 @@ async function openEditStaffModal(staffId) {
     document.getElementById("edit_full_name").value = s.full_name;
     document.getElementById("edit_email").value = s.email;
     document.getElementById("edit_office").value = s.office ?? "";
-    document.getElementById("edit_role").value      = s.role_id ?? "";
+    document.getElementById("edit_role").value = s.role_id ?? "";
 
     await loadWindowOptions("edit_office", "edit_window", "edit_window_group");
     if (s.window_number)
@@ -522,4 +523,260 @@ async function loadWindowOptions(officeSelectId, windowSelectId, groupId) {
     windowSel.appendChild(opt);
   }
   group.style.display = "";
+}
+
+const LOG_META = {
+  USER_LOGIN: { label: "User Login", cls: "log-neutral" },
+  USER_LOGOUT: { label: "User Logout", cls: "log-neutral" },
+
+  STAFF_ADD: { label: "Add Staff", cls: "log-success" },
+  STAFF_EDIT: { label: "Edit Staff", cls: "log-warning" },
+  STAFF_DELETE: { label: "Delete Staff", cls: "log-danger" },
+  STAFF_ACTIVATE: { label: "Activate Staff", cls: "log-success" },
+  STAFF_DEACTIVATE: { label: "Deactivate Staff", cls: "log-danger" },
+  PASSWORD_RESET: { label: "Staff Password Reset", cls: "log-warning" },
+
+  ROLE_CHANGE: { label: "Role Change", cls: "log-warning" },
+  OFFICE_ASSIGN: { label: "Office Assignment", cls: "log-info" },
+
+  SERVICE_ADD: { label: "Add Service", cls: "log-success" },
+  SERVICE_EDIT: { label: "Edit Service", cls: "log-warning" },
+  SERVICE_DELETE: { label: "Delete Service", cls: "log-danger" },
+  SERVICE_TOGGLE_STATUS: { label: "Toggle Service Status", cls: "log-info" },
+
+  OFFICE_QUEUE_MODE_TOGGLE: { label: "Toggle Queue Mode", cls: "log-info" },
+
+  UPDATE_KIOSK: { label: "Kiosk Updated", cls: "log-info" },
+  SETTINGS_KIOSK_UPDATE: { label: "Update Kiosk Settings", cls: "log-info" },
+  SETTINGS_SCHEDULE_UPDATE: {
+    label: "Update Office Schedule",
+    cls: "log-info",
+  },
+  SETTINGS_QUEUE_UPDATE: {
+    label: "Update Queue Configuration",
+    cls: "log-info",
+  },
+
+  PASSWORD_CHANGE: { label: "Password Changed", cls: "log-warning" },
+  PROFILE_UPDATE: { label: "Profile Updated", cls: "log-info" },
+};
+
+function snakeToTitle(str) {
+  return str
+    .toLowerCase()
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+function getLogMeta(type) {
+  if (!type) return { label: "Activity", cls: "log-neutral" };
+  return LOG_META[type] || { label: snakeToTitle(type), cls: "log-neutral" };
+}
+
+function formatLogTimestamp(ts) {
+  if (!ts) return "";
+  const d = new Date(ts.replace(" ", "T"));
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function renderDiffBlock(oldJson, newJson) {
+  let before = {},
+    after = {};
+  try {
+    before = typeof oldJson === "string" ? JSON.parse(oldJson) : oldJson || {};
+  } catch {}
+  try {
+    after = typeof newJson === "string" ? JSON.parse(newJson) : newJson || {};
+  } catch {}
+
+  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  if (!keys.size) return "";
+
+  const fmtKey = (k) =>
+    k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const rows = [...keys]
+    .filter((k) => String(before[k] ?? "") !== String(after[k] ?? ""))
+    .map((k) => {
+      const fmt = (v) =>
+        v === null || v === undefined || v === "" ? "—" : String(v);
+      return `<div class="log-diff-row">
+                <span class="log-diff-key">${escapeHtml(fmtKey(k))}</span>
+                <span class="log-diff-old">${escapeHtml(fmt(before[k]))}</span>
+                <i class="fas fa-arrow-right log-diff-arrow"></i>
+                <span class="log-diff-new">${escapeHtml(fmt(after[k]))}</span>
+            </div>`;
+    })
+    .join("");
+
+  return rows ? `<div class="log-diff">${rows}</div>` : "";
+}
+
+function buildLogsTimeline(logs) {
+  return logs
+    .map((log) => {
+      const meta = getLogMeta(log.activity_type);
+      const diff = renderDiffBlock(log.old_value, log.new_value);
+      const desc = log.description
+        ? `<div class="log-desc">${escapeHtml(log.description)}</div>`
+        : "";
+
+      return `<div class="log-item ${meta.cls}">
+            <div class="log-left">
+                <span class="log-dot"></span>
+                <div class="log-main">
+                    <span class="log-label">${meta.label}</span>
+                    ${desc}
+                    ${diff}
+                </div>
+            </div>
+            <span class="log-ts">${formatLogTimestamp(log.timestamp)}</span>
+        </div>`;
+    })
+    .join("");
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+let logsCurrentPage = 1;
+let logsStaffId = null;
+
+async function openStaffLogsModal(staffId) {
+  logsStaffId = staffId;
+  logsCurrentPage = 1;
+  openModal("staffLogsModal");
+  await fetchStaffLogs();
+}
+
+async function fetchStaffLogs() {
+  const loading = document.getElementById("logsLoading");
+  const timeline = document.getElementById("logsTimeline");
+  const empty = document.getElementById("logsEmpty");
+  const pagBar = document.getElementById("logsPagination");
+
+  loading.style.display = "flex";
+  timeline.innerHTML = "";
+  empty.style.display = "none";
+  pagBar.style.display = "none";
+
+  const res = await fetch(LOGS_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      staff_id: logsStaffId,
+      page: logsCurrentPage,
+      csrf_token: CSRF_TOKEN,
+    }),
+  });
+  const data = await res.json();
+  loading.style.display = "none";
+
+  if (!data.success) {
+    showToast(data.message || "Failed to load logs.", "error");
+    return;
+  }
+
+  const s = data.staff;
+  document.getElementById("logsStaffAvatar").textContent = s.full_name
+    ? s.full_name.charAt(0).toUpperCase()
+    : "?";
+  document.getElementById("logsStaffName").textContent = s.full_name || "—";
+  document.getElementById("logsStaffSub").textContent = [
+    s.role_name
+      ? s.role_name.charAt(0).toUpperCase() + s.role_name.slice(1)
+      : null,
+    s.office_name,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const badge = document.getElementById("logsTotalBadge");
+  badge.textContent = data.count + " log" + (data.count !== 1 ? "s" : "");
+  badge.style.display = "inline-flex";
+
+  if (!data.logs.length) {
+    empty.style.display = "flex";
+    return;
+  }
+
+  timeline.innerHTML = buildLogsTimeline(data.logs);
+
+  if (data.totalPages > 1) {
+    renderLogsPagination(data.page, data.totalPages, data.count, data.limit);
+    pagBar.style.display = "flex";
+  }
+}
+
+function renderLogsPagination(page, totalPages, total, limit) {
+  const infoEl = document.getElementById("logsPageInfo");
+  const ctrlEl = document.getElementById("logsPageControls");
+
+  infoEl.textContent = `${(page - 1) * limit + 1}–${Math.min(page * limit, total)} of ${total}`;
+  ctrlEl.innerHTML = "";
+
+  const navBtn = (icon, title, disabled, onClick) => {
+    const b = document.createElement("button");
+    b.className = "page-nav-btn";
+    b.title = title;
+    b.disabled = disabled;
+    b.innerHTML = `<i class="fas ${icon}"></i>`;
+    if (!disabled) b.addEventListener("click", onClick);
+    return b;
+  };
+  const pageBtn = (label, active, onClick) => {
+    const b = document.createElement("button");
+    b.className = "page-nav-btn" + (active ? " page-nav-active" : "");
+    b.textContent = label;
+    if (onClick) b.addEventListener("click", onClick);
+    return b;
+  };
+
+  ctrlEl.appendChild(
+    navBtn("fa-angle-double-left", "First", page <= 1, () => goLogsPage(1)),
+  );
+  ctrlEl.appendChild(
+    navBtn("fa-angle-left", "Previous", page <= 1, () => goLogsPage(page - 1)),
+  );
+  buildPageList(page, totalPages).forEach((p) => {
+    if (p === "…") {
+      const e = document.createElement("span");
+      e.className = "page-nav-btn page-ellipsis";
+      e.textContent = "…";
+      e.disabled = true;
+      ctrlEl.appendChild(e);
+    } else {
+      ctrlEl.appendChild(
+        pageBtn(p, p === page, p !== page ? () => goLogsPage(p) : null),
+      );
+    }
+  });
+  ctrlEl.appendChild(
+    navBtn("fa-angle-right", "Next", page >= totalPages, () =>
+      goLogsPage(page + 1),
+    ),
+  );
+  ctrlEl.appendChild(
+    navBtn("fa-angle-double-right", "Last", page >= totalPages, () =>
+      goLogsPage(totalPages),
+    ),
+  );
+}
+
+async function goLogsPage(page) {
+  logsCurrentPage = page;
+  document.getElementById("logsBody").scrollTop = 0;
+  await fetchStaffLogs();
 }

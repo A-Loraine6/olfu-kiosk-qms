@@ -133,7 +133,7 @@ function renderPagination(page, totalPages, total, limit) {
 
   buildPageList(page, totalPages).forEach((p) => {
     if (p === "…") {
-      const e = document.createElement("button");
+      const e = document.createElement("span");
       e.className = "page-nav-btn page-ellipsis";
       e.textContent = "…";
       e.disabled = true;
