@@ -105,7 +105,6 @@ if ($isPersonalView || $isScopedView) {
 
                     <?php if ($isPersonalView): ?>
 
-                        <!-- ── Quick ranges ── -->
                         <div class="quick-ranges">
                             <button class="range-pill active" data-range="today" onclick="setRange('today')">Today</button>
                             <button class="range-pill" data-range="yesterday" onclick="setRange('yesterday')">Yesterday</button>
@@ -151,7 +150,6 @@ if ($isPersonalView || $isScopedView) {
 
                     <?php else: ?>
 
-                        <!-- ── WEEK-OVER-WEEK COMPARISON ── -->
                         <h2 class="section-title"><i class="fas fa-calendar-week"></i> This Week vs Last Week</h2>
 
                         <div class="report-block" id="block-wow">

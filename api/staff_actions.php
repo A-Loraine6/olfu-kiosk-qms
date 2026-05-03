@@ -22,7 +22,10 @@ if (!verifyCsrfToken($csrf)) {
     exit;
 }
 
-$canManage = hasPermission('manage_staff');
+$canEdit   = hasPermission('edit_staff');
+$canDelete = hasPermission('delete_staff');
+$canToggle = hasPermission('toggle_staff');
+$canManage = $canEdit || $canDelete || $canToggle;
 $canView   = $canManage || hasPermission('view_staff');
 
 if (!$canView) {
@@ -30,8 +33,14 @@ if (!$canView) {
     exit;
 }
 
-$writeActions = ['add_staff', 'edit_staff', 'toggle_staff', 'delete_staff', 'reset_password'];
-if (in_array($action, $writeActions) && !$canManage) {
+$actionPermMap = [
+    'add_staff'      => 'add_staff',
+    'edit_staff'     => 'edit_staff',
+    'reset_password' => 'edit_staff',
+    'toggle_staff'   => 'toggle_staff',
+    'delete_staff'   => 'delete_staff',
+];
+if (isset($actionPermMap[$action]) && !hasPermission($actionPermMap[$action])) {
     echo json_encode(['success' => false, 'message' => 'You do not have permission to perform this action.']);
     exit;
 }
@@ -220,24 +229,34 @@ function renderStaffRows(array $staff, bool $canManage = false): void
                     <?php echo $member['is_active'] ? 'Active' : 'Inactive'; ?>
                 </span>
             </td>
-            <?php if ($canManage): ?>
+            <?php
+            $canEdit   = hasPermission('edit_staff');
+            $canDelete = hasPermission('delete_staff');
+            $canToggle = hasPermission('toggle_staff');
+            if ($canEdit || $canDelete || $canToggle): ?>
                 <td>
                     <div class="dropdown">
                         <button class="dropdown-toggle"><i class="fas fa-ellipsis-h"></i></button>
                         <div class="dropdown-menu">
-                            <button onclick="openEditStaffModal(<?php echo $member['id']; ?>)">
-                                <i class="fas fa-pen"></i> Edit
-                            </button>
-                            <button onclick="openToggleModal(<?php echo $member['id']; ?>, <?php echo $member['is_active'] ? 'true' : 'false'; ?>)">
-                                <i class="fas fa-<?php echo $member['is_active'] ? 'toggle-off' : 'toggle-on'; ?>"></i>
-                                <?php echo $member['is_active'] ? 'Deactivate' : 'Activate'; ?>
-                            </button>
-                            <button onclick="openResetPasswordModal(<?php echo $member['id']; ?>)">
-                                <i class="fas fa-key"></i> Reset Password
-                            </button>
-                            <button class="danger" onclick="openDeleteModal(<?php echo $member['id']; ?>)">
-                                <i class="fas fa-trash"></i> Delete
-                            </button>
+                            <?php if ($canEdit): ?>
+                                <button onclick="openEditStaffModal(<?php echo $member['id']; ?>)">
+                                    <i class="fas fa-pen"></i> Edit
+                                </button>
+                                <button onclick="openResetPasswordModal(<?php echo $member['id']; ?>)">
+                                    <i class="fas fa-key"></i> Reset Password
+                                </button>
+                            <?php endif; ?>
+                            <?php if ($canToggle): ?>
+                                <button onclick="openToggleModal(<?php echo $member['id']; ?>, <?php echo $member['is_active'] ? 'true' : 'false'; ?>)">
+                                    <i class="fas fa-<?php echo $member['is_active'] ? 'toggle-off' : 'toggle-on'; ?>"></i>
+                                    <?php echo $member['is_active'] ? 'Deactivate' : 'Activate'; ?>
+                                </button>
+                            <?php endif; ?>
+                            <?php if ($canDelete): ?>
+                                <button class="danger" onclick="openDeleteModal(<?php echo $member['id']; ?>)">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </td>

@@ -12,7 +12,11 @@ if (!isLoggedIn()) {
 $currentUser = getCurrentUser();
 $csrf_token  = getCsrfToken();
 
-$canManage = hasPermission('manage_staff');
+$canAdd    = hasPermission('add_staff');
+$canEdit   = hasPermission('edit_staff');
+$canDelete = hasPermission('delete_staff');
+$canToggle = hasPermission('toggle_staff');
+$canManage = $canAdd || $canEdit || $canDelete || $canToggle;
 $canView   = $canManage || hasPermission('view_staff');
 
 if (!$canView) {
@@ -20,7 +24,17 @@ if (!$canView) {
     exit;
 }
 
-$offices    = getAvailableOffices($db->getConnection());
+if ($canManage) {
+    $offices = getAvailableOffices($db->getConnection());
+} else {
+    $conn = $db->getConnection();
+    $offStmt = $conn->prepare("SELECT name FROM offices WHERE id = ? LIMIT 1");
+    $offStmt->bind_param('i', $currentUser['office_id']);
+    $offStmt->execute();
+    $offRow = $offStmt->get_result()->fetch_assoc();
+    $offStmt->close();
+    $offices = $offRow ? [$offRow['name']] : [];
+}
 $staff      = getAllStaff($db->getConnection());
 $totalStaff = count($staff);
 $activeStaff   = count(array_filter($staff, fn($s) => $s['is_active']));
@@ -68,7 +82,7 @@ $pageLimit = 10;
                     </h2>
                 </div>
                 <div class="header-right">
-                    <?php if ($canManage): ?>
+                    <?php if ($canAdd): ?>
                         <button class="btn-primary" onclick="openModal('addStaffModal')">
                             <i class="fas fa-plus"></i> Add New Staff
                         </button>
@@ -121,10 +135,12 @@ $pageLimit = 10;
                             </div>
 
                             <div class="filter-group">
-                                <select id="filterOffice" class="filter-select" onchange="applyFilters()">
-                                    <option value="">All Offices</option>
+                                <select id="filterOffice" class="filter-select" onchange="applyFilters()" <?php echo !$canManage ? 'disabled' : ''; ?>>
+                                    <?php if ($canManage): ?>
+                                        <option value="">All Offices</option>
+                                    <?php endif; ?>
                                     <?php foreach ($offices as $o): ?>
-                                        <option value="<?php echo htmlspecialchars($o); ?>">
+                                        <option value="<?php echo htmlspecialchars($o); ?>" <?php echo !$canManage ? 'selected' : ''; ?>>
                                             <?php echo htmlspecialchars($o); ?>
                                         </option>
                                     <?php endforeach; ?>
@@ -146,7 +162,7 @@ $pageLimit = 10;
                                     <th>Window</th>
                                     <th>Role</th>
                                     <th>Status</th>
-                                    <?php if ($canManage): ?><th>Actions</th><?php endif; ?>
+                                    <?php if ($canEdit || $canDelete || $canToggle): ?><th>Actions</th><?php endif; ?>
                                 </tr>
                             </thead>
                             <tbody id="staffTableBody">
@@ -180,24 +196,30 @@ $pageLimit = 10;
                                                     <?php echo $member['is_active'] ? 'Active' : 'Inactive'; ?>
                                                 </span>
                                             </td>
-                                            <?php if ($canManage): ?>
+                                            <?php if ($canEdit || $canDelete || $canToggle): ?>
                                                 <td>
                                                     <div class="dropdown">
                                                         <button class="dropdown-toggle"><i class="fas fa-ellipsis-h"></i></button>
                                                         <div class="dropdown-menu">
-                                                            <button onclick="openEditStaffModal(<?php echo $member['id']; ?>)">
-                                                                <i class="fas fa-pen"></i> Edit
-                                                            </button>
-                                                            <button onclick="openToggleModal(<?php echo $member['id']; ?>, <?php echo $member['is_active'] ? 'true' : 'false'; ?>)">
-                                                                <i class="fas fa-<?php echo $member['is_active'] ? 'toggle-off' : 'toggle-on'; ?>"></i>
-                                                                <?php echo $member['is_active'] ? 'Deactivate' : 'Activate'; ?>
-                                                            </button>
-                                                            <button onclick="openResetPasswordModal(<?php echo $member['id']; ?>)">
-                                                                <i class="fas fa-key"></i> Reset Password
-                                                            </button>
-                                                            <button class="danger" onclick="openDeleteModal(<?php echo $member['id']; ?>)">
-                                                                <i class="fas fa-trash"></i> Delete
-                                                            </button>
+                                                            <?php if ($canEdit): ?>
+                                                                <button onclick="openEditStaffModal(<?php echo $member['id']; ?>)">
+                                                                    <i class="fas fa-pen"></i> Edit
+                                                                </button>
+                                                                <button onclick="openResetPasswordModal(<?php echo $member['id']; ?>)">
+                                                                    <i class="fas fa-key"></i> Reset Password
+                                                                </button>
+                                                            <?php endif; ?>
+                                                            <?php if ($canToggle): ?>
+                                                                <button onclick="openToggleModal(<?php echo $member['id']; ?>, <?php echo $member['is_active'] ? 'true' : 'false'; ?>)">
+                                                                    <i class="fas fa-<?php echo $member['is_active'] ? 'toggle-off' : 'toggle-on'; ?>"></i>
+                                                                    <?php echo $member['is_active'] ? 'Deactivate' : 'Activate'; ?>
+                                                                </button>
+                                                            <?php endif; ?>
+                                                            <?php if ($canDelete): ?>
+                                                                <button class="danger" onclick="openDeleteModal(<?php echo $member['id']; ?>)">
+                                                                    <i class="fas fa-trash"></i> Delete
+                                                                </button>
+                                                            <?php endif; ?>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -411,6 +433,10 @@ $pageLimit = 10;
         const PAGINATION_LIMIT = 10;
         const TOTAL_STAFF = <?php echo (int)$totalStaff; ?>;
         const CAN_MANAGE = <?php echo json_encode($canManage); ?>;
+        const CAN_ADD = <?php echo json_encode($canAdd); ?>;
+        const CAN_EDIT = <?php echo json_encode($canEdit); ?>;
+        const CAN_DELETE = <?php echo json_encode($canDelete); ?>;
+        const CAN_TOGGLE = <?php echo json_encode($canToggle); ?>;
     </script>
 </body>
 

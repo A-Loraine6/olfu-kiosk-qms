@@ -244,34 +244,49 @@ if ($action === 'peak_hours') {
         exit;
     }
 
-    $from = $input['date_from'] ?? date('Y-m-d');
-    $to   = $input['date_to']   ?? date('Y-m-d');
+    $from = date('Y-m-d', strtotime($input['date_from'] ?? date('Y-m-d')));
+    $to   = date('Y-m-d', strtotime($input['date_to']   ?? date('Y-m-d')));
     $office_id = $input['office_id'] ?? null;
 
-    $from = date('Y-m-d', strtotime($from));
-    $to   = date('Y-m-d', strtotime($to));
-
-    $where = "DATE(created_at) BETWEEN ? AND ?";
+    $openHour  = 0;
+    $closeHour = 23;
     if ($office_id) {
         $office_id = (int) $office_id;
+        $ohStmt = $conn->prepare("SELECT open_time, close_time FROM offices WHERE id = ? LIMIT 1");
+        $ohStmt->bind_param('i', $office_id);
+        $ohStmt->execute();
+        $ohRow = $ohStmt->get_result()->fetch_assoc();
+        $ohStmt->close();
+        if ($ohRow) {
+            $openHour  = (int) explode(':', $ohRow['open_time'])[0];
+            $closeHour = (int) explode(':', $ohRow['close_time'])[0];
+        }
+    } else {
+        $ohRow = $conn->query("SELECT MIN(open_time) AS open_time, MAX(close_time) AS close_time FROM offices")->fetch_assoc();
+        if ($ohRow) {
+            $openHour  = (int) explode(':', $ohRow['open_time'])[0];
+            $closeHour = (int) explode(':', $ohRow['close_time'])[0];
+        }
+    }
+
+    $where = "DATE(created_at) BETWEEN ? AND ? AND HOUR(created_at) BETWEEN $openHour AND $closeHour";
+    if ($office_id) {
         $where .= " AND office_id = $office_id";
     }
 
     $stmt = $conn->prepare("
-    SELECT
-        HOUR(created_at) AS hour,
-        COUNT(*) AS queue_count
-    FROM tickets
-    WHERE $where
-    GROUP BY HOUR(created_at)
-    ORDER BY hour ASC
+        SELECT HOUR(created_at) AS hour, COUNT(*) AS queue_count
+        FROM tickets
+        WHERE $where
+        GROUP BY HOUR(created_at)
+        ORDER BY hour ASC
     ");
     $stmt->bind_param('ss', $from, $to);
     $stmt->execute();
     $result = $stmt->get_result();
 
     $hourly = [];
-    for ($i = 0; $i < 24; $i++) {
+    for ($i = $openHour; $i <= $closeHour; $i++) {
         $hourly[$i] = 0;
     }
     while ($row = $result->fetch_assoc()) {
@@ -279,8 +294,10 @@ if ($action === 'peak_hours') {
     }
 
     echo json_encode([
-        'success' => true,
-        'peak_hours' => array_values($hourly),
+        'success'     => true,
+        'peak_hours'  => array_values($hourly),
+        'open_hour'   => $openHour,
+        'close_hour'  => $closeHour,
     ]);
     exit;
 }

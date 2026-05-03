@@ -80,7 +80,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </li>
             <?php endif; ?>
 
-            <?php if (!in_array($_SESSION['role'] ?? '', ['staff', 'supervisor'])): ?>
+            <?php if (!in_array($_SESSION['role'] ?? '', ['staff', 'supervisor', 'Supervisor'])): ?>
                 <li>
                     <a href="roles.php" class="<?php echo $currentPage === 'roles.php' ? 'active' : ''; ?>">
                         <i class="fas fa-user-shield"></i>

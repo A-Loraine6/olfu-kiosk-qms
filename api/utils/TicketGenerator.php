@@ -113,10 +113,6 @@ class TicketGenerator
         return $row ? (int)$row['id'] : null;
     }
 
-    /**
-     * If service has exactly 1 window assigned, return that window_number.
-     * If service has 0 or multiple windows, return null (will be assigned at serve time).
-     */
     private function getServiceWindowIdIfSingle(int $office_id, string $service_name): ?int
     {
         $service_id = $this->resolveServiceId($office_id, $service_name);

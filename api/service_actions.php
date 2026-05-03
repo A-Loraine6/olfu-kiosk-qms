@@ -14,8 +14,12 @@ if (!isLoggedIn()) {
 }
 
 $currentUser = getCurrentUser();
-$canManageServices = hasPermission('manage_services');
-$isOfficeScoped    = !$canManageServices && !empty($currentUser['office_id']);
+$canAddServices    = hasPermission('add_services');
+$canEditServices   = hasPermission('edit_services');
+$canDeleteServices = hasPermission('delete_services');
+$canManageServices = $canAddServices || $canEditServices || $canDeleteServices;
+$isAdmin           = ($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin';
+$isOfficeScoped    = !$isAdmin && !empty($currentUser['office_id']);
 $staffOffice       = $isOfficeScoped ? (int) ($currentUser['office_id'] ?? 0) : null;
 
 $input  = json_decode(file_get_contents('php://input'), true) ?? $_POST;
@@ -29,8 +33,13 @@ if (!verifyCsrfToken($csrf)) {
 
 $conn = $db->getConnection();
 
-$mutatingActions = ['add_service', 'edit_service', 'toggle_service', 'delete_service'];
-if (!$canManageServices && in_array($action, $mutatingActions)) {
+$actionPermMap = [
+    'add_service'    => 'add_services',
+    'edit_service'   => 'edit_services',
+    'toggle_service' => 'edit_services',
+    'delete_service' => 'delete_services',
+];
+if (isset($actionPermMap[$action]) && !hasPermission($actionPermMap[$action])) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
     exit;
 }
@@ -133,7 +142,7 @@ switch ($action) {
         $paginated    = array_slice($filtered, $offset, $limit);
 
         ob_start();
-        renderServiceRows($paginated, $canManageServices, $conn);
+        renderServiceRows($paginated, $canEditServices, $canDeleteServices, $conn);
         $html = ob_get_clean();
 
         echo json_encode([
@@ -161,7 +170,7 @@ if ($result['success']) {
     $totalPages = (int) ceil($totalServices / $limit);
 
     ob_start();
-    renderServiceRows($paginated, $canManageServices, $conn);
+    renderServiceRows($paginated, $canEditServices, $canDeleteServices, $conn);
     $tableHtml = ob_get_clean();
 
     $result['tableHtml']        = $tableHtml;
@@ -186,11 +195,11 @@ function getCategoryColor(?string $cat): string
     };
 }
 
-function renderServiceRows(array $services, bool $canManage = false, ?mysqli $conn = null): void
+function renderServiceRows(array $services, bool $canEdit = false, bool $canDelete = false, ?mysqli $conn = null): void
 {
     if (empty($services)) { ?>
         <tr>
-            <td colspan="<?php echo $canManage ? 5 : 4; ?>">
+            <td colspan="<?php echo ($canEdit || $canDelete) ? 5 : 4; ?>">
                 <div class="empty-state">
                     <div class="empty-state-icon"><i class="fas fa-concierge-bell"></i></div>
                     <div class="empty-state-title">No services found</div>
@@ -242,21 +251,25 @@ function renderServiceRows(array $services, bool $canManage = false, ?mysqli $co
                     <?php echo $svc['is_active'] ? 'Active' : 'Inactive'; ?>
                 </span>
             </td>
-            <?php if ($canManage): ?>
+            <?php if ($canEdit || $canDelete): ?>
                 <td>
                     <div class="dropdown">
                         <button class="dropdown-toggle"><i class="fas fa-ellipsis-h"></i></button>
                         <div class="dropdown-menu">
-                            <button onclick="openEditServiceModal(<?php echo htmlspecialchars(json_encode($svc), ENT_QUOTES); ?>)">
-                                <i class="fas fa-pen"></i> Edit
-                            </button>
-                            <button onclick="openToggleModal(<?php echo $svc['id']; ?>, <?php echo $svc['is_active'] ? 'true' : 'false'; ?>)">
-                                <i class="fas fa-<?php echo $svc['is_active'] ? 'toggle-off' : 'toggle-on'; ?>"></i>
-                                <?php echo $svc['is_active'] ? 'Deactivate' : 'Activate'; ?>
-                            </button>
-                            <button class="danger" onclick="openDeleteModal(<?php echo $svc['id']; ?>)">
-                                <i class="fas fa-trash"></i> Delete
-                            </button>
+                            <?php if ($canEdit): ?>
+                                <button onclick="openEditServiceModal(<?php echo htmlspecialchars(json_encode($svc), ENT_QUOTES); ?>)">
+                                    <i class="fas fa-pen"></i> Edit
+                                </button>
+                                <button onclick="openToggleModal(<?php echo $svc['id']; ?>, <?php echo $svc['is_active'] ? 'true' : 'false'; ?>)">
+                                    <i class="fas fa-<?php echo $svc['is_active'] ? 'toggle-off' : 'toggle-on'; ?>"></i>
+                                    <?php echo $svc['is_active'] ? 'Deactivate' : 'Activate'; ?>
+                                </button>
+                            <?php endif; ?>
+                            <?php if ($canDelete): ?>
+                                <button class="danger" onclick="openDeleteModal(<?php echo $svc['id']; ?>)">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </td>
