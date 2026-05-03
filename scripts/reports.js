@@ -53,7 +53,9 @@ function showToast(message, type = "success") {
 
 function setRange(preset) {
   const today = new Date();
-  const fmt = (d) => d.toISOString().split("T")[0];
+  const fmt = (d) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
   let from, to;
 
   const dayOfWeek = today.getDay();
@@ -87,7 +89,7 @@ function setRange(preset) {
     }
     case "month": {
       const m = new Date(today.getFullYear(), today.getMonth(), 1);
-      from = fmt(m);
+      from = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}-${String(m.getDate()).padStart(2, "0")}`;
       to = fmt(today);
       break;
     }
@@ -291,7 +293,7 @@ function renderOfficePerformance(data) {
   if (!block) return;
 
   _officeData = data;
-  _officeSortCol = -1; 
+  _officeSortCol = -1;
   _officeSortAsc = false;
 
   const hasData = data.some((d) => d.total_transactions > 0);
@@ -305,11 +307,29 @@ function renderOfficePerformance(data) {
   if (emptyState) emptyState.style.display = hasData ? "none" : "";
 
   if (table) {
-    table.style.display = "";
-    _buildOfficeTable(table, _officeData, _officeSortCol, _officeSortAsc);
+    table.style.display = hasData ? "" : "none";
+    if (hasData) {
+      _buildOfficeTable(table, _officeData, _officeSortCol, _officeSortAsc);
+
+      table.querySelectorAll("thead th").forEach((th, i) => {
+        const newTh = th.cloneNode(true);
+        if (!newTh.querySelector(".sort-icon")) {
+          newTh.innerHTML += ` <span class="sort-icon">↕</span>`;
+        }
+        newTh.addEventListener("click", () => {
+          if (_officeSortCol === i) _officeSortAsc = !_officeSortAsc;
+          else {
+            _officeSortCol = i;
+            _officeSortAsc = false;
+          }
+          _buildOfficeTable(table, _officeData, _officeSortCol, _officeSortAsc);
+        });
+        th.parentNode.replaceChild(newTh, th);
+      });
+    }
 
     table.querySelectorAll("thead th").forEach((th, i) => {
-      const newTh = th.cloneNode(true); 
+      const newTh = th.cloneNode(true);
       if (!newTh.querySelector(".sort-icon")) {
         newTh.innerHTML += ` <span class="sort-icon">↕</span>`;
       }
@@ -392,7 +412,7 @@ function _buildOfficeTable(table, data, sortCol, sortAsc) {
 
 let peakHoursChart = null;
 
-function renderPeakHours(data) {
+function renderPeakHours(data, openHour = 8, closeHour = 17) {
   const block = document.getElementById("block-peaks");
   if (!block) return;
 
@@ -418,8 +438,8 @@ function renderPeakHours(data) {
   if (canvas) canvas.style.display = "";
 
   const hours = Array.from(
-    { length: 24 },
-    (_, i) => String(i).padStart(2, "0") + ":00",
+    { length: closeHour - openHour + 1 },
+    (_, i) => String(openHour + i).padStart(2, "0") + ":00",
   );
   const ctx = canvas.getContext("2d");
   if (peakHoursChart) peakHoursChart.destroy();
@@ -963,7 +983,12 @@ async function fetchAndRenderPeakHours(from, to, officeId = null) {
       }),
     });
     const data = await res.json();
-    if (data.success) renderPeakHours(data.peak_hours);
+    if (data.success)
+      renderPeakHours(
+        data.peak_hours,
+        data.open_hour ?? 8,
+        data.close_hour ?? 17,
+      );
   } catch (e) {
     console.error("Error fetching peak hours:", e);
   }

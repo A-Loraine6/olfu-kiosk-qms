@@ -20,19 +20,38 @@ function diffSnapshot(array $before, array $after): array
 
 function getAllStaff($db, int $limit = 100, int $offset = 0): array
 {
-    $stmt = $db->prepare(
-        "SELECT u.id, u.full_name, u.email, u.role, u.role_id, o.name AS office_name,
-            r.name AS role_name, u.window_number, u.is_active, u.created_at, u.created_by
-         FROM users u
-         LEFT JOIN offices o ON u.office_id = o.id
-         LEFT JOIN roles r ON u.role_id = r.id
-         WHERE u.role = 'staff' AND u.is_deleted = 0
-         ORDER BY u.full_name ASC
-         LIMIT ? OFFSET ?"
-    );
-    if (!$stmt) return [];
-
-    $stmt->bind_param('ii', $limit, $offset);
+    $currentUser = getCurrentUser();
+    $officeId    = $currentUser['office_id'] ?? null;
+    $isAdmin = ($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin';
+    
+    if (!$isAdmin && $officeId) {
+        $stmt = $db->prepare(
+            "SELECT u.id, u.full_name, u.email, u.role, u.role_id, o.name AS office_name,
+                r.name AS role_name, u.window_number, u.is_active, u.created_at, u.created_by
+             FROM users u
+             LEFT JOIN offices o ON u.office_id = o.id
+             LEFT JOIN roles r ON u.role_id = r.id
+             WHERE u.role_id IS NOT NULL AND u.role != 'admin' AND u.is_deleted = 0
+             AND u.office_id = ? AND u.id != ?
+             ORDER BY u.full_name ASC
+             LIMIT ? OFFSET ?"
+        );
+        if (!$stmt) return [];
+        $stmt->bind_param('iiii', $officeId, $currentUser['id'], $limit, $offset);
+    } else {
+        $stmt = $db->prepare(
+            "SELECT u.id, u.full_name, u.email, u.role, u.role_id, o.name AS office_name,
+                r.name AS role_name, u.window_number, u.is_active, u.created_at, u.created_by
+             FROM users u
+             LEFT JOIN offices o ON u.office_id = o.id
+             LEFT JOIN roles r ON u.role_id = r.id
+             WHERE u.role_id IS NOT NULL AND u.role != 'admin' AND u.is_deleted = 0
+             ORDER BY u.full_name ASC
+             LIMIT ? OFFSET ?"
+        );
+        if (!$stmt) return [];
+        $stmt->bind_param('ii', $limit, $offset);
+    }
     $stmt->execute();
     $result = $stmt->get_result();
     $staff  = [];
@@ -80,7 +99,16 @@ function addStaff($db, string $full_name, string $email, string $password, strin
     $full_name = trim($full_name);
     $email     = strtolower(trim($email));
     $office    = trim($office);
-    $role      = 'staff';
+    $roleName = 'staff';
+    if ($role_id !== null) {
+        $roleStmt = $db->prepare("SELECT name FROM roles WHERE id = ? LIMIT 1");
+        $roleStmt->bind_param('i', $role_id);
+        $roleStmt->execute();
+        $roleRow = $roleStmt->get_result()->fetch_assoc();
+        $roleStmt->close();
+        if ($roleRow) $roleName = $roleRow['name'];
+    }
+    $role = $roleName;
 
     if (mb_strlen($full_name) < 3 || mb_strlen($full_name) > 100)
         return ['success' => false, 'message' => 'Full name must be between 3 and 100 characters.'];
@@ -157,7 +185,16 @@ function updateStaff($db, int $id, string $full_name, string $email, string $off
     $full_name = trim($full_name);
     $email     = strtolower(trim($email));
     $office    = trim($office);
-    $role      = 'staff';
+    $roleName = 'staff';
+    if ($role_id !== null) {
+        $roleStmt = $db->prepare("SELECT name FROM roles WHERE id = ? LIMIT 1");
+        $roleStmt->bind_param('i', $role_id);
+        $roleStmt->execute();
+        $roleRow = $roleStmt->get_result()->fetch_assoc();
+        $roleStmt->close();
+        if ($roleRow) $roleName = $roleRow['name'];
+    }
+    $role = $roleName;
 
     if (mb_strlen($full_name) < 3)
         return ['success' => false, 'message' => 'Full name must be at least 3 characters.'];

@@ -13,8 +13,12 @@ if (!isLoggedIn()) {
 $currentUser = getCurrentUser();
 $csrf_token  = getCsrfToken();
 
-$canManageServices = hasPermission('manage_services');
-$isOfficeScoped    = !$canManageServices && !empty($currentUser['office_id']);
+$canAddServices    = hasPermission('add_services');
+$canEditServices   = hasPermission('edit_services');
+$canDeleteServices = hasPermission('delete_services');
+$canManageServices = $canAddServices || $canEditServices || $canDeleteServices;
+$isAdmin           = ($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin';
+$isOfficeScoped    = !$isAdmin && !empty($currentUser['office_id']);
 $staffOfficeId     = $currentUser['office_id'] ?? null;
 $officeInfo        = ($isOfficeScoped && $staffOfficeId) ? getOfficeInfo($db, $staffOfficeId) : null;
 $staffOfficeName   = $officeInfo['name'] ?? null;
@@ -78,7 +82,7 @@ function getCategoryColor(?string $cat): string
                     <?php endif; ?>
                 </div>
                 <div class="header-right">
-                    <?php if ($canManageServices): ?>
+                    <?php if ($canAddServices): ?>
                         <button class="btn-primary" onclick="openModal('addServiceModal')">
                             <i class="fas fa-plus"></i> Add New Service
                         </button>
@@ -215,7 +219,7 @@ function getCategoryColor(?string $cat): string
                                     <th>Office</th>
                                     <th>Category</th>
                                     <th>Status</th>
-                                    <?php if ($canManageServices): ?>
+                                    <?php if ($canEditServices || $canDeleteServices): ?>
                                         <th>Actions</th>
                                     <?php endif; ?>
                                 </tr>
@@ -271,23 +275,27 @@ function getCategoryColor(?string $cat): string
                                                     <?php echo $svc['is_active'] ? 'Active' : 'Inactive'; ?>
                                                 </span>
                                             </td>
-                                            <?php if ($canManageServices): ?>
+                                            <?php if ($canEditServices || $canDeleteServices): ?>
                                                 <td>
                                                     <div class="dropdown">
                                                         <button class="dropdown-toggle">
                                                             <i class="fas fa-ellipsis-h"></i>
                                                         </button>
                                                         <div class="dropdown-menu">
-                                                            <button onclick="openEditServiceModal(<?php echo htmlspecialchars(json_encode($svc), ENT_QUOTES); ?>)">
-                                                                <i class="fas fa-pen"></i> Edit
-                                                            </button>
-                                                            <button onclick="openToggleModal(<?php echo $svc['id']; ?>, <?php echo $svc['is_active'] ? 'true' : 'false'; ?>)">
-                                                                <i class="fas fa-<?php echo $svc['is_active'] ? 'toggle-off' : 'toggle-on'; ?>"></i>
-                                                                <?php echo $svc['is_active'] ? 'Deactivate' : 'Activate'; ?>
-                                                            </button>
-                                                            <button class="danger" onclick="openDeleteModal(<?php echo $svc['id']; ?>)">
-                                                                <i class="fas fa-trash"></i> Delete
-                                                            </button>
+                                                            <?php if ($canEditServices): ?>
+                                                                <button onclick="openEditServiceModal(<?php echo htmlspecialchars(json_encode($svc), ENT_QUOTES); ?>)">
+                                                                    <i class="fas fa-pen"></i> Edit
+                                                                </button>
+                                                                <button onclick="openToggleModal(<?php echo $svc['id']; ?>, <?php echo $svc['is_active'] ? 'true' : 'false'; ?>)">
+                                                                    <i class="fas fa-<?php echo $svc['is_active'] ? 'toggle-off' : 'toggle-on'; ?>"></i>
+                                                                    <?php echo $svc['is_active'] ? 'Deactivate' : 'Activate'; ?>
+                                                                </button>
+                                                            <?php endif; ?>
+                                                            <?php if ($canDeleteServices): ?>
+                                                                <button class="danger" onclick="openDeleteModal(<?php echo $svc['id']; ?>)">
+                                                                    <i class="fas fa-trash"></i> Delete
+                                                                </button>
+                                                            <?php endif; ?>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -467,6 +475,9 @@ function getCategoryColor(?string $cat): string
         const CSRF_TOKEN = <?php echo json_encode($csrf_token); ?>;
         const PAGINATION_LIMIT = <?php echo (int)$pageLimit; ?>;
         const TOTAL_SERVICES = <?php echo (int)$totalServices; ?>;
+        const CAN_ADD_SERVICES = <?php echo json_encode($canAddServices); ?>;
+        const CAN_EDIT_SERVICES = <?php echo json_encode($canEditServices); ?>;
+        const CAN_DELETE_SERVICES = <?php echo json_encode($canDeleteServices); ?>;
     </script>
 
 </body>

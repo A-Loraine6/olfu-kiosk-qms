@@ -129,7 +129,7 @@ body {
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 16px 20px;
+  padding: 10px 12px;
 }
 
 .sidebar-user-avatar {

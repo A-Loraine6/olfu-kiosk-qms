@@ -68,6 +68,10 @@ function login($db, string $email, string $password, string $csrf): array
         return ['success' => false, 'message' => 'Invalid email or password.'];
     }
 
+    if (!$user['is_active']) {
+        return ['success' => false, 'message' => 'Your account has been deactivated. Please contact your administrator.'];
+    }
+
     rehashPasswordIfNeeded($db, $user, $password);
     establishSession($user);
 
@@ -85,8 +89,8 @@ function login($db, string $email, string $password, string $csrf): array
 function fetchUserByEmail($db, string $email): ?array
 {
     $stmt = $db->prepare(
-        "SELECT id, full_name, email, password, role, role_id, office_id, window_number
-        FROM users WHERE email = ? LIMIT 1"
+        "SELECT id, full_name, email, password, role, role_id, office_id, window_number, is_active
+            FROM users WHERE email = ? LIMIT 1"
     );
 
     if (!$stmt) {
