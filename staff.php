@@ -210,6 +210,9 @@ $pageLimit = 10;
                                                                 </button>
                                                             <?php endif; ?>
                                                             <?php if ($canToggle): ?>
+                                                                <button onclick="openStaffLogsModal(<?php echo $member['id']; ?>)">
+                                                                    <i class="fas fa-history"></i> View Logs
+                                                                </button>
                                                                 <button onclick="openToggleModal(<?php echo $member['id']; ?>, <?php echo $member['is_active'] ? 'true' : 'false'; ?>)">
                                                                     <i class="fas fa-<?php echo $member['is_active'] ? 'toggle-off' : 'toggle-on'; ?>"></i>
                                                                     <?php echo $member['is_active'] ? 'Deactivate' : 'Activate'; ?>
@@ -422,6 +425,40 @@ $pageLimit = 10;
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal('deleteStaffModal')">Cancel</button>
                 <button type="button" class="btn-danger" id="deleteStaffBtn" onclick="submitDeleteStaff()" data-action="confirm"><i class="fas fa-trash"></i> Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="staffLogsModal" class="modal">
+        <div class="modal-content modal-logs">
+            <div class="modal-header">
+                <h2><i class="fas fa-history"></i> Activity Logs</h2>
+                <button class="modal-close" onclick="closeModal('staffLogsModal')">&times;</button>
+            </div>
+
+            <div class="logs-staff-strip" id="logsStaffStrip">
+                <div class="logs-staff-avatar" id="logsStaffAvatar"></div>
+                <div class="logs-staff-meta">
+                    <div class="logs-staff-name" id="logsStaffName"></div>
+                    <div class="logs-staff-sub" id="logsStaffSub"></div>
+                </div>
+                <div class="logs-total-badge" id="logsTotalBadge"></div>
+            </div>
+
+            <div class="logs-body" id="logsBody">
+                <div class="logs-loading" id="logsLoading">
+                    <div class="logs-spinner"></div>
+                </div>
+                <div class="logs-timeline" id="logsTimeline"></div>
+                <div class="logs-empty" id="logsEmpty" style="display:none;">
+                    <i class="fas fa-history"></i>
+                    <span>No activity recorded yet.</span>
+                </div>
+            </div>
+
+            <div class="logs-pagination" id="logsPagination" style="display:none;">
+                <div class="logs-page-info" id="logsPageInfo"></div>
+                <div class="logs-page-controls" id="logsPageControls"></div>
             </div>
         </div>
     </div>

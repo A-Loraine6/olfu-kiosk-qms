@@ -247,6 +247,9 @@ function renderStaffRows(array $staff, bool $canManage = false): void
                                 </button>
                             <?php endif; ?>
                             <?php if ($canToggle): ?>
+                                <button onclick="openStaffLogsModal(<?php echo $member['id']; ?>)">
+                                    <i class="fas fa-history"></i> View Logs
+                                </button>
                                 <button onclick="openToggleModal(<?php echo $member['id']; ?>, <?php echo $member['is_active'] ? 'true' : 'false'; ?>)">
                                     <i class="fas fa-<?php echo $member['is_active'] ? 'toggle-off' : 'toggle-on'; ?>"></i>
                                     <?php echo $member['is_active'] ? 'Deactivate' : 'Activate'; ?>
