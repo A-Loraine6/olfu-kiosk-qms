@@ -116,6 +116,35 @@ function updateClocks() {
 updateClocks();
 setInterval(updateClocks, 1000);
 
+(function () {
+  const container = document.getElementById("idleBubbles");
+  if (!container) return;
+
+  const count = 24;
+  for (let i = 0; i < count; i++) {
+    const size = 10 + Math.random() * 90;
+    const left = Math.random() * 100;
+    const duration = 8 + Math.random() * 20; 
+    const delay = -(Math.random() * 25);
+    const driftX = (Math.random() - 0.5) * 160;
+    const opacity = 0.04 + Math.random() * 0.1;
+
+    const b = document.createElement("div");
+    b.className = "idle-bubble";
+    b.style.cssText = `
+      width:${size}px;
+      height:${size}px;
+      left:${left}%;
+      bottom:-${size}px;
+      animation-duration:${duration}s;
+      animation-delay:${delay}s;
+      --drift-x:${driftX}px;
+      opacity:${opacity};
+    `;
+    container.appendChild(b);
+  }
+})();
+
 function showScreen(n) {
   const cur = document.getElementById("screen" + state.screen);
   const nxt = document.getElementById("screen" + n);
@@ -156,7 +185,6 @@ function isOfficeClosed(office) {
   return nowMinutes < openMinutes || nowMinutes >= closeMinutes;
 }
 
-
 function formatTime12(hhmm) {
   if (!hhmm) return "";
   const [h, m] = hhmm.split(":").map(Number);
@@ -175,12 +203,22 @@ function isOfficeAcceptingQueue(office) {
   });
 
   if (office.queue_cutoff && hhmm >= office.queue_cutoff) {
-    return { ok: false, reason: `Queue closed — cut-off time (${formatTime12(office.queue_cutoff)}) has passed.` };
+    return {
+      ok: false,
+      reason: `Queue closed — cut-off time (${formatTime12(office.queue_cutoff)}) has passed.`,
+    };
   }
 
-  if (office.break_start && office.break_end &&
-      hhmm >= office.break_start && hhmm < office.break_end) {
-    return { ok: false, reason: `Office is on break from ${formatTime12(office.break_start)} to ${formatTime12(office.break_end)}.` };
+  if (
+    office.break_start &&
+    office.break_end &&
+    hhmm >= office.break_start &&
+    hhmm < office.break_end
+  ) {
+    return {
+      ok: false,
+      reason: `Office is on break from ${formatTime12(office.break_start)} to ${formatTime12(office.break_end)}.`,
+    };
   }
 
   return { ok: true };
@@ -308,7 +346,12 @@ function confirmQueue() {
   const apiUrl = "api/issue_ticket.php";
 
   console.log("[v0] Initiating fetch to:", apiUrl);
-  console.log("[v0] Payload - office_id:", o.id, "service_name:", s ? s.name : "");
+  console.log(
+    "[v0] Payload - office_id:",
+    o.id,
+    "service_name:",
+    s ? s.name : "",
+  );
 
   fetch(apiUrl, {
     method: "POST",
@@ -327,7 +370,8 @@ function confirmQueue() {
     .then((data) => {
       console.log("[v0] Response data:", data);
       btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-check-circle"></i> Confirm &amp; Get Ticket';
+      btn.innerHTML =
+        '<i class="fas fa-check-circle"></i> Confirm &amp; Get Ticket';
       if (data.success) {
         const oo = OFFICES.find((x) => x.id == o.id);
         if (oo) oo.waiting = data.waiting_count ?? oo.waiting + 1;
@@ -339,7 +383,8 @@ function confirmQueue() {
     .catch((err) => {
       console.error("[v0] Fetch error:", err);
       btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-check-circle"></i> Confirm &amp; Get Ticket';
+      btn.innerHTML =
+        '<i class="fas fa-check-circle"></i> Confirm &amp; Get Ticket';
       alert("Network error: " + err.message);
     });
 }
@@ -357,11 +402,11 @@ function showTicket(data) {
     : "General Queue";
   document.getElementById("s4TicketNumber").textContent = data.ticket_number;
   const position = (data.people_ahead ?? 0) + 1;
-document.getElementById("s4PeopleAhead").textContent = position;
+  document.getElementById("s4PeopleAhead").textContent = position;
 
-const mins = (data.people_ahead ?? 0) * 5;
-document.getElementById("s4WaitTime").textContent =
-  mins === 0 ? "Now" : `~${mins}m`;
+  const mins = (data.people_ahead ?? 0) * 5;
+  document.getElementById("s4WaitTime").textContent =
+    mins === 0 ? "Now" : `~${mins}m`;
 
   document.getElementById("qrCode").innerHTML = "";
   new QRCode(document.getElementById("qrCode"), {
@@ -410,37 +455,44 @@ function extendTime() {
 
 function resetKiosk() {
   clearInterval(cdTimer);
+  clearTimeout(idleTimer);
+  clearTimeout(s4Timer);
+
   for (let i = 1; i <= 4; i++) {
     const s = document.getElementById("screen" + i);
     s.classList.remove("active", "exit");
     s.style.cssText = "";
   }
   document.getElementById("screen1").classList.add("active");
-  state = {
-    screen: 1,
-    office: null,
-    service: null,
-    history: [1],
-  };
+  state = { screen: 1, office: null, service: null, history: [1] };
   renderOffices();
   resetIdle();
 }
 let idleTimer = null;
-const IDLE_MS = 60000;
+let s4Timer = null;
+const IDLE_MS =
+  typeof IDLE_TIMEOUT_MS !== "undefined" ? IDLE_TIMEOUT_MS : 60000;
+const S4_IDLE_MS = IDLE_MS * 2;
 
 function resetIdle() {
   clearTimeout(idleTimer);
+  clearTimeout(s4Timer);
   document.getElementById("idleOverlay").classList.remove("show");
-  idleTimer = setTimeout(() => {
-    if (state.screen !== 4) {
-      document.getElementById("idleOverlay").classList.add("show");
+
+  if (state.screen === 4) {
+    s4Timer = setTimeout(() => {
       resetKiosk();
-    }
-  }, IDLE_MS);
+    }, S4_IDLE_MS);
+  } else {
+    idleTimer = setTimeout(() => {
+      document.getElementById("idleOverlay").classList.add("show");
+    }, IDLE_MS);
+  }
 }
 
 function dismissIdle() {
   document.getElementById("idleOverlay").classList.remove("show");
+  resetKiosk();
   resetIdle();
 }
 

@@ -53,15 +53,16 @@ foreach ($offices as $office) {
         'close_time'  => $office['close_time'],
         'break_start' => $office['break_start'],
         'break_end'   => $office['break_end'],
-        'queue_cutoff' => $office['queue_cutoff'],  // ← add
+        'queue_cutoff' => $office['queue_cutoff'],
     ];
 }
 
 $officesJson = json_encode($officesForJs);
 
-$kioskSettingsResult = $db->query("SELECT kiosk_enabled FROM kiosk_settings WHERE id = 1 LIMIT 1");
+$kioskSettingsResult = $db->query("SELECT kiosk_enabled, idle_timeout FROM kiosk_settings WHERE id = 1 LIMIT 1");
 $kioskSettings = $kioskSettingsResult->fetch_assoc();
 $kioskEnabled = (bool)($kioskSettings['kiosk_enabled'] ?? true);
+$idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -80,13 +81,83 @@ $kioskEnabled = (bool)($kioskSettings['kiosk_enabled'] ?? true);
 </head>
 
 <body>
-
     <div class="idle" id="idleOverlay" onclick="dismissIdle()">
-        <div class="idle-icon"><i class="fas fa-list-ol"></i></div>
-        <div class="idle-title">Queue Management System</div>
-        <div class="idle-time" id="idleTime"></div>
-        <div class="idle-date" id="idleDate"></div>
-        <div class="idle-tap">Tap anywhere to begin</div>
+
+        <!-- <div class="idle-bg-grid"></div>
+        <div class="idle-orb idle-orb-1"></div>
+        <div class="idle-orb idle-orb-2"></div>
+        <div class="idle-orb idle-orb-3"></div>
+        <div class="idle-bubbles" id="idleBubbles"></div> -->
+
+        <div class="idle-content">
+
+            <div class="idle-logo-wrap">
+                <img src="img/olfu-logo.png" alt="OLFU"
+                    onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                <div class="idle-logo-fallback" style="display:none">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div class="idle-logo-ring-pulse"></div>
+            </div>
+
+            <div class="idle-school">Our Lady of Fatima University</div>
+            <div class="idle-title">Queue Management System</div>
+
+            <div class="idle-clock-wrap">
+                <div class="idle-clock" id="idleTime"></div>
+                <div class="idle-date" id="idleDate"></div>
+            </div>
+
+            <div class="idle-divider">
+                <span class="idle-divider-dot"></span>
+                <span class="idle-divider-line"></span>
+                <span class="idle-divider-dot"></span>
+            </div>
+
+            <div class="idle-how-label">How it works</div>
+            <div class="idle-steps">
+                <div class="idle-step">
+                    <div class="idle-step-icon">
+                        <i class="fas fa-building"></i>
+                        <span class="idle-step-num">1</span>
+                    </div>
+                    <div class="idle-step-text">Select an office</div>
+                </div>
+                <div class="idle-step-arrow"><i class="fas fa-chevron-right"></i></div>
+                <div class="idle-step">
+                    <div class="idle-step-icon">
+                        <i class="fas fa-list-ul"></i>
+                        <span class="idle-step-num">2</span>
+                    </div>
+                    <div class="idle-step-text">Choose a service</div>
+                </div>
+                <div class="idle-step-arrow"><i class="fas fa-chevron-right"></i></div>
+                <div class="idle-step">
+                    <div class="idle-step-icon">
+                        <i class="fas fa-clipboard-check"></i>
+                        <span class="idle-step-num">3</span>
+                    </div>
+                    <div class="idle-step-text">Confirm details</div>
+                </div>
+                <div class="idle-step-arrow"><i class="fas fa-chevron-right"></i></div>
+                <div class="idle-step">
+                    <div class="idle-step-icon">
+                        <i class="fas fa-ticket-alt"></i>
+                        <span class="idle-step-num">4</span>
+                    </div>
+                    <div class="idle-step-text">Get your ticket</div>
+                </div>
+            </div>
+
+            <div class="idle-cta-wrap">
+                <div class="idle-cta">
+                    <span class="idle-cta-ring"></span>
+                    <i class="fas fa-hand-pointer"></i>
+                    <span>Tap anywhere to begin</span>
+                </div>
+            </div>
+
+        </div>
     </div>
 
     <div class="topbar">
@@ -221,6 +292,7 @@ $kioskEnabled = (bool)($kioskSettings['kiosk_enabled'] ?? true);
     <script>
         const OFFICES = <?php echo $officesJson; ?>;
         const KIOSK_ENABLED = <?php echo json_encode($kioskEnabled); ?>;
+        const IDLE_TIMEOUT_MS = <?php echo $idleTimeout * 1000; ?>;
     </script>
     <script src="scripts/index.js"></script>
 </body>
