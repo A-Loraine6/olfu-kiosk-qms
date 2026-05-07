@@ -124,15 +124,18 @@ switch ($action) {
         $search       = strtolower(trim($input['search'] ?? ''));
         $filterOffice = trim($input['office'] ?? '');
         $filterStatus = $input['status'] ?? '';
+        $filterRole   = isset($input['role']) && $input['role'] !== '' ? (int)$input['role'] : null;
 
         $page  = max(1, (int) ($input['page']  ?? 1));
         $limit = (int) ($input['limit'] ?? 10);
         if (!in_array($limit, [10, 25, 50, 100])) $limit = 10;
 
-        $filtered = array_filter($staff, function ($s) use ($search, $filterOffice, $filterStatus) {
+        $filtered = array_filter($staff, function ($s) use ($search, $filterOffice, $filterStatus, $filterRole) {
             if ($filterOffice && ($s['office_name'] ?? '') !== $filterOffice) return false;
             if ($filterStatus === 'active'   && !$s['is_active']) return false;
             if ($filterStatus === 'inactive' &&  $s['is_active']) return false;
+            if ($filterRole !== null && (int)($s['role_id'] ?? 0) !== $filterRole) return false;
+
             if (
                 $search
                 && strpos(strtolower($s['full_name']), $search) === false

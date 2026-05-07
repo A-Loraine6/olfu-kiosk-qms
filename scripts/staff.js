@@ -213,6 +213,7 @@ async function fetchFilteredRows() {
     search: document.getElementById("searchInput").value,
     office: document.getElementById("filterOffice").value,
     status: document.getElementById("filterStatus").value,
+    role:   document.getElementById("filterRole").value,
     page: currentPage,
     limit: currentLimit,
   });
