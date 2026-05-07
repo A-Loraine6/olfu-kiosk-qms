@@ -145,6 +145,14 @@ $pageLimit = 10;
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
+                                <select id="filterRole" class="filter-select" onchange="applyFilters()">
+                                    <option value="">All Roles</option>
+                                    <?php foreach ($roles as $r): ?>
+                                        <option value="<?php echo $r['id']; ?>">
+                                            <?php echo htmlspecialchars(ucfirst($r['name'])); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
                                 <select id="filterStatus" class="filter-select" onchange="applyFilters()">
                                     <option value="">All Status</option>
                                     <option value="active">Active</option>
