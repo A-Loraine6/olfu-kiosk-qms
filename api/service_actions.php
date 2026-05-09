@@ -114,15 +114,24 @@ switch ($action) {
         $search       = strtolower(trim($input['search'] ?? ''));
         $filterOffice = $isOfficeScoped ? $staffOffice : (int) ($input['office'] ?? 0);
         $filterStatus = $input['status'] ?? '';
+        $filterCategory = trim($input['category'] ?? '');
 
         $page  = max(1, (int) ($input['page']  ?? 1));
         $limit = (int) ($input['limit'] ?? 10);
         if (!in_array($limit, [10, 25, 50, 100])) $limit = 10;
 
-        $filtered = array_filter($services, function ($s) use ($search, $filterOffice, $filterStatus) {
-            if ($filterOffice && $s['office_id'] !== $filterOffice) return false;
-            if ($filterStatus === 'active'   && !$s['is_active'])   return false;
-            if ($filterStatus === 'inactive' &&  $s['is_active'])   return false;
+        $filtered = array_filter($services, function ($s) use ($search, $filterOffice, $filterStatus, $filterCategory) {
+            if ($filterOffice && (int)($s['office_id'] ?? 0) !== $filterOffice) return false;
+            if ($filterStatus === 'active'   && !$s['is_active']) return false;
+            if ($filterStatus === 'inactive' &&  $s['is_active']) return false;
+
+            if ($filterCategory !== '') {
+                if ($filterCategory === 'none') {
+                    if (!empty($s['category'])) return false;
+                } else {
+                    if (($s['category'] ?? '') !== $filterCategory) return false;
+                }
+            }
             if (
                 $search
                 && strpos(strtolower($s['name']), $search) === false
