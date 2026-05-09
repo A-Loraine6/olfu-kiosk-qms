@@ -28,6 +28,7 @@ function initQueue() {
   }
 
   loadActiveTicket().then(() => {
+    loadOverflowState();
     loadAllTabCounts();
     loadQueue();
     loadStats();
