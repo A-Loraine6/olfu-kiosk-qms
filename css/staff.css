@@ -56,7 +56,6 @@
   position: relative;
   flex: 1 1 200px;
   min-width: 130px;
-  max-width: 500px;
 }
 
 .search-icon {
@@ -120,9 +119,8 @@
 .filter-group {
   display: flex;
   gap: 8px;
-  flex: 2 1 300px; /* ← was flex: 1 1 200px */
+  flex: 2 1 200px;
   min-width: 160px;
-  max-width: 520px; /* ← was 400px */
 }
 
 .filter-select {

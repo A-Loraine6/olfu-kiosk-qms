@@ -204,6 +204,13 @@ function getCategoryColor(?string $cat): string
                                 <?php else: ?>
                                     <input type="hidden" id="filterOffice" value="<?php echo (int)($currentUser['office_id'] ?? 0); ?>">
                                 <?php endif; ?>
+                                <select id="filterCategory" class="filter-select" onchange="applyFilters()">
+                                    <option value="">All Categories</option>
+                                    <option value="simple">Simple</option>
+                                    <option value="regular">Regular</option>
+                                    <option value="complicated">Complicated</option>
+                                    <option value="none">No Category</option>
+                                </select>
                                 <select id="filterStatus" class="filter-select" onchange="applyFilters()">
                                     <option value="">All Status</option>
                                     <option value="active">Active</option>
