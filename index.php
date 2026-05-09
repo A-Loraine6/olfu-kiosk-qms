@@ -42,17 +42,17 @@ foreach ($servicesResult->fetch_all(MYSQLI_ASSOC) as $svc) {
 $officesForJs = [];
 foreach ($offices as $office) {
     $officesForJs[] = [
-        'id'          => $office['id'],
-        'name'        => $office['name'],
-        'code'        => $office['code'],
-        'mode'        => $office['queue_mode'],
-        'prefix'      => $office['queue_prefix'],
-        'waiting'     => $waitingCounts[$office['id']] ?? 0,
-        'services'    => $servicesByOffice[$office['id']] ?? [],
-        'open_time'   => $office['open_time'],
-        'close_time'  => $office['close_time'],
-        'break_start' => $office['break_start'],
-        'break_end'   => $office['break_end'],
+        'id'           => $office['id'],
+        'name'         => $office['name'],
+        'code'         => $office['code'],
+        'mode'         => $office['queue_mode'],
+        'prefix'       => $office['queue_prefix'],
+        'waiting'      => $waitingCounts[$office['id']] ?? 0,
+        'services'     => $servicesByOffice[$office['id']] ?? [],
+        'open_time'    => $office['open_time'],
+        'close_time'   => $office['close_time'],
+        'break_start'  => $office['break_start'],
+        'break_end'    => $office['break_end'],
         'queue_cutoff' => $office['queue_cutoff'],
     ];
 }
@@ -81,13 +81,9 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
 </head>
 
 <body>
-    <div class="idle" id="idleOverlay" onclick="dismissIdle()">
 
-        <!-- <div class="idle-bg-grid"></div>
-        <div class="idle-orb idle-orb-1"></div>
-        <div class="idle-orb idle-orb-2"></div>
-        <div class="idle-orb idle-orb-3"></div>
-        <div class="idle-bubbles" id="idleBubbles"></div> -->
+    <!-- ── IDLE OVERLAY ───────────────────────────────────────── -->
+    <div class="idle" id="idleOverlay" onclick="dismissIdle()">
 
         <div class="idle-content">
 
@@ -160,20 +156,26 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
         </div>
     </div>
 
+    <!-- ── TOP BAR — matches display.php exactly ─────────────── -->
     <div class="topbar">
         <div class="topbar-brand">
             <div class="topbar-logo">
                 <img src="img/olfu-logo.png" alt="Logo"
                     onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\'fas fa-shield-alt\'></i>'">
             </div>
-            <div class="topbar-name">Queue Management System</div>
+            <div class="topbar-text">
+                <div class="topbar-name">Our Lady of Fatima University</div>
+                <div class="topbar-sub">Queue Management System</div>
+            </div>
         </div>
+        <div class="topbar-spacer"></div>
         <div class="topbar-clock">
             <div class="topbar-time" id="topTime"></div>
             <div class="topbar-date" id="topDate"></div>
         </div>
     </div>
 
+    <!-- ── SCREENS ────────────────────────────────────────────── -->
     <div class="screens">
 
         <div class="screen active" id="screen1">
@@ -181,7 +183,6 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
                 <div class="eyebrow">Step 1 of 3</div>
                 <h1 class="screen-title">Select an Office</h1>
             </div>
-
             <div class="screen-body">
                 <div class="office-grid stagger" id="officeGrid"></div>
             </div>
@@ -192,7 +193,6 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
                 <button class="btn-nav-back" onclick="goBack()">
                     <i class="fas fa-arrow-left"></i> Back
                 </button>
-
                 <div style="text-align:center">
                     <div class="eyebrow">Step 2 of 3</div>
                     <h1 class="screen-title">Select a Service</h1>
@@ -203,10 +203,8 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
                         </div>
                     </div>
                 </div>
-
                 <div style="width:48px"></div>
             </div>
-
             <div class="screen-body" style="padding-top:12px">
                 <div class="service-grid stagger" id="serviceGrid"></div>
             </div>
@@ -222,7 +220,6 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
                     <h1 class="screen-title">Confirm Your Queue</h1>
                 </div>
             </div>
-
             <div class="screen-body">
                 <div class="confirm-wrap">
                     <div class="confirm-card">
@@ -251,7 +248,6 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
                             <div class="ticket-office" id="s4OfficeName"></div>
                             <div class="ticket-service" id="s4ServiceName"></div>
                             <div class="ticket-number" id="s4TicketNumber"></div>
-
                             <div class="ticket-stats">
                                 <div>
                                     <div class="stat-label">Position in Queue</div>
@@ -262,7 +258,6 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
                                     <div class="stat-value" id="s4WaitTime">—</div>
                                 </div>
                             </div>
-
                             <div class="qr-section">
                                 <div id="qrCode"></div>
                                 <div class="qr-label">
@@ -270,7 +265,6 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
                                 </div>
                             </div>
                         </div>
-
                         <div class="countdown-section">
                             <div class="countdown-bar-track">
                                 <div class="countdown-bar-fill" id="countdownBar"></div>
