@@ -69,9 +69,30 @@ function getQueueTrendData($db)
     $today = date('Y-m-d');
     $trendData = array();
 
-    for ($hour = 6; $hour <= 18; $hour++) {
+    $stmt = $db->prepare("
+        SELECT 
+            COALESCE(MIN(HOUR(open_time)), 8) AS min_open_hour,
+            COALESCE(MAX(HOUR(close_time)), 17) AS max_close_hour
+        FROM offices
+        WHERE open_time IS NOT NULL 
+          AND close_time IS NOT NULL
+          AND HOUR(open_time) >= 6
+          AND HOUR(close_time) <= 23
+    ");
+    $stmt->execute();
+    $hours = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    $openHour  = $hours['min_open_hour'] ?: 8;
+    $closeHour = $hours['max_close_hour'] ?: 17;
+
+    $openHour = max(6, min($openHour, 23));
+    $closeHour = max($openHour + 1, min($closeHour, 23));
+
+    for ($hour = $openHour; $hour <= $closeHour; $hour++) {
         $hourStart = sprintf('%02d:00:00', $hour);
         $hourEnd = sprintf('%02d:59:59', $hour);
+        
         $hourLabel = sprintf('%02d:00', $hour);
 
         $query = "SELECT COUNT(*) as count FROM tickets 
@@ -201,10 +222,31 @@ function getOfficeQueueTrend($db, $office_id)
     $office_id = (int)$office_id;
     $trendData = array();
 
-    for ($hour = 6; $hour <= 18; $hour++) {
+    $stmt = $db->prepare("SELECT open_time, close_time FROM offices WHERE id = ? LIMIT 1");
+    $stmt->bind_param('i', $office_id);
+    $stmt->execute();
+    $officeRow = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    $openHour  = 6;
+    $closeHour = 18;
+
+    if ($officeRow) {
+        if (!empty($officeRow['open_time'])) {
+            $openHour = (int)explode(':', $officeRow['open_time'])[0];
+        }
+        if (!empty($officeRow['close_time'])) {
+            $closeHour = (int)explode(':', $officeRow['close_time'])[0];
+        }
+    }
+
+    for ($hour = $openHour; $hour <= $closeHour; $hour++) {
         $hourStart = sprintf('%02d:00:00', $hour);
         $hourEnd   = sprintf('%02d:59:59', $hour);
-        $hourLabel = sprintf('%02d:00', $hour);
+        
+        $h12 = $hour % 12 || 12;
+        $suffix = $hour < 12 ? 'AM' : 'PM';
+        $hourLabel = $h12 . ':00 ' . $suffix;
 
         $query = "SELECT COUNT(*) as count FROM tickets
                   WHERE DATE(created_at) = '$today'
