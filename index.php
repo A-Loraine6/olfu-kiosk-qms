@@ -141,7 +141,7 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
                         <i class="fas fa-ticket-alt"></i>
                         <span class="idle-step-num">4</span>
                     </div>
-                    <div class="idle-step-text">Get your ticket</div>
+                    <div class="idle-step-text">Get your queue number</div>
                 </div>
             </div>
 

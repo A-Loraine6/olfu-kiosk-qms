@@ -1035,7 +1035,7 @@ body {
 .idle-steps {
   display: flex;
   gap: 8px;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   margin-bottom: 36px;
   flex-wrap: wrap;
@@ -1094,12 +1094,14 @@ body {
   color: rgba(255, 255, 255, 0.55);
   text-align: center;
   line-height: 1.4;
+  min-height: 2.8em;
 }
 
 .idle-step-arrow {
   color: rgba(255, 255, 255, 0.2);
   font-size: 13px;
-  margin-bottom: 22px;
+  margin-bottom: 0;
+  margin-top: 14px;
   flex-shrink: 0;
 }
 
