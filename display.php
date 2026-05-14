@@ -81,7 +81,7 @@ if (!empty($officeIds)) {
 
     <div class="bar">
         <div class="bar-logo">
-            <img src="img/olfu-logo.png" alt="OLFU" onerror="this.style.display='none'">
+            <img src="img/olfu-logo.png" alt="OLFU">
         </div>
         <div class="bar-brand">
             <div class="bar-name">Our Lady of Fatima University</div>
@@ -95,7 +95,6 @@ if (!empty($officeIds)) {
     </div>
 
     <div class="stage" id="stage"></div>
-    <div class="footnote">Live &mdash; updates every 10s</div>
 
     <script>
         const DATA = <?php echo $officesJson; ?>;
@@ -107,7 +106,6 @@ if (!empty($officeIds)) {
         let rotateTimer = null;
         let transitioning = false;
 
-        /* ── Clock ── */
         (function tick() {
             const n = new Date();
             document.getElementById('clock').textContent = n.toLocaleTimeString('en-PH', {
@@ -134,7 +132,6 @@ if (!empty($officeIds)) {
             return d.innerHTML;
         }
 
-        /* ── Dots ── */
         function renderDots() {
             const el = document.getElementById('dots');
             el.innerHTML = '';
@@ -153,10 +150,8 @@ if (!empty($officeIds)) {
             });
         }
 
-        /* ── Build panel inner HTML ── */
         function buildInner(o) {
 
-            /* Serving area */
             let main = '';
             const ns = o.now_serving || [];
 
@@ -175,7 +170,6 @@ if (!empty($officeIds)) {
                         <div class="hero-info">
                             <div class="hero-win-lbl">Proceed to</div>
                             <div class="hero-win-num">Window&nbsp;${esc(t.window_id)}</div>
-                            ${t.transaction_type ? `<div class="hero-svc">${esc(t.transaction_type)}</div>` : ''}
                         </div>
                     </div>`;
                 } else {
@@ -197,7 +191,6 @@ if (!empty($officeIds)) {
                 main = `<div class="ticket-grid">${cards}</div>`;
             }
 
-            /* Waiting list */
             const nu = o.next_up || [];
             const wc = o.waiting_count || 0;
             let waitHTML = '';
@@ -213,7 +206,6 @@ if (!empty($officeIds)) {
                     `</div>`;
             }
 
-            /* Recently done */
             const rd = o.recently_done || [];
             let doneHTML = '';
             if (rd.length > 0) {
@@ -267,7 +259,6 @@ if (!empty($officeIds)) {
             <div class="p-bar"><div class="p-bar-fill" id="bar-fill"></div></div>`;
         }
 
-        /* ── Show panel ── */
         function showPanel(idx) {
             if (transitioning) return;
             transitioning = true;
@@ -322,7 +313,6 @@ if (!empty($officeIds)) {
             }
         }
 
-        /* ── Live refresh ── */
         async function refresh() {
             try {
                 const r = await fetch('api/display_data.php', {
@@ -339,7 +329,6 @@ if (!empty($officeIds)) {
             setTimeout(refresh, REFRESH_MS);
         }
 
-        /* ── Init ── */
         renderDots();
         if (offices.length > 0) {
             showPanel(0);

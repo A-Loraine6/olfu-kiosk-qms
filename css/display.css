@@ -292,10 +292,13 @@ body {
 .hero {
   display: flex;
   align-items: center;
+  min-width: 0;
+  overflow: hidden;
 }
+
 .hero-num {
   font-family: var(--mono);
-  font-size: clamp(90px, 15vw, 180px);
+  font-size: clamp(70px, 11vw, 140px);
   font-weight: 500;
   color: var(--green-700);
   letter-spacing: -0.05em;
@@ -313,6 +316,7 @@ body {
 .hero-info {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 .hero-win-lbl {
   font-size: 12px;
@@ -323,12 +327,15 @@ body {
   margin-bottom: 4px;
 }
 .hero-win-num {
-  font-size: clamp(44px, 7vw, 88px);
+  font-size: clamp(32px, 5vw, 72px);
   font-weight: 800;
   color: var(--amber);
   letter-spacing: -0.03em;
   line-height: 0.95;
   margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .hero-svc {
   font-size: clamp(14px, 1.5vw, 18px);
