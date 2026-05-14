@@ -206,25 +206,6 @@ if (!empty($officeIds)) {
                     `</div>`;
             }
 
-            const rd = o.recently_done || [];
-            let doneHTML = '';
-            if (rd.length > 0) {
-                doneHTML = `<div class="side-block">
-                    <div class="side-lbl">Recently Served</div>
-                    <div class="done-list">` +
-                    rd.map(t => `
-                        <div class="done-row">
-                            <div class="done-check">
-                                <svg viewBox="0 0 10 10" fill="none" stroke-width="1.8"
-                                     stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="1.5,5 4,7.5 8.5,2.5"/>
-                                </svg>
-                            </div>
-                            <div class="done-num">${esc(t.ticket_number)}</div>
-                        </div>`).join('') +
-                    `</div></div>`;
-            }
-
             return `
             <div class="p-header">
                 <div class="p-office">${esc(o.name)}</div>
@@ -252,7 +233,6 @@ if (!empty($officeIds)) {
                         <div class="side-lbl">Next Up &mdash; ${wc} in queue</div>
                         ${waitHTML}
                     </div>
-                    ${doneHTML}
                 </div>
             </div>
 
