@@ -165,21 +165,22 @@ if ($queueMode === 'service-based') {
                                 <?php endif; ?>
                             </div>
                         </div>
-
-                        <div class="overflow-toggle-row" id="overflowRow">
-                            <div class="overflow-toggle-info">
-                                <span class="overflow-toggle-label">
-                                    <i class="fas fa-clock"></i>
-                                    Peak Hours Mode
-                                </span>
-                                <span class="overflow-toggle-desc" id="overflowDesc">
-                                    Pull tickets from your assigned window only
-                                </span>
+                        <?php if ($queueMode === 'service-based'): ?>
+                            <div class="overflow-toggle-row" id="overflowRow">
+                                <div class="overflow-toggle-info">
+                                    <span class="overflow-toggle-label">
+                                        <i class="fas fa-clock"></i>
+                                        Peak Hours Mode
+                                    </span>
+                                    <span class="overflow-toggle-desc" id="overflowDesc">
+                                        Pull tickets from your assigned window only
+                                    </span>
+                                </div>
+                                <button id="overflowBtn" class="overflow-toggle-btn" onclick="toggleOverflow()">
+                                    <span class="overflow-toggle-pill"></span>
+                                </button>
                             </div>
-                            <button id="overflowBtn" class="overflow-toggle-btn" onclick="toggleOverflow()">
-                                <span class="overflow-toggle-pill"></span>
-                            </button>
-                        </div>
+                        <?php endif; ?>
 
                         <?php if ($canManageQueue): ?>
                             <button class="call-next-btn" id="callNextBtn" onclick="callNext()">
