@@ -344,47 +344,48 @@ function getCategoryColor(?string $cat): string
                 <h2><i class="fas fa-plus-circle"></i> Add New Service</h2>
             </div>
 
-            <div class="form-group">
-                <label for="add_name">Service Name <span class="required">*</span></label>
-                <input type="text" id="add_name" placeholder="Enter service name">
-            </div>
+            <div class="modal-body-scroll">
+                <div class="form-group">
+                    <label for="add_name">Service Name <span class="required">*</span></label>
+                    <input type="text" id="add_name" placeholder="Enter service name">
+                </div>
 
-            <div class="form-group">
-                <label for="add_office">Assigned Office <span class="required">*</span></label>
-                <select id="add_office" onchange="loadServiceWindowCheckboxes('add_office', 'add_windows_list', 'add_windows_group', [])">
-                    <option value="" disabled selected>Select office</option>
-                    <?php foreach ($offices as $o): ?>
-                        <option value="<?php echo $o['id']; ?>">
-                            <?php echo htmlspecialchars($o['name']); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                <div class="form-group">
+                    <label for="add_office">Assigned Office <span class="required">*</span></label>
+                    <select id="add_office" onchange="loadServiceWindowCheckboxes('add_office', 'add_windows_list', 'add_windows_group', [])">
+                        <option value="" disabled selected>Select office</option>
+                        <?php foreach ($offices as $o): ?>
+                            <option value="<?php echo $o['id']; ?>">
+                                <?php echo htmlspecialchars($o['name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
 
-            <div class="form-group" id="add_windows_group" style="display:none;">
-                <label>Assign to Windows <span class="optional">(optional)</span></label>
-                <div class="window-checkbox-list" id="add_windows_list"></div>
-                <div class="form-hint">
-                    <i class="fas fa-info-circle"></i>
-                    Leave all unchecked to make available at all windows.
+                <div class="form-group" id="add_windows_group" style="display:none;">
+                    <label>Assign to Windows <span class="optional">(optional)</span></label>
+                    <div class="window-checkbox-list" id="add_windows_list"></div>
+                    <div class="form-hint">
+                        <i class="fas fa-info-circle"></i>
+                        Leave all unchecked to make available at all windows.
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="add_category">Category</label>
+                    <select id="add_category">
+                        <option value="" disabled selected>Select a category</option>
+                        <option value="simple">Simple</option>
+                        <option value="regular">Regular</option>
+                        <option value="complicated">Complicated</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="add_description">Description <span class="optional">(optional)</span></label>
+                    <textarea id="add_description" placeholder="Enter description"></textarea>
                 </div>
             </div>
-
-            <div class="form-group">
-                <label for="add_category">Category</label>
-                <select id="add_category">
-                    <option value="" disabled selected>Select a category</option>
-                    <option value="simple">Simple</option>
-                    <option value="regular">Regular</option>
-                    <option value="complicated">Complicated</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="add_description">Description <span class="optional">(optional)</span></label>
-                <textarea id="add_description" placeholder="Enter description"></textarea>
-            </div>
-
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal('addServiceModal')">Cancel</button>
                 <button type="button" class="btn-primary" id="addServiceBtn" onclick="submitAddService()" data-action="confirm"><i class="fas fa-plus"></i> Add Service</button>
@@ -399,39 +400,41 @@ function getCategoryColor(?string $cat): string
                 <button class="modal-close" onclick="closeModal('editServiceModal')">&times;</button>
             </div>
             <input type="hidden" id="edit_service_id">
-            <div class="form-group">
-                <label for="edit_name">Service Name <span class="required">*</span></label>
-                <input type="text" id="edit_name">
-            </div>
-            <div class="form-group">
-                <label for="edit_office">Assigned Office <span class="required">*</span></label>
-                <select id="edit_office" onchange="loadServiceWindowCheckboxes('edit_office', 'edit_windows_list', 'edit_windows_group', [])">
-                    <option value="" disabled>Select Office</option>
-                    <?php foreach ($offices as $o): ?>
-                        <option value="<?php echo $o['id']; ?>"><?php echo htmlspecialchars($o['name']); ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group" id="edit_windows_group" style="display:none;">
-                <label>Assign to Windows <span class="optional">(optional)</span></label>
-                <div class="window-checkbox-list" id="edit_windows_list"></div>
-                <div class="form-hint">
-                    <i class="fas fa-info-circle"></i>
-                    Leave all unchecked to make available at all windows.
+            <div class="modal-body-scroll">
+                <div class="form-group">
+                    <label for="edit_name">Service Name <span class="required">*</span></label>
+                    <input type="text" id="edit_name">
                 </div>
-            </div>
-            <div class="form-group">
-                <label for="edit_category">Category</label>
-                <select id="edit_category">
-                    <option value="" disabled selected>Select a category</option>
-                    <option value="simple">Simple</option>
-                    <option value="regular">Regular</option>
-                    <option value="complicated">Complicated</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="edit_description">Description <span class="optional">(optional)</span></label>
-                <textarea id="edit_description"></textarea>
+                <div class="form-group">
+                    <label for="edit_office">Assigned Office <span class="required">*</span></label>
+                    <select id="edit_office" onchange="loadServiceWindowCheckboxes('edit_office', 'edit_windows_list', 'edit_windows_group', [])">
+                        <option value="" disabled>Select Office</option>
+                        <?php foreach ($offices as $o): ?>
+                            <option value="<?php echo $o['id']; ?>"><?php echo htmlspecialchars($o['name']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group" id="edit_windows_group" style="display:none;">
+                    <label>Assign to Windows <span class="optional">(optional)</span></label>
+                    <div class="window-checkbox-list" id="edit_windows_list"></div>
+                    <div class="form-hint">
+                        <i class="fas fa-info-circle"></i>
+                        Leave all unchecked to make available at all windows.
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="edit_category">Category</label>
+                    <select id="edit_category">
+                        <option value="" disabled selected>Select a category</option>
+                        <option value="simple">Simple</option>
+                        <option value="regular">Regular</option>
+                        <option value="complicated">Complicated</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit_description">Description <span class="optional">(optional)</span></label>
+                    <textarea id="edit_description"></textarea>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal('editServiceModal')">Cancel</button>
@@ -446,8 +449,10 @@ function getCategoryColor(?string $cat): string
                 <h2 id="toggleModalTitle">Deactivate Service</h2>
                 <button class="modal-close" onclick="closeModal('toggleServiceModal')">&times;</button>
             </div>
-            <div class="modal-body">
-                <p id="toggleModalBody">Deactivate this service? It will be hidden from the kiosk.</p>
+            <div class="modal-body-scroll">
+                <div class="modal-body">
+                    <p id="toggleModalBody">Deactivate this service? It will be hidden from the kiosk.</p>
+                </div>
             </div>
             <input type="hidden" id="toggle_service_id">
             <div class="modal-footer">
@@ -463,9 +468,11 @@ function getCategoryColor(?string $cat): string
                 <h2>Delete Service</h2>
                 <button class="modal-close" onclick="closeModal('deleteServiceModal')">&times;</button>
             </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete this service?</p>
-                <p class="modal-warning">This action cannot be undone.</p>
+            <div class="modal-body-scroll">
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this service?</p>
+                    <p class="modal-warning">This action cannot be undone.</p>
+                </div>
             </div>
             <input type="hidden" id="delete_service_id">
             <div class="modal-footer">
