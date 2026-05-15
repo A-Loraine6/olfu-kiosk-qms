@@ -244,7 +244,7 @@ function getOfficeQueueTrend($db, $office_id)
         $hourStart = sprintf('%02d:00:00', $hour);
         $hourEnd   = sprintf('%02d:59:59', $hour);
         
-        $h12 = $hour % 12 || 12;
+        $h12 = ($hour % 12) ?: 12;
         $suffix = $hour < 12 ? 'AM' : 'PM';
         $hourLabel = $h12 . ':00 ' . $suffix;
 

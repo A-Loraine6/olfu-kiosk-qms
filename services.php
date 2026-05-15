@@ -192,7 +192,7 @@ function getCategoryColor(?string $cat): string
                             </div>
 
                             <div class="filter-group">
-                                <?php if ($canManageServices): ?>
+                                <?php if ($isAdmin): ?>
                                     <select id="filterOffice" class="filter-select" onchange="applyFilters()">
                                         <option value="">All Offices</option>
                                         <?php foreach ($offices as $o): ?>
@@ -209,7 +209,6 @@ function getCategoryColor(?string $cat): string
                                     <option value="simple">Simple</option>
                                     <option value="regular">Regular</option>
                                     <option value="complicated">Complicated</option>
-                                    <option value="none">No Category</option>
                                 </select>
                                 <select id="filterStatus" class="filter-select" onchange="applyFilters()">
                                     <option value="">All Status</option>
@@ -374,7 +373,7 @@ function getCategoryColor(?string $cat): string
             <div class="form-group">
                 <label for="add_category">Category</label>
                 <select id="add_category">
-                    <option value="">No category</option>
+                    <option value="" disabled selected>Select a category</option>
                     <option value="simple">Simple</option>
                     <option value="regular">Regular</option>
                     <option value="complicated">Complicated</option>
@@ -424,7 +423,7 @@ function getCategoryColor(?string $cat): string
             <div class="form-group">
                 <label for="edit_category">Category</label>
                 <select id="edit_category">
-                    <option value="">No Category</option>
+                    <option value="" disabled selected>Select a category</option>
                     <option value="simple">Simple</option>
                     <option value="regular">Regular</option>
                     <option value="complicated">Complicated</option>

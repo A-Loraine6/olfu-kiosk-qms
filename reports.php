@@ -246,13 +246,16 @@ if ($isPersonalView || $isScopedView) {
                             </div>
                         </div>
 
-                        <h2 class="section-title" style="margin-top:28px;"><i class="fas fa-building"></i> Department Performance</h2>
-
+                        <h2 class="section-title" style="margin-top:28px;">
+                            <i class="fas fa-building"></i>
+                            <?php echo $isScopedView ? 'Your Department Performance' : 'Department Performance'; ?>
+                        </h2>
+                        
                         <div class="report-block" id="block-office">
                             <div class="report-block-header">
                                 <div class="report-block-title">
                                     <div class="report-block-icon"><i class="fas fa-trophy"></i></div>
-                                    How Each Department is Performing
+                                    <?php echo $isScopedView ? 'How Your Department is Performing' : 'How Each Department is Performing'; ?>
                                 </div>
                                 <span class="pill pill-orange">No Data</span>
                             </div>
@@ -306,16 +309,6 @@ if ($isPersonalView || $isScopedView) {
                                             <div class="empty-state-message">Daily trends will appear here.</div>
                                         </div>
                                     </div>
-                                    <?php if ($isFullView): ?>
-                                        <div class="sub-chart-box" style="grid-column: 1 / -1;">
-                                            <canvas id="deptChart" style="display:none;"></canvas>
-                                            <div class="empty-state" id="emptyDept">
-                                                <div class="empty-state-icon"><i class="fas fa-layer-group"></i></div>
-                                                <div class="empty-state-title">No Data</div>
-                                                <div class="empty-state-message">Department demand will appear here.</div>
-                                            </div>
-                                        </div>
-                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
