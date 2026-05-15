@@ -82,7 +82,6 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
 
 <body>
 
-    <!-- ── IDLE OVERLAY ───────────────────────────────────────── -->
     <div class="idle" id="idleOverlay" onclick="dismissIdle()">
 
         <div class="idle-content">
@@ -156,7 +155,6 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
         </div>
     </div>
 
-    <!-- ── TOP BAR — matches display.php exactly ─────────────── -->
     <div class="topbar">
         <div class="topbar-brand">
             <div class="topbar-logo">
@@ -175,7 +173,6 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
         </div>
     </div>
 
-    <!-- ── SCREENS ────────────────────────────────────────────── -->
     <div class="screens">
 
         <div class="screen active" id="screen1">

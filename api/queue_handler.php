@@ -128,7 +128,8 @@ if ($action === 'get_queue') {
     $params = array_merge([$officeId, $today], $statuses);
 
     $windowClause = '';
-    if (!$overflowMode && $windowNumber > 0 && in_array($tab, ['waiting', 'on-hold', 'skipped'])) {
+    $queueModeForFilter = getOfficeQueueMode($db, $officeId); // already called above as $queueMode
+    if ($queueMode !== 'unified' && !$overflowMode && $windowNumber > 0 && in_array($tab, ['waiting', 'on-hold', 'skipped'])) {
         $windowClause = " AND EXISTS (
             SELECT 1 FROM service_windows sw
             LEFT JOIN transaction_types tt2 ON tt2.id = sw.service_id
@@ -163,7 +164,8 @@ if ($action === 'get_queue') {
     $stmt->execute();
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
-    if (!$overflowMode && $windowNumber > 0) {
+    $queueMode = getOfficeQueueMode($db, $officeId);
+    if ($queueMode !== 'unified' && !$overflowMode && $windowNumber > 0) {
         $stmt2 = $db->prepare("SELECT COUNT(*) AS cnt 
             FROM tickets t
             WHERE t.office_id = ?

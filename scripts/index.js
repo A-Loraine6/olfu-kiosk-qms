@@ -125,7 +125,7 @@ setInterval(updateClocks, 1000);
   for (let i = 0; i < count; i++) {
     const size = 10 + Math.random() * 90;
     const left = Math.random() * 100;
-    const duration = 8 + Math.random() * 20; 
+    const duration = 8 + Math.random() * 20;
     const delay = -(Math.random() * 25);
     const driftX = (Math.random() - 0.5) * 160;
     const opacity = 0.04 + Math.random() * 0.1;
@@ -458,6 +458,7 @@ function resetKiosk() {
   clearInterval(cdTimer);
   clearTimeout(idleTimer);
   clearTimeout(s4Timer);
+  location.reload();
 
   for (let i = 1; i <= 4; i++) {
     const s = document.getElementById("screen" + i);
