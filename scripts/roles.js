@@ -144,6 +144,15 @@ async function togglePermission(checkbox) {
   });
 
   if (data.success) {
+    if (data.affected && data.affected.length > 1) {
+      data.affected.forEach((key) => {
+        if (key === permKey) return;
+        const el = document.querySelector(
+          `input[data-role="${roleId}"][data-perm="${key}"]`,
+        );
+        if (el) el.checked = enable;
+      });
+    }
     showToast(
       enable ? "Permission granted." : "Permission removed.",
       "success",

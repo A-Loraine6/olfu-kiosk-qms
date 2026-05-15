@@ -15,6 +15,13 @@ if (($currentUser['role'] ?? '') !== 'staff') {
     exit;
 }
 
+if (!hasPermission('manage_queue') && !hasPermission('view_queue')) {
+    header('Location: ' . BASE_URL . 'dashboard.php');
+    exit;
+}
+
+$canManageQueue = hasPermission('manage_queue');
+
 $staffOfficeId   = (int) ($currentUser['office_id'] ?? 0);
 $officeInfo      = getOfficeInfo($db, $staffOfficeId);
 $officeCode      = $officeInfo['code']      ?? '';
@@ -25,7 +32,7 @@ $csrf_token      = getCsrfToken();
 $transactionTypes = [];
 if ($queueMode === 'service-based') {
     $staffWindowNumber = (int) ($currentUser['window_number'] ?? 0);
-    
+
     error_log("Staff ID: {$currentUser['id']}, Window: $staffWindowNumber");
 
     if ($staffWindowNumber > 0) {
@@ -145,18 +152,17 @@ if ($queueMode === 'service-based') {
                             </div>
 
                             <div class="serving-actions" id="servingActions" style="display:none;">
-                                <button class="action-btn action-complete" id="completeBtn" onclick="completeTicket()">
-                                    <i class="fas fa-check-circle"></i>
-                                    Complete
-                                </button>
-                                <button class="action-btn action-hold" id="holdBtn" onclick="holdTicket()">
-                                    <i class="fas fa-pause-circle"></i>
-                                    Hold
-                                </button>
-                                <button class="action-btn action-skip" id="skipBtn" onclick="skipTicket()">
-                                    <i class="fas fa-forward"></i>
-                                    Skip
-                                </button>
+                                <?php if ($canManageQueue): ?>
+                                    <button class="action-btn action-complete" id="completeBtn" onclick="completeTicket()">
+                                        <i class="fas fa-check-circle"></i> Complete
+                                    </button>
+                                    <button class="action-btn action-hold" id="holdBtn" onclick="holdTicket()">
+                                        <i class="fas fa-pause-circle"></i> Hold
+                                    </button>
+                                    <button class="action-btn action-skip" id="skipBtn" onclick="skipTicket()">
+                                        <i class="fas fa-forward"></i> Skip
+                                    </button>
+                                <?php endif; ?>
                             </div>
                         </div>
 
@@ -175,11 +181,13 @@ if ($queueMode === 'service-based') {
                             </button>
                         </div>
 
-                        <button class="call-next-btn" id="callNextBtn" onclick="callNext()">
-                            <i class="fas fa-bell"></i>
-                            <span>Call Next Student</span>
-                            <span class="call-next-count" id="callNextCount">0 waiting</span>
-                        </button>
+                        <?php if ($canManageQueue): ?>
+                            <button class="call-next-btn" id="callNextBtn" onclick="callNext()">
+                                <i class="fas fa-bell"></i>
+                                <span>Call Next Student</span>
+                                <span class="call-next-count" id="callNextCount">0 waiting</span>
+                            </button>
+                        <?php endif; ?>
 
                         <div class="stats-row">
                             <div class="stat-mini stat-green">
@@ -206,12 +214,14 @@ if ($queueMode === 'service-based') {
 
                         <div class="last-refreshed-bar">
                             <span id="lastRefreshedText"><i class="fas fa-circle-notch"></i> Loading…</span>
-                            <div class="shortcut-hint" title="Keyboard shortcuts">
-                                <kbd>N</kbd> Next &nbsp;
-                                <kbd>C</kbd> Complete &nbsp;
-                                <kbd>H</kbd> Hold &nbsp;
-                                <kbd>S</kbd> Skip
-                            </div>
+                            <?php if ($canManageQueue): ?>
+                                <div class="shortcut-hint" title="Keyboard shortcuts">
+                                    <kbd>N</kbd> Next &nbsp;
+                                    <kbd>C</kbd> Complete &nbsp;
+                                    <kbd>H</kbd> Hold &nbsp;
+                                    <kbd>S</kbd> Skip
+                                </div>
+                            <?php endif; ?>
                         </div>
 
                     </div>
@@ -312,6 +322,7 @@ if ($queueMode === 'service-based') {
         const OFFICE_NAME = <?php echo json_encode($officeName); ?>;
         const QUEUE_MODE = <?php echo json_encode($queueMode); ?>;
         const CSRF_TOKEN = <?php echo json_encode($csrf_token); ?>;
+        const CAN_MANAGE_QUEUE = <?php echo json_encode($canManageQueue); ?>;
     </script>
     <script src="scripts/queue.js"></script>
     <script src="scripts/modal-shortcuts.js"></script>
