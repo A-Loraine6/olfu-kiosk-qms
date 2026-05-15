@@ -756,24 +756,6 @@ span.page-ellipsis {
   background: var(--primary);
 }
 
-*::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-*::-webkit-scrollbar-thumb {
-  background: #c5cfc9;
-  border-radius: 10px;
-}
-
-*::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-color);
-}
-
 @media (max-width: 640px) {
   .pagination-bar {
     flex-wrap: wrap;

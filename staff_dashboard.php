@@ -244,7 +244,9 @@ $currentTime = date('l, F j, Y \a\t g:i A');
                                         font: {
                                             size: 12
                                         },
-                                        padding: 8
+                                        padding: 8,
+                                        stepSize: 1,
+                                        precision: 0
                                     }
                                 },
                                 x: {
@@ -255,7 +257,10 @@ $currentTime = date('l, F j, Y \a\t g:i A');
                                         font: {
                                             size: 12
                                         },
-                                        padding: 4
+                                        padding: 4,
+                                        maxRotation: 0,
+                                        minRotation: 0,
+                                        maxTicksLimit: 7,
                                     }
                                 }
                             }
