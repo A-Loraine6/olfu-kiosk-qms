@@ -82,32 +82,62 @@ switch ($action) {
             exit;
         }
 
-        $stmt = $conn->prepare("SELECT id FROM permissions WHERE `key` = ? LIMIT 1");
-        $stmt->bind_param('s', $permKey);
-        $stmt->execute();
-        $row = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
+        $implies = [
+            'manage_queue'    => ['view_queue'],
+            'edit_services'   => ['view_services'],
+            'add_services'    => ['view_services'],
+            'delete_services' => ['view_services'],
+            'edit_staff'      => ['view_staff'],
+            'add_staff'       => ['view_staff'],
+            'delete_staff'    => ['view_staff'],
+            'toggle_staff'    => ['view_staff'],
+            'view_reports'    => ['view_own_metrics'],
+            'view_reports_office' => ['view_own_metrics'],
+        ];
 
-        if (!$row) {
-            echo json_encode(['success' => false, 'message' => 'Permission not found.']);
-            exit;
-        }
-        $permId = $row['id'];
+        $dependents = [
+            'view_queue'      => ['manage_queue'],
+            'view_services'   => ['edit_services', 'add_services', 'delete_services'],
+            'view_staff'      => ['edit_staff', 'add_staff', 'delete_staff', 'toggle_staff'],
+            'view_own_metrics' => ['view_reports', 'view_reports_office'],
+        ];
 
-        if ($enable) {
-            $stmt = $conn->prepare(
-                "INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)"
-            );
-            $stmt->bind_param('ii', $roleId, $permId);
-        } else {
-            $stmt = $conn->prepare(
-                "DELETE FROM role_permissions WHERE role_id = ? AND permission_id = ?"
-            );
-            $stmt->bind_param('ii', $roleId, $permId);
+        $keysToProcess = [$permKey];
+        if ($enable && isset($implies[$permKey])) {
+            $keysToProcess = array_merge($keysToProcess, $implies[$permKey]);
         }
-        $stmt->execute();
-        $stmt->close();
-        echo json_encode(['success' => true, 'message' => 'Permission updated.']);
+        if (!$enable && isset($dependents[$permKey])) {
+            $keysToProcess = array_merge($keysToProcess, $dependents[$permKey]);
+        }
+
+        $keysToProcess = array_unique($keysToProcess);
+        $affected = [];
+
+        foreach ($keysToProcess as $key) {
+            $stmt = $conn->prepare("SELECT id FROM permissions WHERE `key` = ? LIMIT 1");
+            $stmt->bind_param('s', $key);
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$row) continue;
+
+            $pid = $row['id'];
+            if ($enable) {
+                $stmt = $conn->prepare("INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)");
+            } else {
+                $stmt = $conn->prepare("DELETE FROM role_permissions WHERE role_id = ? AND permission_id = ?");
+            }
+            $stmt->bind_param('ii', $roleId, $pid);
+            $stmt->execute();
+            $stmt->close();
+            $affected[] = $key;
+        }
+
+        echo json_encode([
+            'success'  => true,
+            'message'  => 'Permission updated.',
+            'affected' => $affected,
+        ]);
         exit;
 
     default:

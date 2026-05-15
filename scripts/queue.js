@@ -115,16 +115,16 @@ function registerKeyboardShortcuts() {
 
     switch (e.key.toUpperCase()) {
       case "N":
-        if (!currentTicket) callNext();
+        if (!currentTicket && CAN_MANAGE_QUEUE) callNext();
         break;
       case "C":
-        if (currentTicket) completeTicket();
+        if (currentTicket && CAN_MANAGE_QUEUE) completeTicket();
         break;
       case "H":
-        if (currentTicket) holdTicket();
+        if (currentTicket && CAN_MANAGE_QUEUE) holdTicket();
         break;
       case "S":
-        if (currentTicket) skipTicket();
+        if (currentTicket && CAN_MANAGE_QUEUE) skipTicket();
         break;
       case "R":
         refreshQueue();
