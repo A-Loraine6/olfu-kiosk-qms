@@ -273,54 +273,56 @@ $pageLimit = 10;
                 <button class="modal-close" onclick="closeModal('addStaffModal')">&times;</button>
             </div>
 
-            <div class="form-group">
-                <label for="add_full_name">Full Name <span class="required">*</span></label>
-                <input type="text" id="add_full_name" placeholder="Enter full name">
-            </div>
-
-            <div class="form-group">
-                <label for="add_email">Email <span class="required">*</span></label>
-                <input type="email" id="add_email" placeholder="Enter email">
-            </div>
-
-            <div class="form-group">
-                <label for="add_password">Password <span class="required">*</span></label>
-                <div class="password-input-group">
-                    <input type="password" id="add_password" placeholder="Enter password">
-                    <button type="button" class="btn-toggle-password" onclick="togglePassword('add_password', this)">
-                        <i class="fas fa-eye"></i>
-                    </button>
+            <div class="modal-body-scroll">
+                <div class="form-group">
+                    <label for="add_full_name">Full Name <span class="required">*</span></label>
+                    <input type="text" id="add_full_name" placeholder="Enter full name">
                 </div>
-            </div>
 
-            <div class="form-group">
-                <label for="add_role">Role <span class="required">*</span></label>
-                <select id="add_role">
-                    <option value="" disabled selected>Select role</option>
-                    <?php foreach ($roles as $r): ?>
-                        <option value="<?php echo $r['id']; ?>">
-                            <?php echo htmlspecialchars(ucfirst($r['name'])); ?> </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                <div class="form-group">
+                    <label for="add_email">Email <span class="required">*</span></label>
+                    <input type="email" id="add_email" placeholder="Enter email">
+                </div>
 
-            <div class="form-group">
-                <label for="add_office">Office <span class="required">*</span></label>
-                <select id="add_office" onchange="loadWindowOptions('add_office', 'add_window', 'add_window_group')">
-                    <option value="" disabled selected>Select office</option>
-                    <?php foreach ($offices as $o): ?>
-                        <option value="<?php echo htmlspecialchars($o); ?>">
-                            <?php echo htmlspecialchars($o); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
+                <div class="form-group">
+                    <label for="add_password">Password <span class="required">*</span></label>
+                    <div class="password-input-group">
+                        <input type="password" id="add_password" placeholder="Enter password">
+                        <button type="button" class="btn-toggle-password" onclick="togglePassword('add_password', this)">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
 
-            <div class="form-group" id="add_window_group" style="display:none;">
-                <label for="add_window">Window</label>
-                <select id="add_window">
-                    <option value="" disabled selected>Select window</option>
-                </select>
+                <div class="form-group">
+                    <label for="add_role">Role <span class="required">*</span></label>
+                    <select id="add_role">
+                        <option value="" disabled selected>Select role</option>
+                        <?php foreach ($roles as $r): ?>
+                            <option value="<?php echo $r['id']; ?>">
+                                <?php echo htmlspecialchars(ucfirst($r['name'])); ?> </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="add_office">Office <span class="required">*</span></label>
+                    <select id="add_office" onchange="loadWindowOptions('add_office', 'add_window', 'add_window_group')">
+                        <option value="" disabled selected>Select office</option>
+                        <?php foreach ($offices as $o): ?>
+                            <option value="<?php echo htmlspecialchars($o); ?>">
+                                <?php echo htmlspecialchars($o); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="form-group" id="add_window_group" style="display:none;">
+                    <label for="add_window">Window</label>
+                    <select id="add_window">
+                        <option value="" disabled selected>Select window</option>
+                    </select>
+                </div>
             </div>
 
             <div class="modal-footer">
@@ -336,41 +338,43 @@ $pageLimit = 10;
                 <h2><i class="fas fa-pen"></i> Edit Staff</h2>
                 <button class="modal-close" onclick="closeModal('editStaffModal')">&times;</button>
             </div>
-            <input type="hidden" id="edit_staff_id">
-            <div class="form-group">
-                <label for="edit_full_name">Full Name <span class="required">*</span></label>
-                <input type="text" id="edit_full_name">
-            </div>
-            <div class="form-group">
-                <label for="edit_email">Email <span class="required">*</span></label>
-                <input type="email" id="edit_email">
-            </div>
-            <div class="form-group">
-                <label for="edit_role">Role <span class="required">*</span></label>
-                <select id="edit_role">
-                    <?php foreach ($roles as $r): ?>
-                        <?php if ($r['id'] != 1): ?>
-                            <option value="<?php echo $r['id']; ?>">
-                                <?php echo htmlspecialchars(ucfirst($r['name'])); ?>
-                            </option>
-                        <?php endif; ?>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="edit_office">Office <span class="required">*</span></label>
-                <select id="edit_office" onchange="loadWindowOptions('edit_office', 'edit_window', 'edit_window_group')">
-                    <option value="" disabled>Select Office</option>
-                    <?php foreach ($offices as $o): ?>
-                        <option value="<?php echo htmlspecialchars($o); ?>"><?php echo htmlspecialchars($o); ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group" id="edit_window_group" style="display:none;">
-                <label for="edit_window">Window</label>
-                <select id="edit_window">
-                    <option value="" disabled selected>Select window</option>
-                </select>
+            <div class="modal-body-scroll">
+                <input type="hidden" id="edit_staff_id">
+                <div class="form-group">
+                    <label for="edit_full_name">Full Name <span class="required">*</span></label>
+                    <input type="text" id="edit_full_name">
+                </div>
+                <div class="form-group">
+                    <label for="edit_email">Email <span class="required">*</span></label>
+                    <input type="email" id="edit_email">
+                </div>
+                <div class="form-group">
+                    <label for="edit_role">Role <span class="required">*</span></label>
+                    <select id="edit_role">
+                        <?php foreach ($roles as $r): ?>
+                            <?php if ($r['id'] != 1): ?>
+                                <option value="<?php echo $r['id']; ?>">
+                                    <?php echo htmlspecialchars(ucfirst($r['name'])); ?>
+                                </option>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit_office">Office <span class="required">*</span></label>
+                    <select id="edit_office" onchange="loadWindowOptions('edit_office', 'edit_window', 'edit_window_group')">
+                        <option value="" disabled>Select Office</option>
+                        <?php foreach ($offices as $o): ?>
+                            <option value="<?php echo htmlspecialchars($o); ?>"><?php echo htmlspecialchars($o); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group" id="edit_window_group" style="display:none;">
+                    <label for="edit_window">Window</label>
+                    <select id="edit_window">
+                        <option value="" disabled selected>Select window</option>
+                    </select>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal('editStaffModal')">Cancel</button>
@@ -385,14 +389,16 @@ $pageLimit = 10;
                 <h2><i class="fas fa-key"></i> Reset Password</h2>
                 <button class="modal-close" onclick="closeModal('resetPasswordModal')">&times;</button>
             </div>
-            <input type="hidden" id="reset_staff_id">
-            <div class="form-group">
-                <label for="new_password">New Password <span class="required">*</span></label>
-                <div class="password-input-group">
-                    <input type="password" id="new_password" placeholder="Min. 8 characters">
-                    <button type="button" class="btn-toggle-password" onclick="togglePassword('new_password', this)">
-                        <i class="fas fa-eye"></i>
-                    </button>
+            <div class="modal-body-scroll">
+                <input type="hidden" id="reset_staff_id">
+                <div class="form-group">
+                    <label for="new_password">New Password <span class="required">*</span></label>
+                    <div class="password-input-group">
+                        <input type="password" id="new_password" placeholder="Min. 8 characters">
+                        <button type="button" class="btn-toggle-password" onclick="togglePassword('new_password', this)">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -408,10 +414,12 @@ $pageLimit = 10;
                 <h2 id="toggleModalTitle">Deactivate Staff</h2>
                 <button class="modal-close" onclick="closeModal('toggleStaffModal')">&times;</button>
             </div>
-            <div class="modal-body">
-                <p id="toggleModalBody">Deactivate this staff member? They will no longer be able to access the system.</p>
+            <div class="modal-body-scroll">
+                <div class="modal-body">
+                    <p id="toggleModalBody">Deactivate this staff member? They will no longer be able to access the system.</p>
+                </div>
+                <input type="hidden" id="toggle_staff_id">
             </div>
-            <input type="hidden" id="toggle_staff_id">
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal('toggleStaffModal')">Cancel</button>
                 <button type="button" id="toggleSubmitBtn" class="btn-warning" onclick="submitToggleStaff()" data-action="confirm">Deactivate</button>
@@ -425,11 +433,13 @@ $pageLimit = 10;
                 <h2>Delete Staff</h2>
                 <button class="modal-close" onclick="closeModal('deleteStaffModal')">&times;</button>
             </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete this staff member?</p>
-                <p class="modal-warning">This action cannot be undone.</p>
+            <div class="modal-body-scroll">
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this staff member?</p>
+                    <p class="modal-warning">This action cannot be undone.</p>
+                </div>
+                <input type="hidden" id="delete_staff_id">
             </div>
-            <input type="hidden" id="delete_staff_id">
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal('deleteStaffModal')">Cancel</button>
                 <button type="button" class="btn-danger" id="deleteStaffBtn" onclick="submitDeleteStaff()" data-action="confirm"><i class="fas fa-trash"></i> Delete</button>

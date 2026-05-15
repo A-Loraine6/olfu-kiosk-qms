@@ -249,7 +249,7 @@ if (!$activeRole && !empty($roles)) {
             </div>
             <div class="modal-body">
                 <p>Are you sure you want to delete this role?</p>
-                <p class="modal-warning"><i class="fas fa-exclamation-triangle"></i> Staff assigned to this role will have their role removed.</p>
+                <p class="modal-warning"><i class="fas fa-exclamation-triangle" style="color: red;"></i> Staff assigned to this role will have their role removed.</p>
             </div>
             <input type="hidden" id="delete_role_id">
             <div class="modal-footer">
