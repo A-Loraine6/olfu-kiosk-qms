@@ -394,6 +394,11 @@ async function submitAddService() {
     description: document.getElementById("add_description").value,
     windows: getCheckedWindows("add_windows_list"),
   });
+  const category = document.getElementById("add_category").value;
+  if (!category) {
+    showToast("Please select a category.", "error");
+    return;
+  }
   setBtnLoading(
     "addServiceBtn",
     false,
@@ -436,6 +441,11 @@ async function submitEditService() {
     description: document.getElementById("edit_description").value,
     windows: getCheckedWindows("edit_windows_list"),
   });
+  const category = document.getElementById("add_category").value;
+  if (!category) {
+    showToast("Please select a category.", "error");
+    return;
+  }
   setBtnLoading(
     "editServiceBtn",
     false,

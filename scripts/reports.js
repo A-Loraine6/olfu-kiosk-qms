@@ -475,93 +475,29 @@ function renderPeakHours(data, openHour = 8, closeHour = 17) {
 
 let deptChart = null;
 
-function renderDepartmentDemand(data) {
-  const block = document.getElementById("block-peaks");
-  if (!block) return;
-
-  const hasData = data.some((d) => d.count > 0);
-  const canvas = block.querySelector("#deptChart");
-  const emptyState = canvas
-    ?.closest(".sub-chart-box")
-    ?.querySelector(".empty-state");
-
-  if (!hasData) {
-    if (emptyState) emptyState.style.display = "";
-    if (canvas) canvas.style.display = "none";
-    return;
-  }
-
-  if (emptyState) emptyState.style.display = "none";
-  if (canvas) canvas.style.display = "";
-
-  const greens = [
-    "#008b43",
-    "#00a652",
-    "#00c166",
-    "#10b981",
-    "#14b8a6",
-    "#06b6d4",
-  ];
-  const borders = [
-    "#006633",
-    "#007a3d",
-    "#009950",
-    "#0e9060",
-    "#0f9e7e",
-    "#0396a8",
-  ];
-  const ctx = canvas.getContext("2d");
-  if (deptChart) deptChart.destroy();
-  deptChart = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: data.map((d) => d.name),
-      datasets: [
-        {
-          label: "Queue Demand",
-          data: data.map((d) => d.count),
-          backgroundColor: data.map((_, i) => greens[i % greens.length]),
-          borderColor: data.map((_, i) => borders[i % borders.length]),
-          borderWidth: 0,
-          borderRadius: 4,
-        },
-      ],
-    },
-    options: {
-      indexAxis: "y",
-      responsive: true,
-      maintainAspectRatio: true,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: {
-          beginAtZero: true,
-          ticks: { stepSize: 1 },
-          grid: { drawBorder: false, display: false },
-        },
-        y: {
-          categoryPercentage: 0.5,
-          barPercentage: 0.6,
-          grid: { display: false, drawBorder: false },
-          ticks: { font: { size: 11, weight: "600" } },
-        },
-      },
-    },
-  });
-}
-
 function renderDayBreakdown(data) {
-  data = [...data].sort((a, b) => b.count - a.count);
-
-  const labels = data.map((d) => {
-    if (d.date) {
-      const dateObj = new Date(d.date + "T00:00:00");
-      return `${d.day.substring(0, 3)} (${dateObj.toLocaleDateString("en-PH", { month: "short", day: "numeric" })})`;
-    }
-    return d.day.substring(0, 3);
-  });
+  const dayOrder = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+  ];
+  data = [...data].sort(
+    (a, b) => dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day),
+  );
 
   const canvas = document.getElementById("busyDaysChart");
   if (!canvas) return;
+
+  const box = canvas.closest(".sub-chart-box");
+  const existing = box?.querySelector(".day-breakdown-list");
+  if (existing) existing.remove();
+  const emptyState = box?.querySelector(".empty-state");
+  if (emptyState) emptyState.style.display = "none";
+  canvas.style.display = "";
 
   const ctx = canvas.getContext("2d");
   if (window.busyDaysChartInstance) window.busyDaysChartInstance.destroy();
@@ -569,56 +505,46 @@ function renderDayBreakdown(data) {
   window.busyDaysChartInstance = new Chart(ctx, {
     type: "bar",
     data: {
-      labels,
+      labels: data.map((d) => d.day.substring(0, 3)),
       datasets: [
         {
-          label: "Queue Volume by Day",
+          label: "Queue Volume",
           data: data.map((d) => d.count),
-          backgroundColor: [
-            "#006633",
-            "#007a3d",
-            "#008b43",
-            "#00a652",
-            "#00c166",
-            "#10b981",
-            "#48c774",
-          ],
-          borderColor: "transparent",
+          backgroundColor: "rgba(0,139,67,0.8)",
+          borderColor: "#008b43",
           borderWidth: 0,
           borderRadius: 6,
-          maxBarThickness: 48,
+          maxBarThickness: 40,
         },
       ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: true,
-      indexAxis: "x",
       plugins: {
         legend: { display: false },
-        tooltip: {
-          callbacks: { label: (ctx) => "Queue Volume: " + ctx.parsed.y },
+        title: {
+          display: true,
+          text: "Queue Volume by Day",
+          font: { size: 11, weight: "700" },
+          color: "#7a9387",
+          padding: { bottom: 10 },
         },
+        tooltip: { callbacks: { label: (ctx) => ` ${ctx.parsed.y} tickets` } },
       },
       scales: {
         y: {
           beginAtZero: true,
           ticks: { stepSize: 1 },
-          grid: { drawBorder: false, color: "rgba(0,0,0,0.05)" },
+          grid: { color: "rgba(0,0,0,0.05)" },
         },
         x: {
           grid: { display: false },
-          ticks: { font: { size: 10, weight: "600" } },
+          ticks: { font: { size: 11, weight: "600" } },
         },
       },
     },
   });
-
-  canvas.style.display = "";
-  const emptyState = canvas
-    .closest(".sub-chart-box")
-    ?.querySelector(".empty-state");
-  if (emptyState) emptyState.style.display = "none";
 }
 
 function renderTransactionTypes(data) {
