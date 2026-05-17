@@ -76,6 +76,7 @@ function buildDiffHtml(array $before, array $after): string
 
     $fmt = function ($v): string {
         if ($v === null || $v === '')               return '—';
+        if (is_array($v))                           return implode(', ', array_map('strval', $v));
         if ($v === true  || $v === 1 || $v === '1') return 'Yes';
         if ($v === false || $v === 0 || $v === '0') return 'No';
         return (string) $v;

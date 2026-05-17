@@ -23,7 +23,7 @@ function getAllStaff($db, int $limit = 100, int $offset = 0): array
     $currentUser = getCurrentUser();
     $officeId    = $currentUser['office_id'] ?? null;
     $isAdmin = ($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin';
-    
+
     if (!$isAdmin && $officeId) {
         $stmt = $db->prepare(
             "SELECT u.id, u.full_name, u.email, u.role, u.role_id, o.name AS office_name,
@@ -279,9 +279,7 @@ function deleteStaff($db, int $id): array
         'STAFF_DELETE',
         'USER',
         $id,
-        "Deleted staff member: {$staff['full_name']} ({$staff['email']})",
-        ['full_name' => $staff['full_name'], 'email' => $staff['email'], 'office' => $staff['office']],
-        null
+        "Deleted staff: {$staff['full_name']}"
     );
 
     return ['success' => true, 'message' => 'Staff member soft-deleted successfully.'];
@@ -308,9 +306,7 @@ function activateStaff($db, int $id): array
         'STAFF_ACTIVATE',
         'USER',
         $id,
-        "Activated staff account: {$staff['full_name']}",
-        ['is_active' => false],
-        ['is_active' => true]
+        "Activated staff account: {$staff['full_name']}"
     );
 
     return ['success' => true, 'message' => 'Staff account activated.'];
@@ -337,9 +333,7 @@ function deactivateStaff($db, int $id): array
         'STAFF_DEACTIVATE',
         'USER',
         $id,
-        "Deactivated staff account: {$staff['full_name']}",
-        ['is_active' => true],
-        ['is_active' => false]
+        "Deactivated staff account: {$staff['full_name']}"
     );
 
     return ['success' => true, 'message' => 'Staff account deactivated.'];

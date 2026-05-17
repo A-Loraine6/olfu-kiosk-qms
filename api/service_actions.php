@@ -16,9 +16,9 @@ if (!isLoggedIn()) {
 $currentUser = getCurrentUser();
 $canAddServices    = hasPermission('add_services');
 $canEditServices   = hasPermission('edit_services');
-$canDeleteServices = hasPermission('delete_services');
-$canManageServices = $canAddServices || $canEditServices || $canDeleteServices;
 $isAdmin           = ($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin';
+$canDeleteServices = $isAdmin;
+$canManageServices = $canAddServices || $canEditServices || $canDeleteServices;
 $isOfficeScoped    = !$isAdmin && !empty($currentUser['office_id']);
 $staffOffice       = $isOfficeScoped ? (int) ($currentUser['office_id'] ?? 0) : null;
 
@@ -37,9 +37,13 @@ $actionPermMap = [
     'add_service'    => 'add_services',
     'edit_service'   => 'edit_services',
     'toggle_service' => 'edit_services',
-    'delete_service' => 'delete_services',
+    'delete_service' => 'admin',
 ];
-if (isset($actionPermMap[$action]) && !hasPermission($actionPermMap[$action])) {
+if (isset($actionPermMap[$action]) && $actionPermMap[$action] !== 'admin' && !hasPermission($actionPermMap[$action])) {
+    echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
+    exit;
+}
+if (isset($actionPermMap[$action]) && $actionPermMap[$action] === 'admin' && !$isAdmin) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
     exit;
 }

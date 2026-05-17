@@ -14,7 +14,8 @@ $csrf_token  = getCsrfToken();
 
 $canAdd    = hasPermission('add_staff');
 $canEdit   = hasPermission('edit_staff');
-$canDelete = hasPermission('delete_staff');
+$isAdmin   = ($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin';
+$canDelete = $isAdmin;
 $canToggle = hasPermission('toggle_staff');
 $canManage = $canAdd || $canEdit || $canDelete || $canToggle;
 $canView   = $canManage || hasPermission('view_staff');
