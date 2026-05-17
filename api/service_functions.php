@@ -312,7 +312,7 @@ function deleteService(mysqli $conn, int $serviceId): array
     if (!$service) return serviceResponse(false, 'Service not found.');
 
     $stmt = $conn->prepare(
-        "UPDATE transaction_types SET is_deleted = 1, is_active = 0 WHERE id = ?"
+        "UPDATE transaction_types SET is_deleted = 1, deleted_at = NOW(), is_active = 0 WHERE id = ?"
     );
     if (!$stmt) return serviceResponse(false, 'Database error: ' . $conn->error);
 
