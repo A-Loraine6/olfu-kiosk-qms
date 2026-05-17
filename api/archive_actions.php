@@ -22,8 +22,9 @@ if (!verifyCsrfToken($csrf)) {
     exit;
 }
 
-$canDeleteStaff = hasPermission('delete_staff');
-$canDeleteService = hasPermission('delete_service');
+$isAdmin = ($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin';
+$canDeleteStaff = $isAdmin;
+$canDeleteService = $isAdmin;
 
 if (!($canDeleteStaff || $canDeleteService)) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);

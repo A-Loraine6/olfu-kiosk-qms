@@ -15,9 +15,9 @@ $csrf_token  = getCsrfToken();
 
 $canAddServices    = hasPermission('add_services');
 $canEditServices   = hasPermission('edit_services');
-$canDeleteServices = hasPermission('delete_services');
-$canManageServices = $canAddServices || $canEditServices || $canDeleteServices;
 $isAdmin           = ($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin';
+$canDeleteServices = $isAdmin;
+$canManageServices = $canAddServices || $canEditServices || $canDeleteServices;
 $isOfficeScoped    = !$isAdmin && !empty($currentUser['office_id']);
 $staffOfficeId     = $currentUser['office_id'] ?? null;
 $officeInfo        = ($isOfficeScoped && $staffOfficeId) ? getOfficeInfo($db, $staffOfficeId) : null;

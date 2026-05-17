@@ -86,10 +86,8 @@ switch ($action) {
             'manage_queue'    => ['view_queue'],
             'edit_services'   => ['view_services'],
             'add_services'    => ['view_services'],
-            'delete_services' => ['view_services'],
             'edit_staff'      => ['view_staff'],
             'add_staff'       => ['view_staff'],
-            'delete_staff'    => ['view_staff'],
             'toggle_staff'    => ['view_staff'],
             'view_reports'    => ['view_own_metrics'],
             'view_reports_office' => ['view_own_metrics'],
@@ -97,8 +95,8 @@ switch ($action) {
 
         $dependents = [
             'view_queue'      => ['manage_queue'],
-            'view_services'   => ['edit_services', 'add_services', 'delete_services'],
-            'view_staff'      => ['edit_staff', 'add_staff', 'delete_staff', 'toggle_staff'],
+            'view_services'   => ['edit_services', 'add_services'],
+            'view_staff'      => ['edit_staff', 'add_staff', 'toggle_staff'],
             'view_own_metrics' => ['view_reports', 'view_reports_office'],
         ];
 

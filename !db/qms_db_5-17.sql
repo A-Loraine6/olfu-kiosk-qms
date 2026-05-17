@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 17, 2026 at 08:28 AM
+-- Generation Time: May 17, 2026 at 10:44 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -454,32 +454,43 @@ INSERT INTO `activity_logs` (`id`, `user_id`, `activity_type`, `entity_type`, `e
 (434, 1, 'LOGOUT', 'user', 1, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 03:25:22'),
 (435, 4, 'LOGIN', 'user', 4, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 03:25:27'),
 (436, 4, 'LOGOUT', 'user', 4, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 04:18:21'),
-(437, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 04:18:30');
+(437, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 04:18:30'),
+(438, 1, 'STAFF_DELETE', 'USER', 5, NULL, NULL, 'Deleted staff member: Angel Loraine Reobilo', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 04:45:00');
 INSERT INTO `activity_logs` (`id`, `user_id`, `activity_type`, `entity_type`, `entity_id`, `old_value`, `new_value`, `description`, `ip_address`, `user_agent`, `timestamp`) VALUES
-(438, 1, 'STAFF_DELETE', 'USER', 5, '{\"full_name\":\"Angel Loraine Reobilo\",\"email\":\"reobiloloraine@gmail.com\",\"office\":\"Accounting\"}', NULL, 'Deleted staff member: Angel Loraine Reobilo (reobiloloraine@gmail.com)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 04:45:00'),
 (439, 1, 'LOGOUT', 'user', 1, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 04:54:51'),
 (440, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 04:54:53'),
-(441, 1, 'STAFF_RESTORE', 'USER', 5, '{\"full_name\":\"Angel Loraine Reobilo\",\"email\":\"reobiloloraine@gmail.com\"}', NULL, 'Restored archived staff member: Angel Loraine Reobilo (reobiloloraine@gmail.com)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 04:58:50'),
-(442, 1, 'SERVICE_DELETE', 'SERVICE', 11, '{\"name\":\"Enrollment of New Incoming Grade 11 Students\",\"office\":\"Admissions\"}', NULL, 'Deleted service \"Enrollment of New Incoming Grade 11 Students\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 05:00:43'),
-(443, 1, 'SERVICE_RESTORE', 'SERVICE', 11, '{\"name\":\"Enrollment of New Incoming Grade 11 Students\"}', NULL, 'Restored archived service: Enrollment of New Incoming Grade 11 Students', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 05:05:25'),
-(444, 1, 'STAFF_DELETE', 'USER', 5, '{\"full_name\":\"Angel Loraine Reobilo\",\"email\":\"reobiloloraine@gmail.com\",\"office\":\"Accounting\"}', NULL, 'Deleted staff member: Angel Loraine Reobilo (reobiloloraine@gmail.com)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 05:15:42'),
+(441, 1, 'STAFF_RESTORE', 'USER', 5, NULL, NULL, 'Restored archived staff member: Angel Loraine Reobilo ', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 04:58:50'),
+(442, 1, 'SERVICE_DELETE', 'SERVICE', 11, NULL, NULL, 'Deleted service \"Enrollment of New Incoming Grade 11 Students\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 05:00:43'),
+(443, 1, 'SERVICE_RESTORE', 'SERVICE', 11, NULL, NULL, 'Restored archived service: Enrollment of New Incoming Grade 11 Students', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 05:05:25'),
+(444, 1, 'STAFF_DELETE', 'USER', 5, NULL, NULL, 'Deleted staff member: Angel Loraine Reobilo', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 05:15:42'),
 (445, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 04:56:28'),
-(446, 1, 'STAFF_RESTORE', 'USER', 5, '{\"full_name\":\"Angel Loraine Reobilo\",\"email\":\"reobiloloraine@gmail.com\"}', NULL, 'Restored archived staff member: Angel Loraine Reobilo (reobiloloraine@gmail.com)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 04:56:33'),
-(447, 1, 'STAFF_DELETE', 'USER', 5, '{\"full_name\":\"Angel Loraine Reobilo\",\"email\":\"reobiloloraine@gmail.com\",\"office\":\"Accounting\"}', NULL, 'Deleted staff member: Angel Loraine Reobilo (reobiloloraine@gmail.com)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 04:56:39'),
-(448, 1, 'STAFF_RESTORE', 'USER', 5, '{\"full_name\":\"Angel Loraine Reobilo\",\"email\":\"reobiloloraine@gmail.com\"}', NULL, 'Restored archived staff member: Angel Loraine Reobilo (reobiloloraine@gmail.com)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 04:56:50'),
+(446, 1, 'STAFF_RESTORE', 'USER', 5, NULL, NULL, 'Restored archived staff member: Angel Loraine Reobilo', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 04:56:33'),
+(447, 1, 'STAFF_DELETE', 'USER', 5, NULL, NULL, 'Deleted staff member: Angel Loraine Reobilo', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 04:56:39'),
+(448, 1, 'STAFF_RESTORE', 'USER', 5, NULL, NULL, 'Restored archived staff member: Angel Loraine Reobilo ', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 04:56:50'),
 (449, 1, 'SERVICE_ADD', 'SERVICE', 21, NULL, '{\"name\":\"Sample Service\",\"category\":\"simple\",\"description\":\"\",\"office\":\"Admissions\",\"windows\":[2]}', 'Added new service \"Sample Service\" for Admissions', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 04:57:09'),
-(450, 1, 'SERVICE_DELETE', 'SERVICE', 21, '{\"name\":\"Sample Service\",\"office\":\"Admissions\"}', NULL, 'Deleted service \"Sample Service\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 04:57:34'),
-(451, 1, 'SERVICE_RESTORE', 'SERVICE', 21, '{\"name\":\"Sample Service\"}', NULL, 'Restored archived service: Sample Service', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 05:09:10'),
-(452, 1, 'SERVICE_DELETE', 'SERVICE', 21, '{\"name\":\"Sample Service\",\"office\":\"Admissions\"}', NULL, 'Deleted service \"Sample Service\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 05:09:18'),
-(453, 1, 'STAFF_DELETE', 'USER', 5, '{\"full_name\":\"Angel Loraine Reobilo\",\"email\":\"reobiloloraine@gmail.com\",\"office\":\"Accounting\"}', NULL, 'Deleted staff member: Angel Loraine Reobilo (reobiloloraine@gmail.com)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 05:11:45'),
-(454, 1, 'STAFF_RESTORE', 'USER', 5, '{\"full_name\":\"Angel Loraine Reobilo\",\"email\":\"reobiloloraine@gmail.com\"}', NULL, 'Restored archived staff member: Angel Loraine Reobilo (reobiloloraine@gmail.com)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 05:13:55'),
-(455, 1, 'STAFF_DELETE', 'USER', 5, '{\"full_name\":\"Angel Loraine Reobilo\",\"email\":\"reobiloloraine@gmail.com\",\"office\":\"Accounting\"}', NULL, 'Deleted staff member: Angel Loraine Reobilo (reobiloloraine@gmail.com)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 05:15:40'),
-(456, 1, 'STAFF_RESTORE', 'USER', 5, '{\"full_name\":\"Angel Loraine Reobilo\",\"email\":\"reobiloloraine@gmail.com\"}', NULL, 'Restored archived staff member: Angel Loraine Reobilo (reobiloloraine@gmail.com)', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 05:15:47'),
+(450, 1, 'SERVICE_DELETE', 'SERVICE', 21, NULL, NULL, 'Deleted service \"Sample Service\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 04:57:34'),
+(451, 1, 'SERVICE_RESTORE', 'SERVICE', 21, NULL, NULL, 'Restored archived service: Sample Service', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 05:09:10'),
+(452, 1, 'SERVICE_DELETE', 'SERVICE', 21, NULL, NULL, 'Deleted service \"Sample Service\"', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 05:09:18'),
+(453, 1, 'STAFF_DELETE', 'USER', 5, NULL, NULL, 'Deleted staff member: Angel Loraine Reobilo ', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 05:11:45'),
+(454, 1, 'STAFF_RESTORE', 'USER', 5, NULL, NULL, 'Restored archived staff member: Angel Loraine Reobilo ', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 05:13:55'),
+(455, 1, 'STAFF_DELETE', 'USER', 5, NULL, NULL, 'Deleted staff member: Angel Loraine Reobilo', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 05:15:40'),
+(456, 1, 'STAFF_RESTORE', 'USER', 5, NULL, NULL, 'Restored archived staff member: Angel Loraine Reobilo', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 05:15:47'),
 (457, 1, 'STAFF_ACTIVATE', 'USER', 5, '{\"is_active\":false}', '{\"is_active\":true}', 'Activated staff account: Angel Loraine Reobilo', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 05:16:39'),
 (458, 1, 'LOGOUT', 'user', 1, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 05:48:46'),
 (459, 5, 'LOGIN', 'user', 5, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 05:48:49'),
 (460, 5, 'LOGOUT', 'user', 5, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 05:48:53'),
-(461, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 05:48:56');
+(461, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 05:48:56'),
+(462, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 07:30:04'),
+(463, 1, 'LOGOUT', 'user', 1, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 07:32:57'),
+(464, 2, 'LOGIN', 'user', 2, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 07:33:02'),
+(465, 2, 'LOGOUT', 'user', 2, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 07:33:05'),
+(466, 5, 'LOGIN', 'user', 5, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 07:33:07'),
+(467, 5, 'LOGOUT', 'user', 5, NULL, NULL, 'User logged out', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 07:33:26'),
+(468, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 07:33:37'),
+(469, 1, 'STAFF_DELETE', 'USER', 5, NULL, NULL, 'Deleted staff member: Angel Loraine Reobilo', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 08:15:28'),
+(470, 1, 'STAFF_RESTORE', 'USER', 5, NULL, NULL, 'Restored staff: Angel Loraine Reobilo', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 08:15:31'),
+(471, 1, 'SERVICE_RESTORE', 'SERVICE', 21, NULL, NULL, 'Restored service: Sample Service', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 08:22:37'),
+(472, 1, 'LOGIN', 'user', 1, NULL, NULL, 'User logged in successfully', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-17 08:36:17');
 
 -- --------------------------------------------------------
 
@@ -564,10 +575,8 @@ INSERT INTO `permissions` (`id`, `key`, `label`, `group_name`) VALUES
 (11, 'view_reports_office', 'View Office Reports', 'Reports'),
 (12, 'add_staff', 'Add Staff', 'Staff'),
 (13, 'edit_staff', 'Edit Staff', 'Staff'),
-(14, 'delete_staff', 'Delete Staff', 'Staff'),
 (15, 'add_services', 'Add Services', 'Services'),
-(16, 'edit_services', 'Edit Services', 'Services'),
-(17, 'delete_services', 'Delete Services', 'Services');
+(16, 'edit_services', 'Edit Services', 'Services');
 
 -- --------------------------------------------------------
 
@@ -771,7 +780,7 @@ INSERT INTO `transaction_types` (`id`, `name`, `category`, `description`, `is_ac
 (18, 'Transfer Credentials', 'regular', 'Processing documents for students transferring out.', 1, 0, 1, '2026-04-25 01:42:43', NULL),
 (19, 'Exit Clearance', 'regular', 'Completion of final clearance requirements.', 1, 0, 1, '2026-04-25 01:42:54', NULL),
 (20, 'Enrollment Concerns', 'simple', 'Assistance with minor enrollment issues.', 1, 0, 1, '2026-04-25 01:43:04', NULL),
-(21, 'Sample Service', 'simple', '', 0, 1, 3, '2026-05-17 04:57:08', '2026-05-17 13:09:18');
+(21, 'Sample Service', 'simple', '', 0, 0, 3, '2026-05-17 04:57:08', '2026-05-17 13:09:18');
 
 -- --------------------------------------------------------
 
@@ -808,7 +817,7 @@ INSERT INTO `users` (`id`, `full_name`, `email`, `password`, `role`, `role_id`, 
 (2, 'Liezel Mae Torres', 'liezelmaetorres@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$YXhxRll3ZmdaTm5DVDA4Yg$VJFkcE3j0F94U7yijmPOZlZy40u1Rk+ykwO7wjDhyHQ', 'staff', 2, 2, 1, '2026-03-25 05:35:57', 1, NULL, NULL, NULL, 1, 0, 0, NULL),
 (3, 'Liz Margaret Santiago', 'santiagolizmargaret4@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$eHlxUGk5M2k1bHNuSVduQg$C5b+IZ3QeQWzwS/aEsxR99HUSkD2VGxzYgDzOGjqZ14', 'staff', 2, 3, 1, '2026-04-20 01:15:54', 1, NULL, NULL, NULL, 1, 0, 0, NULL),
 (4, 'Iris Remorosa', 'irisremorosa@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$MEdPcUIuNUU5VGtWdHdZWQ$cvMgQFjhW2ibPedFPl91ye66BsSgXIbouMkzIkDK0/4', 'staff', 2, 1, 1, '2026-04-20 01:16:16', 1, NULL, NULL, NULL, 1, 0, 1, NULL),
-(5, 'Angel Loraine Reobilo', 'reobiloloraine@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$N25HMHVBQjlMNUVMQXFhbQ$VgCRXHrEM9GxDwa0hapRyuaJrR8/4FlkRsKPpZeQS0o', 'supervisor', 3, 2, NULL, '2026-05-02 02:40:15', 1, NULL, NULL, NULL, 1, 0, 0, '2026-05-17 13:15:40'),
+(5, 'Angel Loraine Reobilo', 'reobiloloraine@gmail.com', '$argon2i$v=19$m=65536,t=4,p=1$N25HMHVBQjlMNUVMQXFhbQ$VgCRXHrEM9GxDwa0hapRyuaJrR8/4FlkRsKPpZeQS0o', 'supervisor', 3, 2, NULL, '2026-05-02 02:40:15', 0, NULL, NULL, NULL, 1, 0, 0, '2026-05-17 16:15:28'),
 (6, 'Lizelda Marie', 'ltorres6129ant@student.fatima.edu.ph', '$argon2i$v=19$m=65536,t=4,p=1$cVMzTGZwNUtCWkpGVnk5aA$fRrrf9g2yFFUhwjCsshL0c/j1iVtV9BPMzFWmgdZ/yY', 'Supervisor', 3, 3, NULL, '2026-05-03 03:41:15', 1, NULL, NULL, NULL, 1, 0, 0, NULL);
 
 --
@@ -909,7 +918,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `activity_logs`
 --
 ALTER TABLE `activity_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=462;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=473;
 
 --
 -- AUTO_INCREMENT for table `kiosk_settings`

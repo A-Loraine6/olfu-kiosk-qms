@@ -69,9 +69,7 @@ function restoreStaff(mysqli $conn, int $id): array
         'STAFF_RESTORE',
         'USER',
         $id,
-        "Restored archived staff member: {$staff['full_name']} ({$staff['email']})",
-        ['full_name' => $staff['full_name'], 'email' => $staff['email']],
-        null
+        "Restored staff: {$staff['full_name']}"
     );
 
     return ['success' => true, 'message' => 'Staff member restored successfully.'];
@@ -105,9 +103,7 @@ function restoreService(mysqli $conn, int $id): array
         'SERVICE_RESTORE',
         'SERVICE',
         $id,
-        "Restored archived service: {$service['name']}",
-        ['name' => $service['name']],
-        null
+        "Restored service: {$service['name']}"
     );
 
     return ['success' => true, 'message' => 'Service restored successfully.'];

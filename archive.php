@@ -12,8 +12,9 @@ if (!isLoggedIn()) {
 $currentUser = getCurrentUser();
 $csrf_token  = getCsrfToken();
 
-$canDeleteStaff = hasPermission('delete_staff');
-$canDeleteService = hasPermission('delete_service');
+$isAdmin = ($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin';
+$canDeleteStaff = $isAdmin;
+$canDeleteService = $isAdmin;
 
 if (!($canDeleteStaff || $canDeleteService)) {
     header('Location: ' . BASE_URL . 'dashboard.php');

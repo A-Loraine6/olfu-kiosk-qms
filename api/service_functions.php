@@ -327,9 +327,7 @@ function deleteService(mysqli $conn, int $serviceId): array
         'SERVICE_DELETE',
         'SERVICE',
         $serviceId,
-        "Deleted service \"{$service['name']}\"",
-        ['name' => $service['name'], 'office' => $service['office_name']],
-        null
+        "Deleted service: {$service['name']}"
     );
 
     return serviceResponse(true, "Service \"{$service['name']}\" has been deleted.");

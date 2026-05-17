@@ -23,7 +23,8 @@ if (!verifyCsrfToken($csrf)) {
 }
 
 $canEdit   = hasPermission('edit_staff');
-$canDelete = hasPermission('delete_staff');
+$isAdmin   = ($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin';
+$canDelete = $isAdmin;
 $canToggle = hasPermission('toggle_staff');
 $canManage = $canEdit || $canDelete || $canToggle;
 $canView   = $canManage || hasPermission('view_staff');
@@ -38,9 +39,13 @@ $actionPermMap = [
     'edit_staff'     => 'edit_staff',
     'reset_password' => 'edit_staff',
     'toggle_staff'   => 'toggle_staff',
-    'delete_staff'   => 'delete_staff',
+    'delete_staff'   => 'admin',
 ];
-if (isset($actionPermMap[$action]) && !hasPermission($actionPermMap[$action])) {
+if (isset($actionPermMap[$action]) && $actionPermMap[$action] !== 'admin' && !hasPermission($actionPermMap[$action])) {
+    echo json_encode(['success' => false, 'message' => 'You do not have permission to perform this action.']);
+    exit;
+}
+if (isset($actionPermMap[$action]) && $actionPermMap[$action] === 'admin' && !$isAdmin) {
     echo json_encode(['success' => false, 'message' => 'You do not have permission to perform this action.']);
     exit;
 }
@@ -234,7 +239,8 @@ function renderStaffRows(array $staff, bool $canManage = false): void
             </td>
             <?php
             $canEdit   = hasPermission('edit_staff');
-            $canDelete = hasPermission('delete_staff');
+            $isAdminRole = ($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin';
+            $canDelete = $isAdminRole;
             $canToggle = hasPermission('toggle_staff');
             if ($canEdit || $canDelete || $canToggle): ?>
                 <td>
