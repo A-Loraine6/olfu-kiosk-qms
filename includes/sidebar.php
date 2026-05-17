@@ -98,6 +98,15 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </li>
             <?php endif; ?>
 
+            <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
+                <li>
+                    <a href="archive.php" class="<?php echo $currentPage === 'archive.php' ? 'active' : ''; ?>">
+                        <i class="fas fa-archive"></i>
+                        <span>Archive</span>
+                    </a>
+                </li>
+            <?php endif; ?>
+
             <li>
                 <a href="profile.php" class="<?php echo $currentPage === 'profile.php' ? 'active' : ''; ?>">
                     <i class="fas fa-user-circle"></i>

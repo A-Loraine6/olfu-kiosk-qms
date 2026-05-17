@@ -264,7 +264,7 @@ function deleteStaff($db, int $id): array
     $staff = getStaffById($db, $id);
     if (!$staff) return ['success' => false, 'message' => 'Staff member not found.'];
 
-    $updateStmt = $db->prepare("UPDATE users SET is_deleted = 1 WHERE id = ?");
+    $updateStmt = $db->prepare("UPDATE users SET is_deleted = 1, deleted_at = NOW() WHERE id = ?");
     if (!$updateStmt) return ['success' => false, 'message' => 'Database error occurred.'];
 
     $updateStmt->bind_param('i', $id);

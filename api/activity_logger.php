@@ -261,6 +261,10 @@ function formatActivityLog(array $log): array
 
         'PASSWORD_CHANGE'          => 'Password Changed',
         'PROFILE_UPDATE'           => 'Profile Updated',
+
+        'STAFF_RESTORE'            => 'Restore Staff',
+        'SERVICE_RESTORE'          => 'Restore Service',
+        
     ];
 
     return [
