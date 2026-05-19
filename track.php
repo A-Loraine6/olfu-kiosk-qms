@@ -982,8 +982,17 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
                 }, 50);
             }
 
+            let swRegistration = null;
 
             window.addEventListener('DOMContentLoaded', () => {
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('sw.js')
+                        .then(reg => {
+                            swRegistration = reg;
+                        })
+                        .catch(e => console.warn('SW registration failed:', e));
+                }
+
                 initNotifCard();
                 initControls();
                 poll();
@@ -998,14 +1007,27 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
                 const onFirstInteraction = () => {
                     if (userHasInteracted) return;
                     userHasInteracted = true;
-                    ensureAudio();
-                    if (audioContext && audioContext.state === 'suspended') {
-                        audioContext.resume();
-                    }
+
+                    try {
+                        if (!audioContext) {
+                            audioContext = new(window.AudioContext || window.webkitAudioContext)();
+                        }
+                        if (audioContext.state === 'suspended') {
+                            audioContext.resume();
+                        }
+                        const osc = audioContext.createOscillator();
+                        const gain = audioContext.createGain();
+                        osc.connect(gain);
+                        gain.connect(audioContext.destination);
+                        gain.gain.setValueAtTime(0.001, audioContext.currentTime); // nearly silent
+                        osc.start(audioContext.currentTime);
+                        osc.stop(audioContext.currentTime + 0.1);
+                    } catch (e) {}
+
                     if (pendingSound) {
                         const s = pendingSound;
                         pendingSound = null;
-                        playNotificationSound(s);
+                        setTimeout(() => playNotificationSound(s), 200);
                     }
                 };
 
@@ -1181,8 +1203,7 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
             function renderStatusPill(status, peopleAhead) {
                 const pill = document.getElementById('statusPill');
                 const map = {
-                    waiting: peopleAhead === 0 ? ['pill-serving', 'You\'re next!', '🎯'] :
-                        ['pill-waiting', 'Waiting', '📍'],
+                    waiting: peopleAhead === 0 ? ['pill-serving', 'You\'re next!', '🎯'] : ['pill-waiting', 'Waiting', '📍'],
                     serving: ['pill-serving', 'Now serving you', '🎯'],
                     completed: ['pill-completed', 'Completed', '✅'],
                     skipped: ['pill-skipped', 'Skipped', '⏭️'],
@@ -1299,7 +1320,10 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
 
             function initNotifCard() {
                 if (!('Notification' in window)) return;
-                if (Notification.permission === 'granted') return;
+                if (Notification.permission === 'granted') {
+                    document.getElementById('notifCard').style.display = 'none';
+                    return;
+                }
                 if (Notification.permission === 'denied') return;
                 document.getElementById('notifCard').style.display = 'flex';
             }
@@ -1313,7 +1337,14 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
                     notifPermission = perm;
                     if (perm === 'granted') {
                         document.getElementById('notifCard').style.display = 'none';
+                        if ('serviceWorker' in navigator && !swRegistration) {
+                            navigator.serviceWorker.register('sw.js')
+                                .then(reg => {
+                                    swRegistration = reg;
+                                });
+                        }
                     } else {
+                        btn.disabled = false;
                         btn.textContent = 'Blocked';
                     }
                 });
@@ -1335,21 +1366,31 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
 
             function sendNotification(title, body) {
                 if (Notification.permission !== 'granted') return;
-                try {
-                    const n = new Notification(title, {
+
+                if (swRegistration) {
+                    swRegistration.showNotification(title, {
                         body,
                         icon: 'img/olfu-logo.png',
                         badge: 'img/olfu-logo.png',
                         tag: 'queue-tracker',
                         renotify: true,
+                        vibrate: [200, 100, 200],
+                    }).catch(e => console.warn('SW notification failed:', e));
+                    return;
+                }
+
+                try {
+                    const n = new Notification(title, {
+                        body,
+                        icon: 'img/olfu-logo.png',
+                        tag: 'queue-tracker',
+                        renotify: true
                     });
                     n.onclick = () => {
                         window.focus();
                         n.close();
                     };
-                } catch (e) {
-
-                }
+                } catch (e) {}
             }
         </script>
 
