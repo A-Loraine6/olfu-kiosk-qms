@@ -986,7 +986,7 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
 
             window.addEventListener('DOMContentLoaded', () => {
                 if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.register('sw.js')
+                    navigator.serviceWorker.register('/scripts/sw.js')
                         .then(reg => {
                             swRegistration = reg;
                         })
