@@ -38,18 +38,19 @@ class TicketGenerator
         }
 
         try {
-            $ticketNumber = $this->generateTicketNumber($office);
-            $today        = date('Y-m-d');
-            $waitingCount = $this->countWaiting($office_id, $today);
-            $peopleAhead  = $waitingCount;
+            $ticketNumber   = $this->generateTicketNumber($office);
+            $trackingToken  = $this->generateTrackingToken();
+            $today          = date('Y-m-d');
+            $waitingCount   = $this->countWaiting($office_id, $today);
+            $peopleAhead    = $waitingCount;
 
             $insert = $this->db->prepare("
                 INSERT INTO tickets
-                    (office_id, transaction_type, ticket_number, window_id, status, created_at)
+                    (office_id, transaction_type, ticket_number, tracking_token, window_id, status, created_at)
                 VALUES
-                    (?, ?, ?, ?, 'waiting', NOW())
+                    (?, ?, ?, ?, ?, 'waiting', NOW())
             ");
-            $insert->bind_param('issi', $office_id, $transaction_type, $ticketNumber, $window_id);
+            $insert->bind_param('isssi', $office_id, $transaction_type, $ticketNumber, $trackingToken, $window_id);
 
             if (!$insert->execute()) {
                 throw new RuntimeException('Failed to insert ticket: ' . $insert->error);
@@ -63,11 +64,12 @@ class TicketGenerator
         }
 
         return [
-            'success'       => true,
-            'ticket_number' => $ticketNumber,
-            'people_ahead'  => $peopleAhead,
-            'waiting_count' => $waitingCount + 1,
-            'window_id'     => $window_id
+            'success'        => true,
+            'ticket_number'  => $ticketNumber,
+            'tracking_token' => $trackingToken,
+            'people_ahead'   => $peopleAhead,
+            'waiting_count'  => $waitingCount + 1,
+            'window_id'      => $window_id
         ];
     }
 
@@ -78,6 +80,12 @@ class TicketGenerator
             return false;
         }
         return $this->generateTicketNumber($office);
+    }
+
+
+    private function generateTrackingToken(): string
+    {
+        return bin2hex(random_bytes(32)); 
     }
 
     private function fetchOffice(int $office_id): array|false
@@ -128,7 +136,7 @@ class TicketGenerator
         $stmt->bind_param('ii', $service_id, $office_id);
         $stmt->execute();
         $result = $stmt->get_result();
-        $rows = $result->fetch_all(MYSQLI_ASSOC);
+        $rows   = $result->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
         if (count($rows) === 1) {
@@ -137,7 +145,7 @@ class TicketGenerator
 
         return null;
     }
-    
+
     private function generateTicketNumber(array $office): string
     {
         $prefix = $office['queue_prefix'] ?: strtoupper(substr($office['code'], 0, 3));

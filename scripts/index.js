@@ -410,13 +410,14 @@ function showTicket(data) {
     mins === 0 ? "Now" : `~${mins}m`;
 
   document.getElementById("qrCode").innerHTML = "";
+  const trackUrl =
+    window.location.origin +
+    window.location.pathname.replace(/\/[^/]*$/, "/") +
+    "track.php?token=" +
+    encodeURIComponent(data.tracking_token);
+
   new QRCode(document.getElementById("qrCode"), {
-    text: JSON.stringify({
-      ticket: data.ticket_number,
-      office: o.name,
-      service: s ? s.name : "",
-      issued: new Date().toISOString(),
-    }),
+    text: trackUrl,
     width: 160,
     height: 160,
     colorDark: "#006633",
