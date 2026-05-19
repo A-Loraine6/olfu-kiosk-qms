@@ -1281,6 +1281,51 @@ body {
   animation-delay: 0.32s;
 }
 
+.mobile-block {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--green-900);
+  z-index: 9999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px;
+  font-family: var(--font);
+}
+
+.mobile-block i {
+  font-size: 48px;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 24px;
+}
+
+.mobile-block h2 {
+  font-size: 24px;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 12px;
+}
+
+.mobile-block p {
+  font-size: 15px;
+  color: rgba(255,255,255,0.55);
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .mobile-block {
+    display: flex;
+  }
+
+  .topbar,
+  .screens,
+  .idle {
+    display: none !important;
+  }
+}
+
 @media (max-width: 600px) {
   .idle-clock-wrap {
     padding: 12px 28px 10px;

@@ -82,6 +82,12 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
 
 <body>
 
+    <div class="mobile-block">
+        <i class="fas fa-desktop"></i>
+        <h2>Kiosk Only</h2>
+        <p>This queue system is only available on the kiosk terminal.<br>Please visit the office to get your queue number.</p>
+    </div>
+
     <div class="idle" id="idleOverlay" onclick="dismissIdle()">
 
         <div class="idle-content">
