@@ -128,7 +128,7 @@ if ($action === 'get_queue') {
     $params = array_merge([$officeId, $today], $statuses);
 
     $windowClause = '';
-    $queueModeForFilter = getOfficeQueueMode($db, $officeId); // already called above as $queueMode
+    $queueModeForFilter = getOfficeQueueMode($db, $officeId);
     if ($queueMode !== 'unified' && !$overflowMode && $windowNumber > 0 && in_array($tab, ['waiting', 'on-hold', 'skipped'])) {
         $windowClause = " AND EXISTS (
             SELECT 1 FROM service_windows sw
@@ -430,8 +430,13 @@ if ($action === 'resume_ticket') {
     }
 
     $now  = date(DATETIME_FORMAT);
-    $stmt = $db->prepare("UPDATE tickets SET status='serving', served_at=?, served_by=? WHERE id=?");
-    $stmt->bind_param('sii', $now, $staffId, $ticketId);
+    $stmt = $db->prepare("
+        UPDATE tickets 
+        SET status='serving',
+            served_by=?
+        WHERE id=?
+    ");
+    $stmt->bind_param('ii', $staffId, $ticketId);
     $stmt->execute();
 
     $ticket['status']    = 'serving';
