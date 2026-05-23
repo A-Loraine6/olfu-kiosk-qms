@@ -1,3 +1,5 @@
+/* track.js — OLFU QMS Tracker with app-shell tabs + campus map */
+
 let lastPeopleAhead = null;
 let notifiedNearTurn = false;
 let notifPermission = Notification.permission;
@@ -7,12 +9,38 @@ let secondsTillRefresh = 8;
 const _soundPref = localStorage.getItem("qms_sound_enabled");
 let soundEnabled = _soundPref === null ? true : _soundPref === "true";
 let isOffline = false;
-let totalQueueSize = 0;
 
 let audioContext = null;
 let pendingSound = null;
 let userHasInteracted = false;
+let swRegistration = null;
 
+let currentTab = "ticket";
+
+/* ── Tab switching ── */
+function switchTab(tab) {
+  currentTab = tab;
+  document
+    .querySelectorAll(".tab-pane")
+    .forEach((el) => el.classList.remove("active"));
+  document
+    .querySelectorAll(".nav-item")
+    .forEach((el) => el.classList.remove("active"));
+
+  document.getElementById("tab-" + tab).classList.add("active");
+  document.getElementById("nav-" + tab).classList.add("active");
+
+  if (tab === "map") {
+    // Init map on first visit to map tab
+    if (window.CampusMap) window.CampusMap.init();
+    // Force Leaflet to recalculate size after display change
+    setTimeout(() => {
+      if (window._leafletMap) window._leafletMap.invalidateSize();
+    }, 50);
+  }
+}
+
+/* ── Audio ── */
 function ensureAudio() {
   if (!audioContext) {
     try {
@@ -25,18 +53,16 @@ function ensureAudio() {
 }
 
 function playNotificationSound(type = "alert") {
-  if (!soundEnabled) return;
-  if (!userHasInteracted) {
-    pendingSound = type;
+  if (!soundEnabled || !userHasInteracted) {
+    if (!userHasInteracted) pendingSound = type;
     return;
   }
   if (!ensureAudio()) return;
-
   const play = () => {
     try {
       if (type === "alert") {
-        const osc = audioContext.createOscillator();
-        const gain = audioContext.createGain();
+        const osc = audioContext.createOscillator(),
+          gain = audioContext.createGain();
         osc.connect(gain);
         gain.connect(audioContext.destination);
         osc.type = "sine";
@@ -50,8 +76,8 @@ function playNotificationSound(type = "alert") {
         osc.stop(audioContext.currentTime + 0.8);
       } else if (type === "turn") {
         [0, 0.35, 0.7].forEach((offset) => {
-          const osc = audioContext.createOscillator();
-          const gain = audioContext.createGain();
+          const osc = audioContext.createOscillator(),
+            gain = audioContext.createGain();
           osc.connect(gain);
           gain.connect(audioContext.destination);
           osc.type = "sine";
@@ -66,8 +92,8 @@ function playNotificationSound(type = "alert") {
         });
       } else if (type === "complete") {
         [523, 659, 784].forEach((freq, i) => {
-          const osc = audioContext.createOscillator();
-          const gain = audioContext.createGain();
+          const osc = audioContext.createOscillator(),
+            gain = audioContext.createGain();
           osc.connect(gain);
           gain.connect(audioContext.destination);
           osc.type = "sine";
@@ -85,44 +111,41 @@ function playNotificationSound(type = "alert") {
         });
       }
     } catch (e) {
-      console.warn("Audio playback failed:", e);
+      console.warn("Audio error:", e);
     }
   };
-
-  if (audioContext.state === "suspended") {
-    audioContext.resume().then(play);
-  } else {
-    play();
-  }
+  if (audioContext.state === "suspended") audioContext.resume().then(play);
+  else play();
 }
 
 function triggerHaptic(pattern = "medium") {
   if (!navigator.vibrate || !userHasInteracted) return;
-  const patterns = {
+  const p = {
     light: [10],
     medium: [30],
     strong: [50],
     alert: [20, 10, 20],
     celebration: [20, 10, 20, 10, 30],
   };
-  navigator.vibrate(patterns[pattern] || patterns.medium);
+  navigator.vibrate(p[pattern] || p.medium);
 }
 
+/* ── Connectivity ── */
 window.addEventListener("online", () => {
   isOffline = false;
   document.getElementById("retryCard").style.display = "none";
   poll();
 });
-
 window.addEventListener("offline", () => {
   isOffline = true;
   document.getElementById("retryCard").style.display = "flex";
 });
 
+/* ── Confetti ── */
 function createConfetti() {
   const icon = document.getElementById("doneIcon");
   icon.style.transform = "scale(0)";
-  icon.style.transition = "transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)";
+  icon.style.transition = "transform .5s cubic-bezier(.34,1.56,.64,1)";
   setTimeout(() => {
     icon.style.transform = "scale(1)";
   }, 50);
@@ -145,24 +168,19 @@ function createConfetti() {
   document.body.appendChild(canvas);
   const ctx = canvas.getContext("2d");
 
-  const pieces = Array.from(
-    {
-      length: 120,
-    },
-    () => ({
-      x: Math.random() * canvas.width,
-      y: -20 - Math.random() * 200,
-      w: 8 + Math.random() * 6,
-      h: 16 + Math.random() * 10,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      vx: (Math.random() - 0.5) * 4,
-      vy: 3 + Math.random() * 4,
-      rot: Math.random() * Math.PI * 2,
-      rotV: (Math.random() - 0.5) * 0.15,
-      wobble: Math.random() * Math.PI * 2,
-      wobbleV: 0.05 + Math.random() * 0.05,
-    }),
-  );
+  const pieces = Array.from({ length: 120 }, () => ({
+    x: Math.random() * canvas.width,
+    y: -20 - Math.random() * 200,
+    w: 8 + Math.random() * 6,
+    h: 16 + Math.random() * 10,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    vx: (Math.random() - 0.5) * 4,
+    vy: 3 + Math.random() * 4,
+    rot: Math.random() * Math.PI * 2,
+    rotV: (Math.random() - 0.5) * 0.15,
+    wobble: Math.random() * Math.PI * 2,
+    wobbleV: 0.05 + Math.random() * 0.05,
+  }));
 
   let frame;
   const animate = () => {
@@ -175,9 +193,7 @@ function createConfetti() {
       p.rot += p.rotV;
       p.wobble += p.wobbleV;
       p.vx += Math.sin(p.wobble) * 0.05;
-
       if (p.y < canvas.height + 20) alive = true;
-
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(p.rot);
@@ -185,14 +201,9 @@ function createConfetti() {
       ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
       ctx.restore();
     });
-
-    if (alive) {
-      frame = requestAnimationFrame(animate);
-    } else {
-      canvas.remove();
-    }
+    if (alive) frame = requestAnimationFrame(animate);
+    else canvas.remove();
   };
-
   animate();
   setTimeout(() => {
     cancelAnimationFrame(frame);
@@ -200,22 +211,22 @@ function createConfetti() {
   }, 4000);
 }
 
-let swRegistration = null;
-
+/* ── Init ── */
 window.addEventListener("DOMContentLoaded", () => {
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker
-      .register("/scripts/sw.js")
+      .register("scripts/sw.js")
       .then((reg) => {
         swRegistration = reg;
       })
-      .catch((e) => console.warn("SW registration failed:", e));
+      .catch((e) => console.warn("SW failed:", e));
   }
 
   initNotifCard();
   initControls();
   poll();
   startPollTimer();
+
   if (!navigator.onLine) {
     isOffline = true;
     document.getElementById("retryCard").style.display = "flex";
@@ -226,42 +237,35 @@ function initControls() {
   const onFirstInteraction = () => {
     if (userHasInteracted) return;
     userHasInteracted = true;
-
     try {
-      if (!audioContext) {
+      if (!audioContext)
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (audioContext.state === "suspended") {
-        audioContext.resume();
-      }
-      const osc = audioContext.createOscillator();
-      const gain = audioContext.createGain();
+      if (audioContext.state === "suspended") audioContext.resume();
+      const osc = audioContext.createOscillator(),
+        gain = audioContext.createGain();
       osc.connect(gain);
       gain.connect(audioContext.destination);
       gain.gain.setValueAtTime(0.001, audioContext.currentTime);
       osc.start(audioContext.currentTime);
       osc.stop(audioContext.currentTime + 0.1);
     } catch (e) {}
-
     if (pendingSound) {
       const s = pendingSound;
       pendingSound = null;
       setTimeout(() => playNotificationSound(s), 200);
     }
   };
-
   document.addEventListener("click", onFirstInteraction);
   document.addEventListener("touchstart", onFirstInteraction);
 
+  // Pull-to-refresh
   let touchStartY = 0;
   document.addEventListener("touchstart", (e) => {
     touchStartY = e.touches[0].clientY;
   });
   document.addEventListener("touchend", (e) => {
-    const touchEndY = e.changedTouches[0].clientY;
-    if (touchStartY < touchEndY && window.scrollY === 0) {
+    if (e.changedTouches[0].clientY > touchStartY && window.scrollY === 0)
       manualRetry();
-    }
   });
 }
 
@@ -269,11 +273,9 @@ function manualRetry() {
   const btn = document.getElementById("manualRetryBtn");
   btn.disabled = true;
   btn.textContent = "Retrying…";
-
   poll().finally(() => {
     btn.disabled = false;
-    btn.innerHTML =
-      '<i class="fas fa-redo" style="margin-right:4px"></i>Retry now';
+    btn.innerHTML = '<i class="fas fa-redo"></i> Retry';
   });
 }
 
@@ -304,18 +306,17 @@ function updateRefreshHint() {
   }
 }
 
+/* ── Poll API ── */
 function poll() {
   return fetch(API_URL)
     .then((r) => r.json())
     .then((data) => {
       document.getElementById("loadingState").style.display = "none";
       document.getElementById("mainState").style.display = "block";
-
       if (!data.success) {
         showError(data.message || "Could not load queue info.");
         return;
       }
-
       render(data);
     })
     .catch(() => {
@@ -323,11 +324,12 @@ function poll() {
         isOffline = true;
         document.getElementById("retryCard").style.display = "flex";
       }
-      document.getElementById("refreshText").textContent =
-        "Connection error — retrying…";
+      const t = document.getElementById("refreshText");
+      if (t) t.textContent = "Connection error — retrying…";
     });
 }
 
+/* ── Render ── */
 function render(data) {
   const {
     ticket_number,
@@ -338,13 +340,8 @@ function render(data) {
     now_serving,
     est_wait_mins,
     expired,
-    total_in_queue,
-    counter_window,
-    service_hours,
-    location_info,
+    building_hint, // optional field: building id hint from API
   } = data;
-
-  totalQueueSize = total_in_queue || people_ahead + 1;
 
   document.getElementById("officeName").textContent = office_name;
   document.getElementById("serviceName").textContent = service_name;
@@ -367,6 +364,10 @@ function render(data) {
   if (status === "completed" || status === "skipped")
     numEl.classList.add("done-num");
 
+  // Tell the map which building to highlight
+  if (window.CampusMap)
+    window.CampusMap.setDestination(office_name, building_hint || "");
+
   if (expired || status === "completed" || status === "skipped") {
     renderDone(status);
     clearInterval(pollInterval);
@@ -381,23 +382,18 @@ function render(data) {
   document.getElementById("ticketCard").style.display = "block";
 
   const statRow = document.getElementById("statRow");
-
   if (status === "serving") {
     statRow.style.display = "none";
   } else {
     statRow.style.display = "flex";
-
     const aheadEl = document.getElementById("peopleAhead");
     aheadEl.textContent = people_ahead === 0 ? "You're next!" : people_ahead;
     aheadEl.setAttribute(
       "aria-label",
-      people_ahead === 0
-        ? "You are next in queue"
-        : `${people_ahead} people ahead of you`,
+      people_ahead === 0 ? "You are next" : `${people_ahead} people ahead`,
     );
-
-    const waitEl = document.getElementById("estWait");
-    waitEl.textContent = est_wait_mins === 0 ? "Now" : `~${est_wait_mins}m`;
+    document.getElementById("estWait").textContent =
+      est_wait_mins === 0 ? "Now" : `~${est_wait_mins}m`;
   }
 
   const nsBanner = document.getElementById("nowServingBanner");
@@ -408,8 +404,6 @@ function render(data) {
     nsBanner.style.display = "none";
   }
 
-  renderServiceInfo(counter_window, service_hours, location_info);
-
   renderAlerts(status, people_ahead);
 
   if (lastStatus !== null && lastStatus !== "serving" && status === "serving") {
@@ -418,7 +412,6 @@ function render(data) {
       `${ticket_number} — please proceed to the window now.`,
     );
   }
-
   checkNearTurnNotification(people_ahead);
 
   lastPeopleAhead = people_ahead;
@@ -430,84 +423,38 @@ function renderStatusPill(status, peopleAhead) {
   const map = {
     waiting:
       peopleAhead === 0
-        ? ["pill-serving", "You're next!", "🎯"]
-        : ["pill-waiting", "Waiting", "📍"],
-    serving: ["pill-serving", "Now serving you", "🎯"],
-    completed: ["pill-completed", "Completed", "✅"],
-    skipped: ["pill-skipped", "Skipped", "⏭️"],
-    "on-hold": ["pill-onhold", "On hold", "⏸️"],
+        ? ["pill-serving", "You're next!"]
+        : ["pill-waiting", "Waiting"],
+    serving: ["pill-serving", "Now serving you"],
+    completed: ["pill-completed", "Completed"],
+    skipped: ["pill-skipped", "Skipped"],
+    "on-hold": ["pill-onhold", "On hold"],
   };
   const [cls, label] = map[status] || ["pill-waiting", status];
   pill.innerHTML = `<span class="status-pill ${cls}"><span class="pill-dot"></span>${label}</span>`;
 }
 
-function renderServiceInfo(counterWindow, serviceHours, locationInfo) {
-  const serviceInfoDiv = document.getElementById("serviceInfo");
-
-  if (!counterWindow && !serviceHours && !locationInfo) {
-    serviceInfoDiv.style.display = "none";
-    return;
-  }
-
-  serviceInfoDiv.style.display = "block";
-
-  const hoursRow = document.getElementById("serviceHours");
-  if (serviceHours) {
-    hoursRow.style.display = "flex";
-    document.getElementById("hoursValue").textContent = serviceHours;
-  } else {
-    hoursRow.style.display = "none";
-  }
-
-  const counterRow = document.getElementById("counterInfo");
-  if (counterWindow) {
-    counterRow.style.display = "flex";
-    document.getElementById("counterValue").textContent = counterWindow;
-  } else {
-    counterRow.style.display = "none";
-  }
-
-  const dirRow = document.getElementById("directionsInfo");
-  if (locationInfo) {
-    dirRow.style.display = "flex";
-    const link = document.getElementById("directionsLink");
-    link.href = `https://maps.google.com/?q=${encodeURIComponent(locationInfo)}`;
-    link.textContent = "Get directions";
-  } else {
-    dirRow.style.display = "none";
-  }
-}
-
 function renderAlerts(status, peopleAhead) {
   const area = document.getElementById("alertArea");
   area.innerHTML = "";
-
   if (status === "serving") {
-    area.innerHTML = `
-                    <div class="alert-strip alert-warn serving-alert">
-                        <i class="fas fa-circle-exclamation"></i>
-                        <span>It's your turn! Please proceed to the window now.</span>
-                    </div>`;
+    area.innerHTML = `<div class="alert-strip alert-warn serving-alert">
+      <i class="fas fa-circle-exclamation"></i>
+      <span>It's your turn! Please proceed to the window now.</span></div>`;
     triggerHaptic("strong");
     if (lastStatus !== "serving") playNotificationSound("turn");
     return;
   }
-
   if (status === "on-hold") {
-    area.innerHTML = `
-                    <div class="alert-strip alert-info">
-                        <i class="fas fa-pause-circle"></i>
-                        <span>Your ticket is on hold. Please wait for further updates.</span>
-                    </div>`;
+    area.innerHTML = `<div class="alert-strip alert-info">
+      <i class="fas fa-pause-circle"></i>
+      <span>Your ticket is on hold. Please wait for further updates.</span></div>`;
     return;
   }
-
   if (peopleAhead <= 5 && peopleAhead > 0) {
-    area.innerHTML = `
-                    <div class="alert-strip alert-info">
-                        <i class="fas fa-bell"></i>
-                        <span><strong>${peopleAhead} ${peopleAhead === 1 ? "person" : "people"} ahead</strong> — head to the office now.</span>
-                    </div>`;
+    area.innerHTML = `<div class="alert-strip alert-info">
+      <i class="fas fa-bell"></i>
+      <span><strong>${peopleAhead} ${peopleAhead === 1 ? "person" : "people"} ahead</strong> — head to the office now.</span></div>`;
     if (lastPeopleAhead === null || peopleAhead < lastPeopleAhead) {
       triggerHaptic("alert");
       playNotificationSound("alert");
@@ -517,15 +464,12 @@ function renderAlerts(status, peopleAhead) {
 
 function renderDone(status) {
   document.getElementById("ticketCard").style.display = "none";
-  document.getElementById("doneState").style.display = "block";
-  document.getElementById("doneState").classList.add("completion");
+  const doneEl = document.getElementById("doneState");
+  doneEl.style.display = "block";
+  doneEl.classList.add("completion");
   document.getElementById("alertArea").innerHTML = "";
-
   const title = document.getElementById("doneTitle");
   const sub = document.getElementById("doneSub");
-  const icon = document.getElementById("doneIcon");
-  icon.classList.add("celebration");
-
   if (status === "completed") {
     title.textContent = "Transaction complete!";
     sub.innerHTML =
@@ -542,12 +486,11 @@ function renderDone(status) {
 
 function showError(msg) {
   document.getElementById("ticketCard").style.display = "none";
-  document.getElementById("alertArea").innerHTML = `
-        <div class="alert-strip alert-warn">
-            <i class="fas fa-triangle-exclamation"></i> ${msg}
-        </div>`;
+  document.getElementById("alertArea").innerHTML =
+    `<div class="alert-strip alert-warn"><i class="fas fa-triangle-exclamation"></i> ${msg}</div>`;
 }
 
+/* ── Notifications ── */
 function initNotifCard() {
   if (!("Notification" in window)) return;
   if (Notification.permission === "granted") {
@@ -567,11 +510,6 @@ function requestNotifPermission() {
     notifPermission = perm;
     if (perm === "granted") {
       document.getElementById("notifCard").style.display = "none";
-      if ("serviceWorker" in navigator && !swRegistration) {
-        navigator.serviceWorker.register("sw.js").then((reg) => {
-          swRegistration = reg;
-        });
-      }
     } else {
       btn.disabled = false;
       btn.textContent = "Blocked";
@@ -580,22 +518,23 @@ function requestNotifPermission() {
 }
 
 function checkNearTurnNotification(peopleAhead) {
-  if (notifiedNearTurn) return;
-  if (Notification.permission !== "granted") return;
-
-  if (lastPeopleAhead === null) return;
+  if (
+    notifiedNearTurn ||
+    Notification.permission !== "granted" ||
+    lastPeopleAhead === null
+  )
+    return;
   if (lastPeopleAhead > 5 && peopleAhead <= 5) {
     notifiedNearTurn = true;
     sendNotification(
       "⏰ Almost your turn!",
-      `Only ${peopleAhead} ${peopleAhead === 1 ? "person" : "people"} ahead of you. Please make your way to the office.`,
+      `Only ${peopleAhead} ${peopleAhead === 1 ? "person" : "people"} ahead. Please make your way to the office.`,
     );
   }
 }
 
 function sendNotification(title, body) {
   if (Notification.permission !== "granted") return;
-
   if (swRegistration) {
     swRegistration
       .showNotification(title, {
@@ -606,10 +545,9 @@ function sendNotification(title, body) {
         renotify: true,
         vibrate: [200, 100, 200],
       })
-      .catch((e) => console.warn("SW notification failed:", e));
+      .catch((e) => console.warn("SW notif failed:", e));
     return;
   }
-
   try {
     const n = new Notification(title, {
       body,
