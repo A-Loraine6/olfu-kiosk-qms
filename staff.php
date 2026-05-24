@@ -229,7 +229,7 @@ $pageLimit = 10;
                                                             <?php endif; ?>
                                                             <?php if ($canDelete): ?>
                                                                 <button class="danger" onclick="openDeleteModal(<?php echo $member['id']; ?>)">
-                                                                    <i class="fas fa-trash"></i> Delete
+                                                                    <i class="fas fa-archive"></i> Archive
                                                                 </button>
                                                             <?php endif; ?>
                                                         </div>
@@ -431,19 +431,18 @@ $pageLimit = 10;
     <div id="deleteStaffModal" class="modal">
         <div class="modal-content modal-sm">
             <div class="modal-header">
-                <h2>Delete Staff</h2>
+                <h2>Archive Staff</h2>
                 <button class="modal-close" onclick="closeModal('deleteStaffModal')">&times;</button>
             </div>
             <div class="modal-body-scroll">
                 <div class="modal-body">
-                    <p>Are you sure you want to delete this staff member?</p>
-                    <p class="modal-warning">This action cannot be undone.</p>
+                    <p>Are you sure you want to archive this staff member?</p>
                 </div>
                 <input type="hidden" id="delete_staff_id">
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal('deleteStaffModal')">Cancel</button>
-                <button type="button" class="btn-danger" id="deleteStaffBtn" onclick="submitDeleteStaff()" data-action="confirm"><i class="fas fa-trash"></i> Delete</button>
+                <button type="button" class="btn-danger" id="deleteStaffBtn" onclick="submitDeleteStaff()" data-action="confirm"><i class="fas fa-archive"></i> Archive</button>
             </div>
         </div>
     </div>

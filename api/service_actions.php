@@ -280,7 +280,7 @@ function renderServiceRows(array $services, bool $canEdit = false, bool $canDele
                             <?php endif; ?>
                             <?php if ($canDelete): ?>
                                 <button class="danger" onclick="openDeleteModal(<?php echo $svc['id']; ?>)">
-                                    <i class="fas fa-trash"></i> Delete
+                                    <i class="fas fa-archive"></i> Archive
                                 </button>
                             <?php endif; ?>
                         </div>

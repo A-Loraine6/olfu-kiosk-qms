@@ -1,5 +1,3 @@
-/* track.js — OLFU QMS Tracker with app-shell tabs + campus map */
-
 let lastPeopleAhead = null;
 let notifiedNearTurn = false;
 let notifPermission = Notification.permission;
@@ -16,8 +14,8 @@ let userHasInteracted = false;
 let swRegistration = null;
 
 let currentTab = "ticket";
+let confettiFired = sessionStorage.getItem("confetti_fired") === "true";
 
-/* ── Tab switching ── */
 function switchTab(tab) {
   currentTab = tab;
   document
@@ -31,16 +29,13 @@ function switchTab(tab) {
   document.getElementById("nav-" + tab).classList.add("active");
 
   if (tab === "map") {
-    // Init map on first visit to map tab
     if (window.CampusMap) window.CampusMap.init();
-    // Force Leaflet to recalculate size after display change
     setTimeout(() => {
       if (window._leafletMap) window._leafletMap.invalidateSize();
     }, 50);
   }
 }
 
-/* ── Audio ── */
 function ensureAudio() {
   if (!audioContext) {
     try {
@@ -130,7 +125,6 @@ function triggerHaptic(pattern = "medium") {
   navigator.vibrate(p[pattern] || p.medium);
 }
 
-/* ── Connectivity ── */
 window.addEventListener("online", () => {
   isOffline = false;
   document.getElementById("retryCard").style.display = "none";
@@ -141,7 +135,6 @@ window.addEventListener("offline", () => {
   document.getElementById("retryCard").style.display = "flex";
 });
 
-/* ── Confetti ── */
 function createConfetti() {
   const icon = document.getElementById("doneIcon");
   icon.style.transform = "scale(0)";
@@ -211,7 +204,6 @@ function createConfetti() {
   }, 4000);
 }
 
-/* ── Init ── */
 window.addEventListener("DOMContentLoaded", () => {
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker
@@ -258,7 +250,6 @@ function initControls() {
   document.addEventListener("click", onFirstInteraction);
   document.addEventListener("touchstart", onFirstInteraction);
 
-  // Pull-to-refresh
   let touchStartY = 0;
   document.addEventListener("touchstart", (e) => {
     touchStartY = e.touches[0].clientY;
@@ -306,7 +297,6 @@ function updateRefreshHint() {
   }
 }
 
-/* ── Poll API ── */
 function poll() {
   return fetch(API_URL)
     .then((r) => r.json())
@@ -329,7 +319,6 @@ function poll() {
     });
 }
 
-/* ── Render ── */
 function render(data) {
   const {
     ticket_number,
@@ -340,7 +329,7 @@ function render(data) {
     now_serving,
     est_wait_mins,
     expired,
-    building_hint, // optional field: building id hint from API
+    building_hint,
   } = data;
 
   document.getElementById("officeName").textContent = office_name;
@@ -364,7 +353,6 @@ function render(data) {
   if (status === "completed" || status === "skipped")
     numEl.classList.add("done-num");
 
-  // Tell the map which building to highlight
   if (window.CampusMap)
     window.CampusMap.setDestination(office_name, building_hint || "");
 
@@ -374,7 +362,11 @@ function render(data) {
     document.getElementById("refreshHint").style.display = "none";
     triggerHaptic("celebration");
     playNotificationSound("complete");
-    createConfetti();
+    if (!confettiFired) {
+      confettiFired = true;
+      sessionStorage.setItem("confetti_fired", "true");
+      createConfetti();
+    }
     return;
   }
 
@@ -490,7 +482,6 @@ function showError(msg) {
     `<div class="alert-strip alert-warn"><i class="fas fa-triangle-exclamation"></i> ${msg}</div>`;
 }
 
-/* ── Notifications ── */
 function initNotifCard() {
   if (!("Notification" in window)) return;
   if (Notification.permission === "granted") {

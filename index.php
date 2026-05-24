@@ -28,6 +28,25 @@ foreach ($waitingResult->fetch_all(MYSQLI_ASSOC) as $row) {
     $waitingCounts[$row['office_id']] = (int)$row['cnt'];
 }
 
+$avgTimeStmt = $db->prepare("
+    SELECT office_id,
+           AVG(TIMESTAMPDIFF(SECOND, served_at, completed_at) + COALESCE(time_spent, 0)) AS avg_seconds
+    FROM tickets
+    WHERE status = 'completed'
+      AND served_at IS NOT NULL
+      AND completed_at IS NOT NULL
+      AND DATE(created_at) = ?
+    GROUP BY office_id
+");
+$today = date('Y-m-d');
+$avgTimeStmt->bind_param('s', $today);
+$avgTimeStmt->execute();
+$avgTimeResult = $avgTimeStmt->get_result();
+$avgTimes = [];
+foreach ($avgTimeResult->fetch_all(MYSQLI_ASSOC) as $row) {
+    $avgTimes[$row['office_id']] = (int) round($row['avg_seconds'] / 60); // convert to minutes
+}
+
 $servicesResult = $db->query("
     SELECT id, name, category, description, office_id
     FROM transaction_types
@@ -54,6 +73,7 @@ foreach ($offices as $office) {
         'break_start'  => $office['break_start'],
         'break_end'    => $office['break_end'],
         'queue_cutoff' => $office['queue_cutoff'],
+        'avg_minutes'  => $avgTimes[$office['id']] ?? null,
     ];
 }
 
