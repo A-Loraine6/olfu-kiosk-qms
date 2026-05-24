@@ -41,7 +41,6 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
 
 <div class="app-shell">
 
-    <!-- Header -->
     <div class="app-header">
         <div class="app-header-logo">
             <img src="img/olfu-logo.png" alt="OLFU"
@@ -53,13 +52,10 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
         </div>
     </div>
 
-    <!-- Tab content area -->
     <div class="app-content">
 
-        <!-- TICKET TAB -->
         <div class="tab-pane active" id="tab-ticket">
 
-            <!-- Loading skeleton -->
             <div id="loadingState" class="ticket-wrap">
                 <div class="skeleton" style="height:12px;width:90px;margin:0 auto 10px;border-radius:6px"></div>
                 <div class="skeleton" style="height:16px;width:170px;margin:0 auto 24px;border-radius:6px"></div>
@@ -70,10 +66,8 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
                 </div>
             </div>
 
-            <!-- Main ticket state -->
             <div id="mainState" style="display:none" class="ticket-wrap">
 
-                <!-- Offline retry -->
                 <div class="retry-card" id="retryCard" style="display:none">
                     <div>
                         <div class="retry-label"><i class="fas fa-wifi-slash"></i> Connection issue</div>
@@ -84,7 +78,6 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
                     </button>
                 </div>
 
-                <!-- Notification prompt -->
                 <div class="notif-card" id="notifCard" style="display:none">
                     <div class="notif-icon"><i class="fas fa-bell"></i></div>
                     <div class="notif-text">
@@ -94,13 +87,10 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
                     <button class="btn-notif" id="notifBtn" onclick="requestNotifPermission()">Enable</button>
                 </div>
 
-                <!-- Alert area -->
                 <div id="alertArea"></div>
 
-                <!-- Status pill -->
                 <div id="statusPill"></div>
 
-                <!-- Ticket card -->
                 <div class="ticket-card" id="ticketCard">
                     <div class="ticket-stripe" id="ticketStripe"></div>
                     <div class="ticket-body">
@@ -130,14 +120,12 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
                     </div>
                 </div>
 
-                <!-- Done state -->
                 <div id="doneState" style="display:none" class="done-wrap">
                     <div class="done-icon" id="doneIcon"><i class="fas fa-circle-check"></i></div>
                     <div class="done-title" id="doneTitle">You're all set!</div>
                     <div class="done-sub" id="doneSub">Your transaction has been completed.<br>Thank you for visiting.</div>
                 </div>
 
-                <!-- Refresh hint -->
                 <div class="refresh-hint" id="refreshHint" role="status" aria-live="polite">
                     <i class="fas fa-rotate-right" id="refreshIcon"></i>
                     <span id="refreshText">Updating…</span>
@@ -146,7 +134,6 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
             </div>
         </div>
 
-        <!-- MAP TAB -->
         <div class="tab-pane" id="tab-map">
             <div class="map-header-bar">
                 <div class="map-dest-info">
@@ -167,7 +154,6 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
 
     </div>
 
-    <!-- Bottom nav -->
     <nav class="bottom-nav">
         <button class="nav-item active" id="nav-ticket" onclick="switchTab('ticket')" aria-label="Ticket">
             <i class="fas fa-ticket"></i>

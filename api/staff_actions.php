@@ -266,7 +266,7 @@ function renderStaffRows(array $staff, bool $canManage = false): void
                             <?php endif; ?>
                             <?php if ($canDelete): ?>
                                 <button class="danger" onclick="openDeleteModal(<?php echo $member['id']; ?>)">
-                                    <i class="fas fa-trash"></i> Delete
+                                    <i class="fas fa-archive"></i> Archive
                                 </button>
                             <?php endif; ?>
                         </div>

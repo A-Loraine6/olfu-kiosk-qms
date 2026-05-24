@@ -299,7 +299,7 @@ function getCategoryColor(?string $cat): string
                                                             <?php endif; ?>
                                                             <?php if ($canDeleteServices): ?>
                                                                 <button class="danger" onclick="openDeleteModal(<?php echo $svc['id']; ?>)">
-                                                                    <i class="fas fa-trash"></i> Delete
+                                                                    <i class="fas fa-archive"></i> Archive
                                                                 </button>
                                                             <?php endif; ?>
                                                         </div>
@@ -465,19 +465,18 @@ function getCategoryColor(?string $cat): string
     <div id="deleteServiceModal" class="modal">
         <div class="modal-content modal-sm">
             <div class="modal-header">
-                <h2>Delete Service</h2>
+                <h2>Archive Service</h2>
                 <button class="modal-close" onclick="closeModal('deleteServiceModal')">&times;</button>
             </div>
             <div class="modal-body-scroll">
                 <div class="modal-body">
-                    <p>Are you sure you want to delete this service?</p>
-                    <p class="modal-warning">This action cannot be undone.</p>
+                    <p>Are you sure you want to archive this service?</p>
                 </div>
             </div>
             <input type="hidden" id="delete_service_id">
             <div class="modal-footer">
                 <button type="button" class="btn-outline" onclick="closeModal('deleteServiceModal')">Cancel</button>
-                <button type="button" class="btn-danger" id="deleteServiceBtn" onclick="submitDeleteService()" data-action="confirm"><i class="fas fa-trash"></i> Delete</button>
+                <button type="button" class="btn-danger" id="deleteServiceBtn" onclick="submitDeleteService()" data-action="confirm"><i class="fas fa-archive"></i> Archive</button>
             </div>
         </div>
     </div>

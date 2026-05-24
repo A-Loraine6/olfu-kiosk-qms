@@ -40,7 +40,7 @@ function showToast(message, type = "success") {
     toast = document.createElement("div");
     toast.id = "reportsToast";
     toast.className = "reports-toast";
-    toast.innerHTML = `<div class="toast-dot"></div><span id="reportsToastMsg"></span>`;
+    toast.innerHTML = `<span id="reportsToastMsg"></span>`;
     document.body.appendChild(toast);
   }
   toast.className = `reports-toast toast-${type}`;
@@ -1188,7 +1188,6 @@ function refreshReports() {
       btn.innerHTML = '<i class="fas fa-redo"></i> Refresh';
       btn.disabled = false;
     }
-    showToast("Report refreshed.", "success");
   });
 }
 

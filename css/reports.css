@@ -222,29 +222,15 @@
 }
 
 .reports-toast.toast-success {
-  background: #0f2418;
-  color: #86efac;
+  background: #22c55e;
+  color: #fff;
   border: 1px solid rgba(134, 239, 172, 0.2);
 }
 
 .reports-toast.toast-error {
   background: #2e1414;
-  color: #fca5a5;
+  color: #ef4444;
   border: 1px solid rgba(252, 165, 165, 0.2);
-}
-
-.toast-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.toast-success .toast-dot {
-  background: #4ade80;
-}
-.toast-error .toast-dot {
-  background: #f87171;
 }
 
 .section-title {

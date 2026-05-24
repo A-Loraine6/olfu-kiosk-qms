@@ -12,12 +12,17 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 async function ajax(payload) {
-  const res = await fetch(AJAX_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...payload, csrf_token: CSRF_TOKEN }),
-  });
-  return res.json();
+  try {
+    const res = await fetch(AJAX_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...payload, csrf_token: CSRF_TOKEN }),
+    });
+    return res.json();
+  } catch (err) {
+    console.warn("Request failed:", err);
+    return { success: false, message: "Network error. Please try again." };
+  }
 }
 
 function showToast(message, type = "success") {
@@ -327,7 +332,11 @@ async function openEditServiceModal(svc) {
   document.getElementById("edit_service_id").value = svc.id;
   document.getElementById("edit_name").value = svc.name;
   document.getElementById("edit_office").value = svc.office_id;
-  document.getElementById("edit_category").value = svc.category || "";
+
+  const catSelect = document.getElementById("edit_category");
+  catSelect.value = svc.category ?? "";
+  if (!catSelect.value) catSelect.value = "";
+
   document.getElementById("edit_description").value = svc.description || "";
 
   const winData = await ajax({
@@ -381,24 +390,29 @@ function setBtnLoading(btnId, loading, defaultHtml) {
 }
 
 async function submitAddService() {
+  const name = document.getElementById("add_name").value.trim();
+  const officeId = document.getElementById("add_office").value;
+  const category = document.getElementById("add_category").value;
+
+  if (!name) return showToast("Service name is required.", "error");
+  if (!officeId) return showToast("Please select an office.", "error");
+  if (!category) return showToast("Please select a category.", "error");
+
   setBtnLoading(
     "addServiceBtn",
     true,
     '<i class="fas fa-plus"></i> Add Service',
   );
+
   const data = await ajax({
     action: "add_service",
-    name: document.getElementById("add_name").value,
-    office_id: document.getElementById("add_office").value,
-    category: document.getElementById("add_category").value,
+    name,
+    office_id: officeId,
+    category,
     description: document.getElementById("add_description").value,
     windows: getCheckedWindows("add_windows_list"),
   });
-  const category = document.getElementById("add_category").value;
-  if (!category) {
-    showToast("Please select a category.", "error");
-    return;
-  }
+
   setBtnLoading(
     "addServiceBtn",
     false,
@@ -414,7 +428,6 @@ async function submitAddService() {
     document.getElementById("add_category").selectedIndex = 0;
     document.getElementById("add_windows_list").innerHTML = "";
     document.getElementById("add_windows_group").style.display = "none";
-
     currentPage = 1;
     updateTable(data.tableHtml);
     updateStats(data);
@@ -427,25 +440,29 @@ async function submitAddService() {
 }
 
 async function submitEditService() {
+  const name = document.getElementById("edit_name").value.trim();
+  const officeId = document.getElementById("edit_office").value;
+  const category = document.getElementById("edit_category").value;
+
+  if (!name) return showToast("Service name is required.", "error");
+  if (!officeId) return showToast("Please select an office.", "error");
+
   setBtnLoading(
     "editServiceBtn",
     true,
     '<i class="fas fa-save"></i> Save Changes',
   );
+
   const data = await ajax({
     action: "edit_service",
     service_id: document.getElementById("edit_service_id").value,
-    name: document.getElementById("edit_name").value,
-    office_id: document.getElementById("edit_office").value,
-    category: document.getElementById("edit_category").value,
+    name,
+    office_id: officeId,
+    category,
     description: document.getElementById("edit_description").value,
     windows: getCheckedWindows("edit_windows_list"),
   });
-  const category = document.getElementById("add_category").value;
-  if (!category) {
-    showToast("Please select a category.", "error");
-    return;
-  }
+
   setBtnLoading(
     "editServiceBtn",
     false,
@@ -498,7 +515,7 @@ async function submitDeleteService() {
   setBtnLoading(
     "deleteServiceBtn",
     true,
-    '<i class="fas fa-trash"></i> Delete',
+    '<i class="fas fa-archive"></i> Archive',
   );
   const data = await ajax({
     action: "delete_service",
@@ -507,7 +524,7 @@ async function submitDeleteService() {
   setBtnLoading(
     "deleteServiceBtn",
     false,
-    '<i class="fas fa-trash"></i> Delete',
+    '<i class="fas fa-archive"></i> Archive',
   );
 
   if (data.success) {

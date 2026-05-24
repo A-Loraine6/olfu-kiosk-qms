@@ -1,11 +1,4 @@
-/**
- * campus-map.js
- * Leaflet map for OLFU Antipolo campus
- * Buildings, walkable paths, live user location, route highlight
- */
-
 (function () {
-  /* ── Campus center ── */
   const CENTER = [14.619396479990225, 121.15188810883754];
   const ZOOM = 18;
 
