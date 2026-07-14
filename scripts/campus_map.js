@@ -1264,26 +1264,6 @@
     mapWrapEl.appendChild(compassEl);
   }
 
-  function startCompass() {
-    if (typeof DeviceOrientationEvent === "undefined") return;
-
-    if (typeof DeviceOrientationEvent.requestPermission === "function") {
-      compassEl.addEventListener(
-        "click",
-        () => {
-          DeviceOrientationEvent.requestPermission()
-            .then((state) => {
-              if (state === "granted") listenOrientation();
-            })
-            .catch(() => {});
-        },
-        { once: false },
-      );
-    } else {
-      listenOrientation();
-    }
-  }
-
   function listenOrientation() {
     window.addEventListener("deviceorientationabsolute", onOrientation, true);
     window.addEventListener("deviceorientation", onOrientation, true);
