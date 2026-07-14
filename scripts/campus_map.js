@@ -627,7 +627,7 @@
       position:absolute; inset:0;
       overflow:hidden; background:#fff;
       touch-action:none; cursor:grab;
-      will-change: transform;
+      ${lowPowerMode ? "" : "will-change: transform;"}
     `;
 
     const clipWrap = document.createElement("div");
@@ -636,7 +636,7 @@
       position:absolute; top:0; left:0;
       width:${CAMPUS.w}px; height:${CAMPUS.h}px;
       transform-origin:0 0;
-      ${lowPowerMode ? "backface-visibility:hidden;" : ""}
+      ${lowPowerMode ? "" : "will-change: transform;"}
     `;
     mapWrapEl.appendChild(clipWrap);
     clipWrapEl = clipWrap;
@@ -730,13 +730,15 @@
     pathLine.setAttribute("stroke-linecap", "round");
     pathLine.setAttribute("stroke-linejoin", "round");
     pathLine.setAttribute("opacity", "0");
-    pathLine.setAttribute("filter", "url(#glow)");
+    if (!lowPowerMode) {
+      pathLine.setAttribute("filter", "url(#glow)");
+    }
     overlayEl.appendChild(pathLine);
 
     destMarker = document.createElementNS("http://www.w3.org/2000/svg", "g");
     destMarker.setAttribute("opacity", "0");
     destMarker.innerHTML = `
-      <circle r="28" fill="#0a6635" filter="url(#shadow)"/>
+      <circle r="28" fill="#0a6635" ${lowPowerMode ? "" : "filter=\"url(#shadow)\""}/>
       <circle r="20" fill="#00c45e"/>
       <text y="7" text-anchor="middle" font-size="22" fill="white">📍</text>
     `;
@@ -751,7 +753,7 @@
         <path d="M0,-8 L-16,-46 A18,18 0 0 1 16,-46 Z" fill="url(#dotConeGrad)"/>
       </g>
       <circle class="pulse-ring" r="14" fill="#1a73e8" opacity="0.35"/>
-      <circle r="11" fill="#1a73e8" stroke="#ffffff" stroke-width="3" filter="url(#shadow)"/>
+      <circle r="11" fill="#1a73e8" stroke="#ffffff" stroke-width="3" ${lowPowerMode ? "" : "filter=\"url(#shadow)\""}/>
     `;
     userDot.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -788,7 +790,9 @@
       pill.setAttribute("rx", R);
       pill.setAttribute("ry", R);
       pill.setAttribute("fill", "rgba(255,255,255,0.92)");
-      pill.setAttribute("filter", "url(#labelShadow)");
+      if (!lowPowerMode) {
+        pill.setAttribute("filter", "url(#labelShadow)");
+      }
       g.appendChild(pill);
 
       const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -831,7 +835,9 @@
       pill.setAttribute("fill", "rgba(255,255,255,0.92)");
       pill.setAttribute("stroke", "#0a6635");
       pill.setAttribute("stroke-width", "2");
-      pill.setAttribute("filter", "url(#labelShadow)");
+      if (!lowPowerMode) {
+        pill.setAttribute("filter", "url(#labelShadow)");
+      }
       g.appendChild(pill);
 
       const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -874,7 +880,9 @@
       pill.setAttribute("fill", "rgba(255,255,255,0.95)");
       pill.setAttribute("stroke", "#0a6635");
       pill.setAttribute("stroke-width", "1.5");
-      pill.setAttribute("filter", "url(#labelShadow)");
+      if (!lowPowerMode) {
+        pill.setAttribute("filter", "url(#labelShadow)");
+      }
       g.appendChild(pill);
 
       const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -1289,6 +1297,16 @@
     mapWrapEl.appendChild(compassEl);
   }
 
+  function stopOrientationWatchers() {
+    window.removeEventListener("deviceorientationabsolute", onOrientation, true);
+    window.removeEventListener("deviceorientation", onOrientation, true);
+  }
+
+  function startCompass() {
+    disableDeviceOrientation = true;
+    stopOrientationWatchers();
+  }
+
   function listenOrientation() {
     if (disableDeviceOrientation) return;
     window.addEventListener("deviceorientationabsolute", onOrientation, true);
@@ -1316,6 +1334,7 @@
   }
 
   function applyHeading(headingDeg, snap) {
+    if (disableDeviceOrientation) return;
     if (headingDeg === null || headingDeg === undefined || isNaN(headingDeg))
       return;
     const targetAngle = -((headingDeg * Math.PI) / 180);
