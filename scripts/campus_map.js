@@ -354,6 +354,11 @@
     rotateStartAngle = 0;
 
   let firstFix = true;
+  let autoCenterOnLocation = true;
+
+  let labelItems = [];
+  let poiItems = [];
+  let transformScheduled = false;
 
   let smoothAngle = 0;
   const HEADING_ALPHA = 0.08;
@@ -461,6 +466,15 @@
     );
   }
 
+  function scheduleTransform() {
+    if (transformScheduled) return;
+    transformScheduled = true;
+    requestAnimationFrame(() => {
+      transformScheduled = false;
+      applyTransform();
+    });
+  }
+
   function svgToScreen(svgX, svgY) {
     const cw = mapWrapEl.clientWidth;
     const ch = mapWrapEl.clientHeight;
@@ -507,11 +521,9 @@
   }
 
   function updateLabelRotations() {
-    if (!labelGroupEl) return;
+    if (!labelItems.length) return;
     const deg = -((viewAngle * 180) / Math.PI);
-    labelGroupEl.querySelectorAll("g[data-cx]").forEach((g) => {
-      const cx = parseFloat(g.getAttribute("data-cx"));
-      const cy = parseFloat(g.getAttribute("data-cy"));
+    labelItems.forEach(({ g, cx, cy }) => {
       g.setAttribute("transform", `rotate(${deg},${cx},${cy})`);
     });
   }
@@ -529,14 +541,12 @@
   }
 
   function updatePinScaling() {
-    if (!poiGroupEl) return;
+    if (!poiItems.length) return;
     const target = Math.min(
       1.6,
       Math.max(0.55, 1 / Math.sqrt(viewScale / MIN_SCALE)),
     );
-    poiGroupEl.querySelectorAll("g[data-pin]").forEach((g) => {
-      const cx = g.getAttribute("data-cx");
-      const cy = g.getAttribute("data-cy");
+    poiItems.forEach(({ g, cx, cy }) => {
       g.setAttribute(
         "transform",
         `translate(${cx},${cy}) scale(${target}) translate(${-cx},${-cy}) translate(${cx},${cy})`,
@@ -613,6 +623,7 @@
       position:absolute; top:0; left:0;
       width:${CAMPUS.w}px; height:${CAMPUS.h}px;
       transform-origin:0 0;
+      will-change: transform;
     `;
     mapWrapEl.appendChild(clipWrap);
 
@@ -787,6 +798,7 @@
       g.appendChild(t);
 
       labelGroupEl.appendChild(g);
+      labelItems.push({ g, cx: b.x, cy: b.y });
     });
 
     GATE_LABELS.forEach((gt) => {
@@ -829,6 +841,7 @@
       g.appendChild(t);
 
       labelGroupEl.appendChild(g);
+      labelItems.push({ g, cx: gt.x, cy: gt.y });
     });
 
     SUBOFFICE_LABELS.forEach((sb) => {
@@ -871,6 +884,7 @@
       g.appendChild(t);
 
       labelGroupEl.appendChild(g);
+      labelItems.push({ g, cx: sb.x, cy: sb.y });
     });
 
     poiGroupEl = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -903,6 +917,7 @@
         showBuildingPopup(b, e.changedTouches[0]);
       });
       poiGroupEl.appendChild(g);
+      poiItems.push({ g, cx: pinX, cy: pinY });
 
       const hit = document.createElementNS(
         "http://www.w3.org/2000/svg",
@@ -981,6 +996,7 @@
     locateBtnEl.innerHTML = `<i class="fas fa-location-crosshairs"></i>`;
     locateBtnEl.addEventListener("click", (e) => {
       e.stopPropagation();
+      autoCenterOnLocation = false;
       jumpToUser();
     });
     mapWrapEl.appendChild(locateBtnEl);
@@ -1350,6 +1366,7 @@
         if (e.touches.length === 1) {
           gestureMode = "pan";
           isPanning = true;
+          autoCenterOnLocation = false;
           panStartX = e.touches[0].clientX;
           panStartY = e.touches[0].clientY;
           panOriginX = viewX;
@@ -1395,7 +1412,7 @@
             viewAngle += delta;
             enforceMinZoom();
             clampPan();
-            applyTransform();
+            scheduleTransform();
           }
 
           lastTouchDist = d;
@@ -1432,10 +1449,12 @@
       }
       if (e.button === 2) {
         isRotating = true;
+        autoCenterOnLocation = false;
         rotateStartX = e.clientX;
         rotateStartAngle = viewAngle;
       } else {
         isPanning = true;
+        autoCenterOnLocation = false;
         panStartX = e.clientX;
         panStartY = e.clientY;
         panOriginX = viewX;
@@ -1448,7 +1467,7 @@
         viewAngle = rotateStartAngle + (e.clientX - rotateStartX) * 0.005;
         enforceMinZoom();
         clampPan();
-        applyTransform();
+        scheduleTransform();
         return;
       }
       if (!isPanning) return;
@@ -1460,7 +1479,7 @@
       viewX = panOriginX + (dx * cos - dy * sin);
       viewY = panOriginY + (dx * sin + dy * cos);
       clampPan();
-      applyTransform();
+      scheduleTransform();
     });
     window.addEventListener("mouseup", () => {
       isPanning = false;
@@ -1690,11 +1709,12 @@
 
     if (isFirstFix) {
       firstFix = false;
+      autoCenterOnLocation = false;
       snapToUser(snapped.x, snapped.y);
       if (locatingToastEl) {
         locatingToastEl.classList.remove("show");
       }
-    } else {
+    } else if (autoCenterOnLocation) {
       centerOnUser(snapped.x, snapped.y);
     }
   }
