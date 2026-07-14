@@ -619,9 +619,7 @@
     isMobileDevice =
       typeof navigator !== "undefined" &&
       MOBILE_USER_AGENT.test(navigator.userAgent);
-    lowPowerMode =
-      isMobileDevice ||
-      (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 3);
+    lowPowerMode = false;
 
     mapWrapEl.style.cssText = `
       position:absolute; inset:0;
