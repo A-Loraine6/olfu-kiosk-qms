@@ -922,8 +922,7 @@
       g.innerHTML = `
         <circle class="poi-halo" r="30" fill="${b.color}" opacity="0.18"/>
         <path d="M0,34 C0,34 -22,10 -22,-8 A22,22 0 1 1 22,-8 C22,10 0,34 0,34 Z"
-              fill="${b.color}" ${lowPowerMode ? "" : "filter=\"url(#pinShadow)\""} stroke="#ffffff" stroke-width="3"/>
-        <circle cy="-8" r="8" fill="#ffffff"/>
+          fill="${b.color}" ${lowPowerMode ? "" : "filter=\"url(#pinShadow)\""} stroke="#ffffff" stroke-width="3"/>
       `;
       g.addEventListener("click", (e) => {
         e.stopPropagation();
