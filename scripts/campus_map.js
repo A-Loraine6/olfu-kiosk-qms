@@ -686,8 +686,7 @@
         </radialGradient>
         <style>
           .pulse-ring { animation: none; }
-          .path-line { stroke-dasharray: 24 16; ${lowPowerMode ? "animation: none;" : "animation: dashFlow 0.8s linear infinite;"} }
-          @keyframes dashFlow { to { stroke-dashoffset: -40; } }
+          .path-line { stroke-dasharray: 24 16; animation: none; }
           .pin-drop { ${lowPowerMode ? "animation: none;" : "animation: pinDrop 0.55s cubic-bezier(.34,1.56,.64,1) both;"} }
           @keyframes pinDrop {
             0% { transform: translateY(-120px) scale(0.6); opacity:0; }
