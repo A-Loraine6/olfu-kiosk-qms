@@ -322,8 +322,10 @@
   const SVG_W = 4059;
   const SVG_H = 2649;
   const CAMPUS = { x: 59, y: 1, w: 4000, h: 2500 };
+  const MOBILE_USER_AGENT = /Mobi|Android|iPhone|iPad|iPod|Windows Phone|Opera Mini|IEMobile/i;
 
   let overlayEl = null;
+  let clipWrapEl = null;
   let mapWrapEl = null;
   let userDot = null;
   let pathLine = null;
@@ -338,6 +340,8 @@
   let MIN_SCALE = 0.08;
   let gpsErrorShown = false;
   let deviceHeadingActive = false; 
+  let isMobileDevice = false;
+  let lowPowerMode = false;
 
   let viewX = 0,
     viewY = 0,
@@ -354,6 +358,12 @@
     rotateStartAngle = 0;
 
   let firstFix = true;
+  let autoCenterOnLocation = true;
+  let disableDeviceOrientation = true;
+
+  let labelItems = [];
+  let poiItems = [];
+  let transformScheduled = false;
 
   let smoothAngle = 0;
   const HEADING_ALPHA = 0.08;
@@ -461,6 +471,15 @@
     );
   }
 
+  function scheduleTransform() {
+    if (transformScheduled) return;
+    transformScheduled = true;
+    requestAnimationFrame(() => {
+      transformScheduled = false;
+      applyTransform();
+    });
+  }
+
   function svgToScreen(svgX, svgY) {
     const cw = mapWrapEl.clientWidth;
     const ch = mapWrapEl.clientHeight;
@@ -507,11 +526,9 @@
   }
 
   function updateLabelRotations() {
-    if (!labelGroupEl) return;
+    if (!labelItems.length) return;
     const deg = -((viewAngle * 180) / Math.PI);
-    labelGroupEl.querySelectorAll("g[data-cx]").forEach((g) => {
-      const cx = parseFloat(g.getAttribute("data-cx"));
-      const cy = parseFloat(g.getAttribute("data-cy"));
+    labelItems.forEach(({ g, cx, cy }) => {
       g.setAttribute("transform", `rotate(${deg},${cx},${cy})`);
     });
   }
@@ -529,14 +546,12 @@
   }
 
   function updatePinScaling() {
-    if (!poiGroupEl) return;
+    if (!poiItems.length) return;
     const target = Math.min(
       1.6,
       Math.max(0.55, 1 / Math.sqrt(viewScale / MIN_SCALE)),
     );
-    poiGroupEl.querySelectorAll("g[data-pin]").forEach((g) => {
-      const cx = g.getAttribute("data-cx");
-      const cy = g.getAttribute("data-cy");
+    poiItems.forEach(({ g, cx, cy }) => {
       g.setAttribute(
         "transform",
         `translate(${cx},${cy}) scale(${target}) translate(${-cx},${-cy}) translate(${cx},${cy})`,
@@ -601,10 +616,18 @@
     mapWrapEl = document.getElementById("campusMap");
     if (!mapWrapEl) return;
 
+    isMobileDevice =
+      typeof navigator !== "undefined" &&
+      MOBILE_USER_AGENT.test(navigator.userAgent);
+    lowPowerMode =
+      isMobileDevice ||
+      (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 3);
+
     mapWrapEl.style.cssText = `
       position:absolute; inset:0;
       overflow:hidden; background:#fff;
       touch-action:none; cursor:grab;
+      will-change: transform;
     `;
 
     const clipWrap = document.createElement("div");
@@ -613,8 +636,10 @@
       position:absolute; top:0; left:0;
       width:${CAMPUS.w}px; height:${CAMPUS.h}px;
       transform-origin:0 0;
+      ${lowPowerMode ? "backface-visibility:hidden;" : ""}
     `;
     mapWrapEl.appendChild(clipWrap);
+    clipWrapEl = clipWrap;
 
     const img = document.createElement("img");
     img.src = "map/MAP.svg";
@@ -624,7 +649,7 @@
       top:${-CAMPUS.y}px; left:${-CAMPUS.x}px;
       width:${SVG_W}px; height:${SVG_H}px;
       pointer-events:none; user-select:none;
-      filter: saturate(1.08) contrast(1.03);
+      ${lowPowerMode ? "" : "filter: saturate(1.08) contrast(1.03);"}
     `;
     img.id = "mapImg";
     clipWrap.appendChild(img);
@@ -662,28 +687,21 @@
           <stop offset="100%" stop-color="#1a73e8" stop-opacity="0"/>
         </radialGradient>
         <style>
-          @keyframes pulse {
-            0%,100%{ r:14; opacity:0.6 }
-            50%{ r:22; opacity:0 }
-          }
-          .pulse-ring { animation: pulse 2s ease-out infinite; }
+          .pulse-ring { animation: none; }
+          .path-line { stroke-dasharray: 24 16; ${lowPowerMode ? "animation: none;" : "animation: dashFlow 0.8s linear infinite;"} }
           @keyframes dashFlow { to { stroke-dashoffset: -40; } }
-          .path-line {
-            stroke-dasharray: 24 16;
-            animation: dashFlow 0.8s linear infinite;
-          }
+          .pin-drop { ${lowPowerMode ? "animation: none;" : "animation: pinDrop 0.55s cubic-bezier(.34,1.56,.64,1) both;"} }
           @keyframes pinDrop {
             0% { transform: translateY(-120px) scale(0.6); opacity:0; }
             60% { transform: translateY(8px) scale(1.05); opacity:1; }
             80% { transform: translateY(-4px) scale(0.98); }
             100% { transform: translateY(0) scale(1); }
           }
-          .pin-drop { animation: pinDrop 0.55s cubic-bezier(.34,1.56,.64,1) both; }
+          .poi-halo { ${lowPowerMode ? "animation: none;" : "animation: poiPulseHalo 2.4s ease-in-out infinite;"} }
           @keyframes poiPulseHalo {
             0%,100% { opacity:0.18; }
             50% { opacity:0.4; }
           }
-          .poi-halo { animation: poiPulseHalo 2.4s ease-in-out infinite; }
         </style>
       </defs>
     `;
@@ -787,6 +805,7 @@
       g.appendChild(t);
 
       labelGroupEl.appendChild(g);
+      labelItems.push({ g, cx: b.x, cy: b.y });
     });
 
     GATE_LABELS.forEach((gt) => {
@@ -829,6 +848,7 @@
       g.appendChild(t);
 
       labelGroupEl.appendChild(g);
+      labelItems.push({ g, cx: gt.x, cy: gt.y });
     });
 
     SUBOFFICE_LABELS.forEach((sb) => {
@@ -871,6 +891,7 @@
       g.appendChild(t);
 
       labelGroupEl.appendChild(g);
+      labelItems.push({ g, cx: sb.x, cy: sb.y });
     });
 
     poiGroupEl = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -886,12 +907,14 @@
       g.setAttribute("data-cy", pinY);
       g.setAttribute("transform", `translate(${pinX},${pinY})`);
       g.style.cursor = "pointer";
-      g.classList.add("pin-drop");
-      g.style.animationDelay = `${i * 0.05}s`;
+      if (!lowPowerMode) {
+        g.classList.add("pin-drop");
+        g.style.animationDelay = `${i * 0.05}s`;
+      }
       g.innerHTML = `
         <circle class="poi-halo" r="30" fill="${b.color}" opacity="0.18"/>
         <path d="M0,34 C0,34 -22,10 -22,-8 A22,22 0 1 1 22,-8 C22,10 0,34 0,34 Z"
-              fill="${b.color}" filter="url(#pinShadow)" stroke="#ffffff" stroke-width="3"/>
+              fill="${b.color}" ${lowPowerMode ? "" : "filter=\"url(#pinShadow)\""} stroke="#ffffff" stroke-width="3"/>
         <circle cy="-8" r="8" fill="#ffffff"/>
       `;
       g.addEventListener("click", (e) => {
@@ -903,6 +926,7 @@
         showBuildingPopup(b, e.changedTouches[0]);
       });
       poiGroupEl.appendChild(g);
+      poiItems.push({ g, cx: pinX, cy: pinY });
 
       const hit = document.createElementNS(
         "http://www.w3.org/2000/svg",
@@ -981,6 +1005,7 @@
     locateBtnEl.innerHTML = `<i class="fas fa-location-crosshairs"></i>`;
     locateBtnEl.addEventListener("click", (e) => {
       e.stopPropagation();
+      autoCenterOnLocation = false;
       jumpToUser();
     });
     mapWrapEl.appendChild(locateBtnEl);
@@ -1265,6 +1290,7 @@
   }
 
   function listenOrientation() {
+    if (disableDeviceOrientation) return;
     window.addEventListener("deviceorientationabsolute", onOrientation, true);
     window.addEventListener("deviceorientation", onOrientation, true);
   }
@@ -1272,6 +1298,7 @@
   let compassDeg = 0;
 
   function onOrientation(e) {
+    if (disableDeviceOrientation) return;
     let heading = null;
     if (e.webkitCompassHeading !== undefined) {
       heading = e.webkitCompassHeading;
@@ -1350,6 +1377,7 @@
         if (e.touches.length === 1) {
           gestureMode = "pan";
           isPanning = true;
+          autoCenterOnLocation = false;
           panStartX = e.touches[0].clientX;
           panStartY = e.touches[0].clientY;
           panOriginX = viewX;
@@ -1395,7 +1423,7 @@
             viewAngle += delta;
             enforceMinZoom();
             clampPan();
-            applyTransform();
+            scheduleTransform();
           }
 
           lastTouchDist = d;
@@ -1432,10 +1460,12 @@
       }
       if (e.button === 2) {
         isRotating = true;
+        autoCenterOnLocation = false;
         rotateStartX = e.clientX;
         rotateStartAngle = viewAngle;
       } else {
         isPanning = true;
+        autoCenterOnLocation = false;
         panStartX = e.clientX;
         panStartY = e.clientY;
         panOriginX = viewX;
@@ -1448,7 +1478,7 @@
         viewAngle = rotateStartAngle + (e.clientX - rotateStartX) * 0.005;
         enforceMinZoom();
         clampPan();
-        applyTransform();
+        scheduleTransform();
         return;
       }
       if (!isPanning) return;
@@ -1460,7 +1490,7 @@
       viewX = panOriginX + (dx * cos - dy * sin);
       viewY = panOriginY + (dx * sin + dy * cos);
       clampPan();
-      applyTransform();
+      scheduleTransform();
     });
     window.addEventListener("mouseup", () => {
       isPanning = false;
@@ -1690,11 +1720,12 @@
 
     if (isFirstFix) {
       firstFix = false;
+      autoCenterOnLocation = false;
       snapToUser(snapped.x, snapped.y);
       if (locatingToastEl) {
         locatingToastEl.classList.remove("show");
       }
-    } else {
+    } else if (autoCenterOnLocation) {
       centerOnUser(snapped.x, snapped.y);
     }
   }
