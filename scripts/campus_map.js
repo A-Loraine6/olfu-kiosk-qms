@@ -917,11 +917,7 @@
         g.classList.add("pin-drop");
         g.style.animationDelay = `${i * 0.05}s`;
       }
-      g.innerHTML = `
-        <circle class="poi-halo" r="30" fill="${b.color}" opacity="0.18"/>
-        <path d="M0,34 C0,34 -22,10 -22,-8 A22,22 0 1 1 22,-8 C22,10 0,34 0,34 Z"
-          fill="${b.color}" ${lowPowerMode ? "" : "filter=\"url(#pinShadow)\""} stroke="#ffffff" stroke-width="3"/>
-      `;
+      g.innerHTML = ``;
       g.addEventListener("click", (e) => {
         e.stopPropagation();
         showBuildingPopup(b, e);
@@ -943,6 +939,10 @@
       hit.setAttribute("ry", b.ry);
       hit.setAttribute("fill", "transparent");
       hit.setAttribute("stroke", "none");
+      hit.setAttribute("focusable", "false");
+      hit.setAttribute("tabindex", "-1");
+      hit.style.outline = "none";
+      hit.style.border = "none";
       hit.style.cursor = "pointer";
       hit.addEventListener("click", (e) => {
         e.stopPropagation();
