@@ -106,8 +106,6 @@
     ["b_sjbh", "3a"],
     ["j_21", "j_24"],
     ["j_22", "b_sjbh"],
-    ["j_23", "gate3"],
-    ["j_23", "b_sjbh"],
     ["j_22", "j_24"],
     ["gate3", "j_24"],
     ["j_24", "j_25"],
@@ -132,8 +130,20 @@
     { id: "SPCB", label: "SPCB", x: 3300, y: 580 },
     { id: "CANTEEN", label: "Canteen", x: 1930, y: 590 },
     { id: "LOUNGE", label: "Lounge", x: 1300, y: 284 },
-    { id: "FUMC", label: "Fatima University Medical Center", x: 1550, y: 1090 },
-    { id: "AVM", label: "Antipolo Valley Mall", x: 1550, y: 1590 },
+    {
+      id: "FUMC",
+      label: "FUMC",
+      x: 1550,
+      y: 1090,
+      lines: ["Fatima University", "Medical Center"],
+    },
+    {
+      id: "AVM",
+      label: "AVM",
+      x: 1550,
+      y: 1590,
+      lines: ["Antipolo Valley", "Mall"],
+    },
   ];
 
   const GATE_LABELS = [
@@ -322,7 +332,8 @@
   const SVG_W = 4059;
   const SVG_H = 2649;
   const CAMPUS = { x: 59, y: 1, w: 4000, h: 2500 };
-  const MOBILE_USER_AGENT = /Mobi|Android|iPhone|iPad|iPod|Windows Phone|Opera Mini|IEMobile/i;
+  const MOBILE_USER_AGENT =
+    /Mobi|Android|iPhone|iPad|iPod|Windows Phone|Opera Mini|IEMobile/i;
 
   let overlayEl = null;
   let clipWrapEl = null;
@@ -339,14 +350,15 @@
   let mapInitialized = false;
   let MIN_SCALE = 0.08;
   let gpsErrorShown = false;
-  let deviceHeadingActive = false; 
+  let gpsPermissionDenied = false;
+  let deviceHeadingActive = false;
   let isMobileDevice = false;
   let lowPowerMode = false;
 
   let viewX = 0,
     viewY = 0,
     viewScale = 1;
-  let viewAngle = 0; 
+  let viewAngle = 0;
   let isPanning = false,
     panStartX = 0,
     panStartY = 0,
@@ -367,7 +379,9 @@
 
   let smoothAngle = 0;
   const HEADING_ALPHA = 0.08;
-  const METERS_PER_PIXEL = 0.045; 
+  const METERS_PER_PIXEL = 0.045;
+  const WALK_SPEED_M_PER_MIN = 1.2;
+  const MIN_WALK_MINUTES = 1;
 
   const BUILDINGS_INFO = [
     {
@@ -608,6 +622,21 @@
   let searchInputEl = null;
   let searchResultsEl = null;
   let locatingToastEl = null;
+  let pullIndicatorEl = null;
+  let refreshInProgress = false;
+  let pullSafetyTimer = null;
+  const pullState = {
+    active: false,
+    locked: false,
+    isPull: false,
+    ready: false,
+    startX: 0,
+    startY: 0,
+    distance: 0,
+  };
+  const PULL_TRIGGER_ZONE = 0.2;
+  const PULL_THRESHOLD = 80;
+  const PULL_MAX = 110;
 
   function initMap() {
     if (mapInitialized) return;
@@ -735,9 +764,11 @@
     destMarker = document.createElementNS("http://www.w3.org/2000/svg", "g");
     destMarker.setAttribute("opacity", "0");
     destMarker.innerHTML = `
-      <circle r="28" fill="#0a6635" ${lowPowerMode ? "" : "filter=\"url(#shadow)\""}/>
+      <circle r="28" fill="#0a6635" ${lowPowerMode ? "" : 'filter="url(#shadow)"'}/>
       <circle r="20" fill="#00c45e"/>
-      <text y="7" text-anchor="middle" font-size="22" fill="white">📍</text>
+      <g transform="translate(-10.56,-14.08) scale(0.055)">
+        <path fill="white" d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 176.3 307.2c9.4 10.1 22.6 15.9 36.4 15.9s27-5.8 36.4-15.9zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"/>
+      </g>
     `;
     overlayEl.appendChild(destMarker);
 
@@ -750,7 +781,7 @@
         <path d="M0,-8 L-16,-46 A18,18 0 0 1 16,-46 Z" fill="url(#dotConeGrad)"/>
       </g>
       <circle class="pulse-ring" r="14" fill="#1a73e8" opacity="0.35"/>
-      <circle r="11" fill="#1a73e8" stroke="#ffffff" stroke-width="3" ${lowPowerMode ? "" : "filter=\"url(#shadow)\""}/>
+      <circle r="11" fill="#1a73e8" stroke="#ffffff" stroke-width="3" ${lowPowerMode ? "" : 'filter="url(#shadow)"'}/>
     `;
     userDot.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -769,8 +800,15 @@
     BUILDING_LABELS.forEach((b) => {
       const PAD_X = 30,
         R = 22;
-      const approxW = b.label.length * 28 + PAD_X * 2;
-      const approxH = 52;
+      const lines = Array.isArray(b.lines) ? b.lines : [b.label];
+      const fontSize = lines.length > 1 ? 24 : 34;
+      const lineHeight = lines.length > 1 ? 20 : 34;
+      const approxW =
+        Math.max(
+          ...lines.map((line) => line.length * (lines.length > 1 ? 14 : 18)),
+        ) +
+        PAD_X * 2;
+      const approxH = Math.max(52, lineHeight * lines.length + 26);
 
       const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
       g.setAttribute("data-cx", b.x);
@@ -794,15 +832,27 @@
 
       const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
       t.setAttribute("x", b.x);
-      t.setAttribute("y", b.y);
+      t.setAttribute("y", b.y - (lines.length - 1) * 10);
       t.setAttribute("text-anchor", "middle");
       t.setAttribute("dominant-baseline", "central");
-      t.setAttribute("font-size", "34");
+      t.setAttribute("font-size", String(fontSize));
       t.setAttribute("font-weight", "800");
       t.setAttribute("font-family", "'Plus Jakarta Sans', sans-serif");
       t.setAttribute("fill", "#0a4d2b");
       t.setAttribute("pointer-events", "none");
-      t.textContent = b.label;
+      lines.forEach((line, idx) => {
+        const tsp = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "tspan",
+        );
+        tsp.setAttribute("x", b.x);
+        tsp.setAttribute("dy", idx === 0 ? 0 : lineHeight);
+        tsp.textContent = line;
+        if (idx === 0) {
+          tsp.setAttribute("dy", idx === 0 ? 0 : lineHeight);
+        }
+        t.appendChild(tsp);
+      });
       g.appendChild(t);
 
       labelGroupEl.appendChild(g);
@@ -960,6 +1010,7 @@
     startCompass();
     buildZoomControls();
     buildLocateButton();
+    buildResetViewButton();
     buildSearchBar();
     buildLocatingToast();
 
@@ -1015,7 +1066,33 @@
     mapWrapEl.appendChild(locateBtnEl);
   }
 
+  function buildResetViewButton() {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "mapResetBtn";
+    btn.setAttribute("aria-label", "Reset map view");
+    btn.innerHTML = `<i class="fas fa-expand"></i>`;
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      smoothAngle = 0;
+      viewAngle = 0;
+      autoCenterOnLocation = false;
+      fitMap();
+      if (currentUserNode) {
+        const userNode = NODE_MAP[currentUserNode];
+        if (userNode) {
+          snapToUser(userNode.x, userNode.y);
+        }
+      }
+    });
+    mapWrapEl.appendChild(btn);
+  }
+
   function jumpToUser() {
+    if (gpsPermissionDenied || (!currentUserNode && gpsErrorShown)) {
+      showLocatingToast("Enable location to see your position on the map.");
+      return;
+    }
     if (!currentUserNode) {
       showLocatingToast("Finding your location…");
       return;
@@ -1060,6 +1137,109 @@
     }, 2200);
   }
 
+  function injectPullStyles() {
+    if (document.getElementById("mapPullStyles")) return;
+    const style = document.createElement("style");
+    style.id = "mapPullStyles";
+    style.textContent = `
+      #mapPullIndicator .pull-spinner i.spinning {
+        animation: mapPullSpin 0.8s linear infinite;
+      }
+      @keyframes mapPullSpin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function buildPullToRefresh() {
+    pullIndicatorEl = document.createElement("div");
+    pullIndicatorEl.id = "mapPullIndicator";
+    pullIndicatorEl.innerHTML = `
+      <span class="pull-spinner"><i class="fas fa-arrow-rotate-right"></i></span>
+      <span class="pull-label">Pull to refresh location</span>
+    `;
+    pullIndicatorEl.style.cssText = `
+      position:absolute; top:10px; left:50%;
+      transform:translate(-50%,-70px);
+      display:flex; align-items:center; gap:8px;
+      background:rgba(255,255,255,0.96); color:#0a6635;
+      font-size:13px; font-weight:700;
+      padding:8px 16px; border-radius:999px;
+      box-shadow:0 3px 14px rgba(0,40,20,0.18);
+      z-index:60; pointer-events:none;
+      transition:transform 0.25s ease, opacity 0.25s ease;
+      opacity:0; white-space:nowrap;
+    `;
+    mapWrapEl.appendChild(pullIndicatorEl);
+  }
+
+  function updatePullIndicator(distance, ready) {
+    if (!pullIndicatorEl) return;
+    const clamped = Math.min(distance, PULL_MAX);
+    const progress = Math.min(clamped / PULL_THRESHOLD, 1);
+    pullIndicatorEl.style.transition = "none";
+    pullIndicatorEl.style.transform = `translate(-50%, ${-70 + clamped}px)`;
+    pullIndicatorEl.style.opacity = String(progress);
+    const icon = pullIndicatorEl.querySelector(".pull-spinner i");
+    const label = pullIndicatorEl.querySelector(".pull-label");
+    if (icon) icon.style.transform = `rotate(${progress * 180}deg)`;
+    if (label) {
+      label.textContent = ready
+        ? "Release to refresh location"
+        : "Pull to refresh location";
+    }
+  }
+
+  function showPullIndicator(state) {
+    if (!pullIndicatorEl) return;
+    pullIndicatorEl.style.transition =
+      "transform 0.25s ease, opacity 0.25s ease";
+    const icon = pullIndicatorEl.querySelector(".pull-spinner i");
+    const label = pullIndicatorEl.querySelector(".pull-label");
+    if (state === "refreshing") {
+      pullIndicatorEl.style.transform = "translate(-50%, 14px)";
+      pullIndicatorEl.style.opacity = "1";
+      if (icon) {
+        icon.classList.add("spinning");
+        icon.style.transform = "";
+      }
+      if (label) label.textContent = "Refreshing your location…";
+    }
+  }
+
+  function hidePullIndicator() {
+    if (!pullIndicatorEl) return;
+    pullIndicatorEl.style.transition =
+      "transform 0.25s ease, opacity 0.25s ease";
+    pullIndicatorEl.style.transform = "translate(-50%,-70px)";
+    pullIndicatorEl.style.opacity = "0";
+    const icon = pullIndicatorEl.querySelector(".pull-spinner i");
+    if (icon) icon.classList.remove("spinning");
+  }
+
+  function triggerLocationRefresh() {
+    if (refreshInProgress) return;
+    refreshInProgress = true;
+    showPullIndicator("refreshing");
+    if (watchId !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+    }
+    gpsErrorShown = false;
+    firstFix = true;
+    startGPS();
+
+    clearTimeout(pullSafetyTimer);
+    pullSafetyTimer = setTimeout(() => {
+      if (refreshInProgress) {
+        refreshInProgress = false;
+        hidePullIndicator();
+      }
+    }, 8000);
+  }
+
   function buildSearchBar() {
     const headerBar = document.getElementById("mapHeaderBar");
     if (!headerBar) return;
@@ -1096,17 +1276,25 @@
   function renderSearchResults(query) {
     const q = (query || "").trim().toLowerCase();
     let matches = BUILDINGS_INFO;
+    const aliasMap = {
+      VMS: ["admissions", "registrar", "records", "enrollment"],
+      JSB: ["guidance", "counseling", "lrc", "library", "resource center"],
+      SJBH: ["accounting", "finance", "billing", "scholarship", "financial"],
+      SCH: ["clinic", "health", "infirmary", "services"],
+      SPCB: ["engineering", "it", "computer", "tech", "lab"],
+      CANTEEN: ["canteen", "faculty", "cafeteria", "food"],
+    };
     if (q) {
       matches = BUILDINGS_INFO.filter((b) => {
-        const hay = (
-          b.name +
-          " " +
-          b.short +
-          " " +
-          b.category +
-          " " +
-          b.offices.join(" ")
-        ).toLowerCase();
+        const hay = [
+          b.name,
+          b.short,
+          b.category,
+          b.offices.join(" "),
+          (aliasMap[b.id] || []).join(" "),
+        ]
+          .join(" ")
+          .toLowerCase();
         return hay.includes(q);
       });
     }
@@ -1135,7 +1323,7 @@
         const id = btn.getAttribute("data-id");
         const b = BUILDINGS_INFO.find((x) => x.id === id);
         if (!b) return;
-        goToBuilding(b);
+        goToBuilding(b, q || b.name);
         searchResultsEl.style.display = "none";
         searchInputEl.blur();
       });
@@ -1156,7 +1344,7 @@
     );
   }
 
-  function goToBuilding(b) {
+  function goToBuilding(b, officeName = null) {
     const cw = mapWrapEl.clientWidth,
       ch = mapWrapEl.clientHeight;
     if (viewScale < MIN_SCALE * 1.5) {
@@ -1170,6 +1358,12 @@
     viewY = ch * 0.5 - clipY * viewScale;
     clampPan();
     applyTransform();
+    const resolvedId = resolveBuildingId(officeName || b.name, b.name) || b.id;
+    destBuildingId = resolvedId;
+    updateHeader();
+    if (mapInitialized) {
+      drawRoute();
+    }
     showBuildingPopup(b, {
       clientX: mapWrapEl.getBoundingClientRect().left + cw / 2,
       clientY: mapWrapEl.getBoundingClientRect().top + ch * 0.4,
@@ -1294,7 +1488,11 @@
   }
 
   function stopOrientationWatchers() {
-    window.removeEventListener("deviceorientationabsolute", onOrientation, true);
+    window.removeEventListener(
+      "deviceorientationabsolute",
+      onOrientation,
+      true,
+    );
     window.removeEventListener("deviceorientation", onOrientation, true);
   }
 
@@ -1582,7 +1780,6 @@
     wrap.querySelector(".zoom-out").disabled = viewScale <= MIN_SCALE + 1e-6;
   }
 
-
   function showBuildingPopup(b, e) {
     if (!popupEl || !mapWrapEl) return;
     const rect = mapWrapEl.getBoundingClientRect();
@@ -1679,9 +1876,11 @@
 
   function startGPS() {
     if (!navigator.geolocation) {
+      gpsPermissionDenied = true;
       showGPSError(
-        "Location isn't supported on this device — tap a building to see directions.",
+        "Location isn't supported on this device — directions can't be shown.",
       );
+      drawRoute();
       return;
     }
     showLocatingToast("Finding your location…");
@@ -1693,14 +1892,18 @@
   }
 
   function onGeoError(err) {
-    let msg = "Location unavailable — tap a building to see directions.";
+    let msg = "Location unavailable — directions can't be shown right now.";
     if (err && err.code === err.PERMISSION_DENIED) {
+      gpsPermissionDenied = true;
       msg =
-        "Location permission denied — enable it in your browser settings, or tap a building to see directions.";
+        "Location permission denied — enable it in your browser settings to see directions.";
     } else if (err && err.code === err.TIMEOUT) {
       msg = "Couldn't get your location — retrying…";
     }
     showGPSError(msg);
+    if (err && err.code !== err.TIMEOUT) {
+      drawRoute();
+    }
   }
 
   function showGPSError(msg) {
@@ -1717,6 +1920,7 @@
   function onPosition(pos) {
     if (gpsErrorShown) {
       gpsErrorShown = false;
+      gpsPermissionDenied = false;
       if (!destBuildingId) {
         const bar = document.getElementById("mapDirectionsBar");
         if (bar) bar.style.display = "none";
@@ -1728,7 +1932,6 @@
     const snapped = nearestNode(svgPos.x, svgPos.y, currentUserNode);
     currentUserNode = snapped.id;
     moveUserDot(snapped.x, snapped.y);
-    updateWalkChip(snapped);
     if (destBuildingId) drawRoute();
 
     const isFirstFix = firstFix;
@@ -1787,8 +1990,15 @@
     const destNodeId = BUILDING_NODE[destBuildingId];
     if (!destNodeId) return;
 
-    const startId = currentUserNode || "gate1";
-    const pathIds = aStar(startId, destNodeId);
+    if (!currentUserNode) {
+      pathLine.setAttribute("opacity", "0");
+      const casingEmpty = document.getElementById("pathCasing");
+      if (casingEmpty) casingEmpty.setAttribute("opacity", "0");
+      destMarker.setAttribute("opacity", "0");
+      return;
+    }
+
+    const pathIds = aStar(currentUserNode, destNodeId);
 
     if (!pathIds) {
       pathLine.setAttribute("opacity", "0");
@@ -1828,33 +2038,11 @@
     if (destEl && bInfo) destEl.textContent = bInfo.short;
   }
 
-  function updateWalkChip(userNode) {
-    if (!destBuildingId) return;
-    const destNodeId = BUILDING_NODE[destBuildingId];
-    if (!destNodeId) return;
-    const pathIds = aStar(userNode.id, destNodeId);
-    if (!pathIds) return;
-
-    let totalPx = 0;
-    for (let i = 0; i < pathIds.length - 1; i++) {
-      totalPx += dist(NODE_MAP[pathIds[i]], NODE_MAP[pathIds[i + 1]]);
-    }
-    const meters = totalPx * 0.045;
-    const mins = Math.max(1, Math.round(meters / 1.2 / 60));
-
-    const chip = document.getElementById("mapWalkChip");
-    const chipTime = document.getElementById("mapWalkTime");
-    if (chip && chipTime) {
-      chipTime.textContent = `~${mins} min`;
-      chip.style.display = "flex";
-    }
-  }
-
   function updateDirectionsBar(pathIds) {
-    if (gpsErrorShown) return;
     const bar = document.getElementById("mapDirectionsBar");
     const txt = document.getElementById("mapDirectionsText");
     if (!bar || !txt) return;
+    gpsErrorShown = false;
     const bInfo = BUILDING_INFO[destBuildingId];
     txt.textContent = `Head towards ${bInfo ? bInfo.name : "your destination"} — follow the yellow path`;
     bar.style.display = "flex";
@@ -1872,9 +2060,6 @@
       updateHeader();
       if (mapInitialized) {
         drawRoute();
-        updateWalkChip(
-          currentUserNode ? NODE_MAP[currentUserNode] : NODE_MAP["gate1"],
-        );
       }
     },
   };
