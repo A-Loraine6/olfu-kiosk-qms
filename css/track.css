@@ -952,8 +952,7 @@ body {
   z-index: 100;
 }
 .popup-card {
-  width: 100%;
-  max-width: 350px;
+  width: 300px;
   background: var(--surface);
   border-radius: 18px 18px 0 0;
   box-shadow: 0 -8px 32px rgba(0, 40, 20, 0.22);
