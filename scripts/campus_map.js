@@ -1628,6 +1628,31 @@
             clampPan();
             applyTransform();
           }
+        } else if (e.touches.length === 2 && gestureMode === "pinch") {
+          const d = getTouchDist(e.touches);
+          const ang = getTouchAngle(e.touches);
+          const rect = mapWrapEl.getBoundingClientRect();
+          const cx =
+            (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+          const cy =
+            (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+
+          if (lastTouchDist) {
+            const factor = d / lastTouchDist / (viewScale / lastPinchScale);
+            zoomAt(cx, cy, factor);
+          }
+
+          if (lastTwistAngle !== null) {
+            const delta = ang - lastTwistAngle;
+            viewAngle += delta;
+            enforceMinZoom();
+            clampPan();
+            scheduleTransform();
+          }
+
+          lastTouchDist = d;
+          lastTwistAngle = ang;
+          lastPinchScale = viewScale;
         }
       },
       { passive: false },
