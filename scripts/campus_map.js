@@ -376,6 +376,9 @@
   let labelItems = [];
   let poiItems = [];
   let transformScheduled = false;
+  let gestureActive = false;
+  let lastAppliedAngle = null;
+  let lastAppliedScale = null;
 
   let smoothAngle = 0;
   const HEADING_ALPHA = 0.08;
@@ -526,10 +529,12 @@
       `translate(${viewX - cw / 2}px,${viewY - ch / 2}px)` +
       `scale(${viewScale})`;
 
-    updateLabelRotations();
-    updateUserDotHeading();
-    updateCompass();
-    updatePinScaling();
+    if (!gestureActive) {
+      updateLabelRotations();
+      updateUserDotHeading();
+      updateCompass();
+      updatePinScaling();
+    }
   }
 
   function updateLabelRotations() {
@@ -1568,6 +1573,7 @@
     el.addEventListener(
       "touchstart",
       (e) => {
+        gestureActive = true;
         if (e.touches.length === 1) {
           const rect = mapWrapEl.getBoundingClientRect();
           const touchY = e.touches[0].clientY - rect.top;
@@ -1673,10 +1679,12 @@
       }
 
       if (e.touches.length === 0) {
+        gestureActive = false;
         isPanning = false;
         gestureMode = null;
         lastTouchDist = null;
         lastTwistAngle = null;
+        scheduleTransform();
       } else if (e.touches.length === 1) {
         gestureMode = "pan";
         isPanning = true;
@@ -1730,9 +1738,11 @@
       scheduleTransform();
     });
     window.addEventListener("mouseup", () => {
+      gestureActive = false;
       isPanning = false;
       isRotating = false;
       el.style.cursor = "grab";
+      scheduleTransform();
     });
     el.addEventListener("contextmenu", (e) => e.preventDefault());
     document.addEventListener("keydown", (e) => {
