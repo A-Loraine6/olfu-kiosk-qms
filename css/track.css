@@ -164,6 +164,12 @@ body {
   -webkit-touch-callout: default;
 }
 
+#campusMap,
+#campusMap * {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
 .map-directions-bar {
   flex-shrink: 0;
   padding: 12px 0;
