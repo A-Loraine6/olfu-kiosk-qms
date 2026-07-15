@@ -93,6 +93,15 @@ if (!KIOSK_ENABLED) {
       ">© Our Lady of Fatima University</div>
     </div>
   `;
+
+  setInterval(() => {
+    fetch("api/kiosk_status.php", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.enabled) location.reload();
+      })
+      .catch(() => {});
+  }, 10000);
   throw new Error("Kiosk disabled");
 }
 
