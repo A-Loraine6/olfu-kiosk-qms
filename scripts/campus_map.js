@@ -530,13 +530,6 @@
     updateUserDotHeading();
     updateCompass();
     updatePinScaling();
-    updateActivePopupPosition();
-  }
-
-  function updateActivePopupPosition() {
-    if (!activePopupSVG || !popupEl || popupEl.style.display === "none") return;
-    const s = svgToScreen(activePopupSVG.x, activePopupSVG.y);
-    positionPopup(s.x, s.y);
   }
 
   function updateLabelRotations() {
@@ -996,12 +989,17 @@
     buildResetViewButton();
     buildSearchBar();
     buildLocatingToast();
+    injectPullStyles();
+    buildPullToRefresh();
 
     popupEl = document.createElement("div");
     popupEl.id = "mapPopup";
     popupEl.style.cssText = `
-      display:none; position:absolute; z-index:100;
-      pointer-events:all;
+      position:absolute; left:0; right:0; bottom:0; z-index:50;
+      pointer-events:none;
+      display:flex; justify-content:center;
+      transform:translateY(100%);
+      transition:transform 0.28s cubic-bezier(.32,.72,0,1);
     `;
     mapWrapEl.appendChild(popupEl);
 
@@ -1571,6 +1569,16 @@
       "touchstart",
       (e) => {
         if (e.touches.length === 1) {
+          const rect = mapWrapEl.getBoundingClientRect();
+          const touchY = e.touches[0].clientY - rect.top;
+          pullState.active =
+            touchY < mapWrapEl.clientHeight * PULL_TRIGGER_ZONE &&
+            !refreshInProgress;
+          pullState.locked = false;
+          pullState.isPull = false;
+          pullState.ready = false;
+          pullState.distance = 0;
+
           gestureMode = "pan";
           isPanning = true;
           autoCenterOnLocation = false;
@@ -1579,6 +1587,7 @@
           panOriginX = viewX;
           panOriginY = viewY;
         } else if (e.touches.length === 2) {
+          pullState.active = false;
           gestureMode = "pinch";
           isPanning = false;
           lastTouchDist = getTouchDist(e.touches);
@@ -1593,44 +1602,51 @@
       "touchmove",
       (e) => {
         e.preventDefault();
-        if (e.touches.length === 1 && gestureMode === "pan" && isPanning) {
+        if (e.touches.length === 1 && gestureMode === "pan") {
           const dx = e.touches[0].clientX - panStartX;
           const dy = e.touches[0].clientY - panStartY;
-          const cos = Math.cos(-viewAngle);
-          const sin = Math.sin(-viewAngle);
-          viewX = panOriginX + (dx * cos - dy * sin);
-          viewY = panOriginY + (dx * sin + dy * cos);
-          clampPan();
-          applyTransform();
-        } else if (e.touches.length === 2 && gestureMode === "pinch") {
-          const d = getTouchDist(e.touches);
-          const ang = getTouchAngle(e.touches);
-          const rect = mapWrapEl.getBoundingClientRect();
-          const cx =
-            (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
-          const cy =
-            (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
 
-          const factor = d / lastTouchDist / (viewScale / lastPinchScale);
-          zoomAt(cx, cy, factor);
-
-          if (lastTwistAngle !== null) {
-            const delta = ang - lastTwistAngle;
-            viewAngle += delta;
-            enforceMinZoom();
-            clampPan();
-            scheduleTransform();
+          if (pullState.active && !pullState.locked) {
+            if (dy > 10 && Math.abs(dy) > Math.abs(dx)) {
+              pullState.isPull = true;
+              pullState.locked = true;
+              isPanning = false;
+            } else if (Math.abs(dx) > 10 || dy < -10) {
+              pullState.locked = true;
+            }
           }
 
-          lastTouchDist = d;
-          lastTwistAngle = ang;
-          lastPinchScale = viewScale;
+          if (pullState.isPull) {
+            pullState.distance = Math.min(Math.max(0, dy), PULL_MAX);
+            pullState.ready = pullState.distance >= PULL_THRESHOLD;
+            updatePullIndicator(pullState.distance, pullState.ready);
+          } else if (isPanning) {
+            const cos = Math.cos(-viewAngle);
+            const sin = Math.sin(-viewAngle);
+            viewX = panOriginX + (dx * cos - dy * sin);
+            viewY = panOriginY + (dx * sin + dy * cos);
+            clampPan();
+            applyTransform();
+          }
         }
       },
       { passive: false },
     );
 
     el.addEventListener("touchend", (e) => {
+      if (pullState.isPull) {
+        if (pullState.ready && !refreshInProgress) {
+          triggerLocationRefresh();
+        } else {
+          hidePullIndicator();
+        }
+        pullState.active = false;
+        pullState.locked = false;
+        pullState.isPull = false;
+        pullState.ready = false;
+        pullState.distance = 0;
+      }
+
       if (e.touches.length === 0) {
         isPanning = false;
         gestureMode = null;
@@ -1765,18 +1781,11 @@
 
   function showBuildingPopup(b, e) {
     if (!popupEl || !mapWrapEl) return;
-    const rect = mapWrapEl.getBoundingClientRect();
-    let px = (e.clientX ?? e.pageX) - rect.left;
-    let py = (e.clientY ?? e.pageY) - rect.top;
-
-    const pinX = b.cx;
-    const pinY = b.cy - b.ry - 34;
-    activePopupSVG = { x: pinX, y: pinY };
 
     const officesHtml = b.offices.length
       ? `<div class="popup-offices">
-           ${b.offices.map((o) => `<div class="popup-office-row"><i class="fas fa-circle-dot"></i>${escapeHtml(o)}</div>`).join("")}
-         </div>`
+         ${b.offices.map((o) => `<div class="popup-office-row"><i class="fas fa-circle-dot"></i>${escapeHtml(o)}</div>`).join("")}
+       </div>`
       : "";
 
     const effectiveDestParent =
@@ -1784,77 +1793,57 @@
     const isTicketDest = effectiveDestParent === b.id;
     const destBadge = isTicketDest
       ? `<div class="popup-dest-badge">
-           <i class="fas fa-ticket"></i><span>Your destination — follow the yellow path</span>
-         </div>`
+         <i class="fas fa-ticket"></i><span>Your destination</span>
+       </div>`
       : "";
 
     popupEl.innerHTML = `
-      <div class="popup-card">
-        <div class="popup-head" style="background:${b.color}">
-          <div class="popup-head-short">${escapeHtml(b.short)}</div>
-          <button type="button" class="popup-close" aria-label="Close"><i class="fas fa-xmark"></i></button>
-        </div>
-        <div class="popup-body">
-          <div class="popup-title">${escapeHtml(b.name)}</div>
-          ${officesHtml}
-          ${destBadge}
-        </div>
+    <div class="popup-card" style="pointer-events:all">
+      <div class="popup-head" style="background:${b.color}">
+        <div class="popup-head-short">${escapeHtml(b.short)}</div>
+        <button type="button" class="popup-close" aria-label="Close"><i class="fas fa-xmark"></i></button>
       </div>
-    `;
+      <div class="popup-body">
+        <div class="popup-title">${escapeHtml(b.name)}</div>
+        ${officesHtml}
+        ${destBadge}
+      </div>
+    </div>
+  `;
 
-    popupEl.style.display = "block";
     popupEl.querySelector(".popup-close").addEventListener("click", (ev) => {
       ev.stopPropagation();
       hidePopup();
     });
 
-    positionPopup(px, py);
-  }
-
-  function positionPopup(px, py) {
-    const pw = popupEl.offsetWidth || 260;
-    const ph = popupEl.offsetHeight || 180;
-    const cw = mapWrapEl.clientWidth;
-    const ch = mapWrapEl.clientHeight;
-    const margin = 8;
-
-    let left = Math.min(Math.max(px - pw / 2, margin), cw - pw - margin);
-    let top = py - ph - 24;
-    if (top < margin) top = py + 24;
-    top = Math.min(Math.max(top, margin), ch - ph - margin);
-
-    popupEl.style.left = left + "px";
-    popupEl.style.top = top + "px";
+    requestAnimationFrame(() => {
+      popupEl.style.transform = "translateY(0)";
+    });
   }
 
   function hidePopup() {
-    if (popupEl) popupEl.style.display = "none";
+    if (!popupEl) return;
+    popupEl.style.transform = "translateY(100%)";
     activePopupSVG = null;
   }
 
   function showYouAreHerePopup(e) {
     if (!popupEl || !mapWrapEl) return;
-    const rect = mapWrapEl.getBoundingClientRect();
-    let px = (e.clientX ?? e.pageX) - rect.left;
-    let py = (e.clientY ?? e.pageY) - rect.top;
-
-    if (userSvgX !== null && userSvgY !== null) {
-      activePopupSVG = { x: userSvgX, y: userSvgY };
-    }
 
     popupEl.innerHTML = `
-      <div class="popup-card youarehere-card">
-        <div class="popup-body" style="padding-top:16px">
-          <div style="display:flex;align-items:center;gap:10px">
-            <i class="fas fa-location-dot" style="color:#1a73e8;font-size:16px"></i>
-            <div class="popup-title" style="margin:0">You are here</div>
-          </div>
+    <div class="popup-card youarehere-card" style="pointer-events:all">
+      <div class="popup-body" style="padding-top:16px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <i class="fas fa-location-dot" style="color:#1a73e8;font-size:16px"></i>
+          <div class="popup-title" style="margin:0">You are here</div>
         </div>
       </div>
-    `;
+    </div>
+  `;
 
-    popupEl.style.display = "block";
-    positionPopup(px, py);
+    requestAnimationFrame(() => {
+      popupEl.style.transform = "translateY(0)";
+    });
   }
 
   function startGPS() {
@@ -1901,6 +1890,11 @@
   }
 
   function onPosition(pos) {
+    if (refreshInProgress) {
+      refreshInProgress = false;
+      clearTimeout(pullSafetyTimer);
+      hidePullIndicator();
+    }
     if (gpsErrorShown) {
       gpsErrorShown = false;
       gpsPermissionDenied = false;
