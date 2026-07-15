@@ -676,7 +676,6 @@
       top:${-CAMPUS.y}px; left:${-CAMPUS.x}px;
       width:${SVG_W}px; height:${SVG_H}px;
       pointer-events:none; user-select:none;
-      ${lowPowerMode ? "" : "filter: saturate(1.08) contrast(1.03);"}
     `;
     img.id = "mapImg";
     clipWrap.appendChild(img);
@@ -756,15 +755,12 @@
     pathLine.setAttribute("stroke-linecap", "round");
     pathLine.setAttribute("stroke-linejoin", "round");
     pathLine.setAttribute("opacity", "0");
-    if (!lowPowerMode) {
-      pathLine.setAttribute("filter", "url(#glow)");
-    }
     overlayEl.appendChild(pathLine);
 
     destMarker = document.createElementNS("http://www.w3.org/2000/svg", "g");
     destMarker.setAttribute("opacity", "0");
     destMarker.innerHTML = `
-      <circle r="28" fill="#0a6635" ${lowPowerMode ? "" : 'filter="url(#shadow)"'}/>
+      <circle r="28" fill="#0a6635"/>
       <circle r="20" fill="#00c45e"/>
       <g transform="translate(-10.56,-14.08) scale(0.055)">
         <path fill="white" d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 176.3 307.2c9.4 10.1 22.6 15.9 36.4 15.9s27-5.8 36.4-15.9zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"/>
@@ -781,7 +777,7 @@
         <path d="M0,-8 L-16,-46 A18,18 0 0 1 16,-46 Z" fill="url(#dotConeGrad)"/>
       </g>
       <circle class="pulse-ring" r="14" fill="#1a73e8" opacity="0.35"/>
-      <circle r="11" fill="#1a73e8" stroke="#ffffff" stroke-width="3" ${lowPowerMode ? "" : 'filter="url(#shadow)"'}/>
+      <circle r="11" fill="#1a73e8" stroke="#ffffff" stroke-width="3"/>
     `;
     userDot.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -825,9 +821,6 @@
       pill.setAttribute("rx", R);
       pill.setAttribute("ry", R);
       pill.setAttribute("fill", "rgba(255,255,255,0.92)");
-      if (!lowPowerMode) {
-        pill.setAttribute("filter", "url(#labelShadow)");
-      }
       g.appendChild(pill);
 
       const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -882,9 +875,6 @@
       pill.setAttribute("fill", "rgba(255,255,255,0.92)");
       pill.setAttribute("stroke", "#0a6635");
       pill.setAttribute("stroke-width", "2");
-      if (!lowPowerMode) {
-        pill.setAttribute("filter", "url(#labelShadow)");
-      }
       g.appendChild(pill);
 
       const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -927,9 +917,6 @@
       pill.setAttribute("fill", "rgba(255,255,255,0.95)");
       pill.setAttribute("stroke", "#0a6635");
       pill.setAttribute("stroke-width", "1.5");
-      if (!lowPowerMode) {
-        pill.setAttribute("filter", "url(#labelShadow)");
-      }
       g.appendChild(pill);
 
       const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -962,10 +949,6 @@
       g.setAttribute("data-cy", pinY);
       g.setAttribute("transform", `translate(${pinX},${pinY})`);
       g.style.cursor = "pointer";
-      if (!lowPowerMode) {
-        g.classList.add("pin-drop");
-        g.style.animationDelay = `${i * 0.05}s`;
-      }
       g.innerHTML = ``;
       g.addEventListener("click", (e) => {
         e.stopPropagation();
