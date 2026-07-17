@@ -87,7 +87,6 @@ if (!empty($officeIds)) {
             <div class="bar-name">Our Lady of Fatima University</div>
             <div class="bar-sub">Queue Management System</div>
         </div>
-        <div class="bar-dots" id="dots"></div>
         <div class="bar-clock">
             <div class="bar-time" id="clock">—</div>
             <div class="bar-date" id="dateStr">—</div>
@@ -98,13 +97,12 @@ if (!empty($officeIds)) {
 
     <script>
         const DATA = <?php echo $officesJson; ?>;
-        const ROTATE_MS = 8000;
         const REFRESH_MS = 10000;
+        const HARD_RELOAD_MS = 60 * 60 * 1000;
 
         let offices = DATA;
-        let currentIdx = 0;
-        let rotateTimer = null;
-        let transitioning = false;
+        
+        setTimeout(() => location.reload(), HARD_RELOAD_MS);
 
         (function tick() {
             const n = new Date();
@@ -132,165 +130,70 @@ if (!empty($officeIds)) {
             return d.innerHTML;
         }
 
-        function renderDots() {
-            const el = document.getElementById('dots');
-            el.innerHTML = '';
-            offices.forEach((_, i) => {
-                const d = document.createElement('div');
-                d.className = 'dot' + (i === currentIdx ? ' on' : '');
-                d.id = 'd' + i;
-                el.appendChild(d);
-            });
-        }
-
-        function updateDots() {
-            offices.forEach((_, i) => {
-                const d = document.getElementById('d' + i);
-                if (d) d.className = 'dot' + (i === currentIdx ? ' on' : '');
-            });
-        }
-
-        function buildInner(o) {
-
-            let main = '';
+        function buildNowServing(o) {
             const ns = o.now_serving || [];
 
             if (ns.length === 0) {
-                main = `<div class="no-ticket a1">
-                    <div class="no-ticket-dashes">— —</div>
-                    <div class="no-ticket-txt">No ticket currently being called</div>
+                return `<div class="c-noticket">
+                    <div class="c-noticket-dash">—</div>
+                    <div class="c-noticket-txt">No ticket called</div>
                 </div>`;
+            }
 
-            } else if (ns.length === 1) {
+            if (ns.length === 1) {
                 const t = ns[0];
-                if (t.window_id) {
-                    main = `<div class="hero a1">
-                        <div class="hero-num">${esc(t.ticket_number)}</div>
-                        <div class="hero-sep"></div>
-                        <div class="hero-info">
-                            <div class="hero-win-lbl">Proceed to</div>
-                            <div class="hero-win-num">Window&nbsp;${esc(t.window_id)}</div>
-                        </div>
-                    </div>`;
-                } else {
-                    main = `<div class="hero-nowin a1">
-                        <div class="hero-num">${esc(t.ticket_number)}</div>
-                        <div class="hero-nowin-sub">Now Serving</div>
-                    </div>`;
-                }
-
-            } else {
-                const cards = ns.map((t, i) => `
-                    <div class="t-card a${i + 1}">
-                        <div class="t-num">${esc(t.ticket_number)}</div>
-                        ${t.window_id
-                            ? `<div class="t-win-lbl">Window</div>
-                               <div class="t-win-num">${esc(t.window_id)}</div>`
-                            : ''}
-                    </div>`).join('');
-                main = `<div class="ticket-grid">${cards}</div>`;
+                return `<div class="c-hero">
+                    <div class="c-hero-num">${esc(t.ticket_number)}</div>
+                    ${t.window_id
+                        ? `<div class="c-hero-win">Window ${esc(t.window_id)}</div>`
+                        : `<div class="c-hero-win muted">Now Serving</div>`}
+                </div>`;
             }
 
+            const cards = ns.slice(0, 2).map(t => `
+                <div class="c-mini">
+                    <div class="c-mini-num">${esc(t.ticket_number)}</div>
+                    ${t.window_id ? `<div class="c-mini-win">W${esc(t.window_id)}</div>` : ''}
+                </div>`).join('');
+            return `<div class="c-mini-grid">${cards}</div>`;
+        }
+
+        function buildNextUp(o) {
             const nu = o.next_up || [];
-            const wc = o.waiting_count || 0;
-            let waitHTML = '';
             if (nu.length === 0) {
-                waitHTML = `<div class="q-empty">Queue is clear</div>`;
-            } else {
-                waitHTML = `<div class="q-list">` +
-                    nu.map((t, i) => `
-                        <div class="q-row${i === 0 ? ' first' : ''}">
-                            <div class="q-num">${esc(t.ticket_number)}</div>
-                            <div class="q-pos">#${i + 1}</div>
-                        </div>`).join('') +
-                    `</div>`;
+                return `<div class="c-q-empty">Queue is clear</div>`;
             }
+            return `<div class="c-q-list">` +
+                nu.slice(0, 3).map((t, i) => `
+                    <div class="c-q-row${i === 0 ? ' first' : ''}">
+                        <span class="c-q-num">${esc(t.ticket_number)}</span>
+                        <span class="c-q-pos">#${i + 1}</span>
+                    </div>`).join('') +
+                `</div>`;
+        }
 
+        function buildCard(o) {
+            const wc = o.waiting_count || 0;
             return `
-            <div class="p-header">
-                <div class="p-office">${esc(o.name)}</div>
-                <div class="p-meta">
-                    <div class="p-stat">
-                        <div class="p-stat-n${wc > 0 ? ' amber' : ''}">${wc}</div>
-                        <div class="p-stat-l">Waiting</div>
-                    </div>
-                    <div class="p-divider"></div>
-                    <div class="p-stat">
-                        <div class="p-stat-n">${o.served_today || 0}</div>
-                        <div class="p-stat-l">Served Today</div>
-                    </div>
+            <div class="office-card">
+                <div class="c-header">
+                    <div class="c-name">${esc(o.name)}</div>
+                    <div class="c-badge${wc > 0 ? ' amber' : ''}">${wc} waiting</div>
                 </div>
-            </div>
-
-            <div class="p-body">
-                <div class="p-main">
-                    <div class="p-watermark">${esc(o.name)}</div>
-                    <div class="ns-label"><div class="ns-dot"></div>Now Serving</div>
-                    ${main}
-                </div>
-                <div class="p-side">
-                    <div class="side-block" style="flex:1;min-height:0">
-                        <div class="side-lbl">Next Up &mdash; ${wc} in queue</div>
-                        ${waitHTML}
-                    </div>
-                </div>
-            </div>
-
-            <div class="p-bar"><div class="p-bar-fill" id="bar-fill"></div></div>`;
+                <div class="c-ns-label"><span class="c-ns-dot"></span>Now Serving</div>
+                <div class="c-ns">${buildNowServing(o)}</div>
+                <div class="c-next-label">Next Up</div>
+                ${buildNextUp(o)}
+            </div>`;
         }
 
-        function showPanel(idx) {
-            if (transitioning) return;
-            transitioning = true;
+        function render() {
             const stage = document.getElementById('stage');
-            const prev = stage.querySelector('.panel');
-
-            function mount() {
-                const p = document.createElement('div');
-                p.className = 'panel';
-                p.innerHTML = buildInner(offices[idx]);
-                stage.appendChild(p);
-                requestAnimationFrame(() => requestAnimationFrame(() => {
-                    p.classList.add('visible');
-                    startBar();
-                    transitioning = false;
-                    scheduleNext();
-                }));
-                updateDots();
+            if (offices.length === 0) {
+                stage.innerHTML = '<div class="g-empty">No offices configured</div>';
+                return;
             }
-
-            if (prev) {
-                prev.style.cssText =
-                    'opacity:0;transform:translateY(-14px);' +
-                    'transition:opacity .25s ease,transform .25s ease;pointer-events:none';
-                setTimeout(() => {
-                    prev.remove();
-                    mount();
-                }, 270);
-            } else {
-                mount();
-            }
-        }
-
-        function startBar() {
-            const f = document.getElementById('bar-fill');
-            if (!f) return;
-            f.style.transition = 'none';
-            f.style.width = '100%';
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-                f.style.transition = `width ${ROTATE_MS}ms linear`;
-                f.style.width = '0%';
-            }));
-        }
-
-        function scheduleNext() {
-            clearTimeout(rotateTimer);
-            if (offices.length > 1) {
-                rotateTimer = setTimeout(() => {
-                    currentIdx = (currentIdx + 1) % offices.length;
-                    showPanel(currentIdx);
-                }, ROTATE_MS);
-            }
+            stage.innerHTML = `<div class="office-grid">${offices.map(buildCard).join('')}</div>`;
         }
 
         async function refresh() {
@@ -302,20 +205,13 @@ if (!empty($officeIds)) {
                 const d = await r.json();
                 if (d && Array.isArray(d.offices)) {
                     offices = d.offices;
-                    if (currentIdx >= offices.length) currentIdx = 0;
-                    renderDots();
+                    render();
                 }
             } catch (e) {}
             setTimeout(refresh, REFRESH_MS);
         }
 
-        renderDots();
-        if (offices.length > 0) {
-            showPanel(0);
-        } else {
-            document.getElementById('stage').innerHTML =
-                '<div class="g-empty">No offices configured</div>';
-        }
+        render();
         setTimeout(refresh, REFRESH_MS);
     </script>
 
