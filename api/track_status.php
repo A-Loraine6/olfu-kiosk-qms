@@ -18,6 +18,70 @@ if (!$token || strlen($token) !== 64 || !ctype_xdigit($token)) {
     exit;
 }
 
+$payload = [];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $rawBody = file_get_contents('php://input');
+    if ($rawBody !== '') {
+        $decodedPayload = json_decode($rawBody, true);
+        if (is_array($decodedPayload)) {
+            $payload = $decodedPayload;
+        }
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($payload['action'] ?? '') === 'cancel_ticket') {
+    $selectStmt = $db->prepare("SELECT t.id, t.ticket_number, t.status, t.completed_at, t.served_at, t.transaction_type, o.name AS office_name
+        FROM tickets t
+        JOIN offices o ON o.id = t.office_id
+        WHERE t.tracking_token = ?
+        LIMIT 1");
+    $selectStmt->bind_param('s', $token);
+    $selectStmt->execute();
+    $ticketToCancel = $selectStmt->get_result()->fetch_assoc();
+    $selectStmt->close();
+
+    if (!$ticketToCancel) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'message' => 'Ticket not found']);
+        exit;
+    }
+
+    if (in_array($ticketToCancel['status'], ['completed', 'skipped', 'cancelled'], true)) {
+        echo json_encode([
+            'success' => true,
+            'message' => 'This ticket is already closed.',
+            'status' => $ticketToCancel['status'] === 'completed' ? 'completed' : 'cancelled',
+            'cancelled' => $ticketToCancel['status'] !== 'completed',
+            'ticket_number' => $ticketToCancel['ticket_number'],
+            'office_name' => $ticketToCancel['office_name'],
+            'service_name' => $ticketToCancel['transaction_type'] ?? 'General Queue',
+        ]);
+        exit;
+    }
+
+    $updateStmt = $db->prepare("UPDATE tickets SET status = 'cancelled', completed_at = NOW() WHERE tracking_token = ?");
+    $updateStmt->bind_param('s', $token);
+    $updated = $updateStmt->execute();
+    $updateStmt->close();
+
+    if (!$updated) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Unable to cancel ticket.']);
+        exit;
+    }
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Ticket cancelled successfully.',
+        'status' => 'cancelled',
+        'cancelled' => true,
+        'ticket_number' => $ticketToCancel['ticket_number'],
+        'office_name' => $ticketToCancel['office_name'],
+        'service_name' => $ticketToCancel['transaction_type'] ?? 'General Queue',
+    ]);
+    exit;
+}
+
 $rateLimitKey = 'track_' . $token;
 $cacheFile = sys_get_temp_dir() . '/' . md5($rateLimitKey) . '.tmp';
 
@@ -54,7 +118,8 @@ if (!$ticket) {
     exit;
 }
 
-$finalStatuses = ['completed', 'skipped'];
+$finalStatuses = ['completed', 'skipped', 'cancelled'];
+$cancelled = ($ticket['status'] === 'cancelled');
 
 if (in_array($ticket['status'], $finalStatuses, true)) {
 
@@ -64,6 +129,7 @@ if (in_array($ticket['status'], $finalStatuses, true)) {
         'office_name'      => $ticket['office_name'],
         'service_name'     => $ticket['transaction_type'] ?? 'General Queue',
         'status'           => $ticket['status'],
+        'cancelled'        => $cancelled,
         'people_ahead'     => 0,
         'now_serving'      => null,
         'total_in_queue'   => 0,
@@ -137,7 +203,7 @@ $avgStmt->close();
 
 $avgSecsPerTicket = isset($avgRow['avg_secs']) && $avgRow['avg_secs'] !== null
     ? (float) $avgRow['avg_secs']
-    : 300; 
+    : 300;
 
 $estWaitMins = (int) ceil(($peopleAhead * $avgSecsPerTicket) / 60);
 
@@ -162,6 +228,7 @@ $response = [
     'office_name'       => $ticket['office_name'],
     'service_name'      => $ticket['transaction_type'] ?? 'General Queue',
     'status'            => $ticket['status'],
+    'cancelled'         => false,
     'people_ahead'      => $peopleAhead,
     'now_serving'       => $nowServing,
     'est_wait_mins'     => $estWaitMins,

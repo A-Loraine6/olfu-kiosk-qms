@@ -113,10 +113,11 @@ if ($action === 'get_queue') {
     $overflowMode = (bool) ($staffData['overflow_mode']  ?? false);
 
     $statusMap = [
-        'waiting' => ['waiting', 'serving'],
-        'on-hold' => ['on-hold'],
-        'skipped' => ['skipped'],
-        'done'    => ['completed'],
+        'waiting'   => ['waiting', 'serving'],
+        'on-hold'   => ['on-hold'],
+        'skipped'   => ['skipped'],
+        'done'      => ['completed'],
+        'cancelled' => ['cancelled'],
     ];
     $statuses = $statusMap[$tab] ?? ['waiting'];
 

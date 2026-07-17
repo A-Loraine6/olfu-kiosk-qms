@@ -261,6 +261,10 @@ if ($queueMode === 'service-based') {
                                     <i class="fas fa-forward"></i> Skipped
                                     <span class="tab-count" id="tabCountSkipped">0</span>
                                 </button>
+                                <button class="queue-tab" data-tab="cancelled" onclick="switchTab('cancelled', this)">
+                                    <i class="fas fa-ban"></i> Cancelled
+                                    <span class="tab-count" id="tabCountCancelled">0</span>
+                                </button>
                                 <button class="queue-tab" data-tab="done" onclick="switchTab('done', this)">
                                     <i class="fas fa-check"></i> Done
                                     <span class="tab-count" id="tabCountDone">0</span>

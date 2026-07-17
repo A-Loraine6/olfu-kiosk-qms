@@ -132,6 +132,12 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
                             <span id="refreshText">Updating…</span>
                         </div>
 
+                        <div class="cancel-row" id="cancelRow">
+                            <button class="cancel-btn" id="cancelTicketBtn" type="button" onclick="requestCancelTicket()">
+                                <i class="fas fa-circle-xmark"></i> Cancel ticket
+                            </button>
+                        </div>
+
                     </div>
                 </div>
 
@@ -177,6 +183,19 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
                     <span>Map</span>
                 </button>
             </nav>
+
+            <!-- Cancel ticket confirmation modal -->
+            <div class="modal-overlay" id="cancelModalOverlay" role="dialog" aria-modal="true" aria-labelledby="cancelModalTitle">
+                <div class="modal-card">
+                    <div class="modal-icon"><i class="fas fa-triangle-exclamation"></i></div>
+                    <div class="modal-title" id="cancelModalTitle">Cancel this ticket?</div>
+                    <div class="modal-sub">You'll lose your place in line and will need to request a new ticket if you change your mind.</div>
+                    <div class="modal-actions">
+                        <button class="modal-btn modal-btn-secondary" id="modalKeepBtn" type="button">Keep ticket</button>
+                        <button class="modal-btn modal-btn-danger" id="modalConfirmCancelBtn" type="button">Yes, cancel</button>
+                    </div>
+                </div>
+            </div>
 
         </div>
 

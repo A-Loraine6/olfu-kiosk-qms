@@ -1159,6 +1159,16 @@ kbd {
   transform: translateX(18px);
 }
 
+.chip-cancelled {
+  background: rgba(198, 40, 40, 0.08);
+  color: #c62828;
+  border-color: rgba(198, 40, 40, 0.2);
+}
+
+.ticket-row.is-cancelled {
+  opacity: 0.85;
+}
+
 @media (max-width: 860px) {
   .stats-row {
     grid-template-columns: repeat(2, 1fr);
