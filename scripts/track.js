@@ -216,6 +216,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   initNotifCard();
   initControls();
+  initCancelModal();
   poll();
   startPollTimer();
 
@@ -319,6 +320,104 @@ function poll() {
     });
 }
 
+/* ============ Cancel ticket confirmation modal ============ */
+
+function initCancelModal() {
+  const overlay = document.getElementById("cancelModalOverlay");
+  const keepBtn = document.getElementById("modalKeepBtn");
+  const confirmBtn = document.getElementById("modalConfirmCancelBtn");
+  if (!overlay || !keepBtn || !confirmBtn) return;
+
+  keepBtn.addEventListener("click", closeCancelModal);
+
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeCancelModal();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && overlay.classList.contains("show")) {
+      closeCancelModal();
+    }
+  });
+
+  confirmBtn.addEventListener("click", performCancelTicket);
+}
+
+function openCancelModal() {
+  const overlay = document.getElementById("cancelModalOverlay");
+  if (overlay) overlay.classList.add("show");
+}
+
+function closeCancelModal() {
+  const overlay = document.getElementById("cancelModalOverlay");
+  if (overlay) overlay.classList.remove("show");
+}
+
+function requestCancelTicket() {
+  openCancelModal();
+}
+
+function performCancelTicket() {
+  const confirmBtn = document.getElementById("modalConfirmCancelBtn");
+  const keepBtn = document.getElementById("modalKeepBtn");
+  const cancelBtn = document.getElementById("cancelTicketBtn");
+
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cancelling…';
+  }
+  if (keepBtn) keepBtn.disabled = true;
+  if (cancelBtn) {
+    cancelBtn.disabled = true;
+    cancelBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cancelling…';
+  }
+
+  cancelTicket()
+    .then((data) => {
+      closeCancelModal();
+      if (data && data.success) {
+        render({
+          ...data,
+          ticket_number: data.ticket_number || "",
+          office_name: data.office_name || "",
+          service_name: data.service_name || "",
+          status: data.status || "cancelled",
+          cancelled: true,
+          expired: false,
+          people_ahead: 0,
+          now_serving: null,
+          est_wait_mins: 0,
+          building_hint: "",
+        });
+        return;
+      }
+      showError(data?.message || "Unable to cancel ticket right now.");
+    })
+    .catch(() => {
+      closeCancelModal();
+      showError("Unable to cancel ticket right now.");
+    })
+    .finally(() => {
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = "Yes, cancel";
+      }
+      if (keepBtn) keepBtn.disabled = false;
+      if (cancelBtn) {
+        cancelBtn.disabled = false;
+        cancelBtn.innerHTML = '<i class="fas fa-circle-xmark"></i> Cancel ticket';
+      }
+    });
+}
+
+function cancelTicket() {
+  return fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "cancel_ticket" }),
+  }).then((r) => r.json());
+}
+
 function render(data) {
   const {
     ticket_number,
@@ -330,7 +429,13 @@ function render(data) {
     est_wait_mins,
     expired,
     building_hint,
+    cancelled,
   } = data;
+
+  const displayStatus = cancelled ? "cancelled" : status;
+  const cancelRow = document.getElementById("cancelRow");
+  const canCancel = !expired && !["completed", "skipped", "cancelled"].includes(displayStatus);
+  if (cancelRow) cancelRow.classList.toggle("visible", canCancel);
 
   document.getElementById("officeName").textContent = office_name;
   document.getElementById("serviceName").textContent = service_name;
@@ -339,27 +444,30 @@ function render(data) {
     .getElementById("ticketNumber")
     .setAttribute("aria-label", `Your ticket number is ${ticket_number}`);
 
-  renderStatusPill(status, people_ahead);
+  renderStatusPill(displayStatus, people_ahead);
 
   const stripe = document.getElementById("ticketStripe");
   stripe.className = "ticket-stripe";
-  if (status === "serving") stripe.classList.add("stripe-serving");
-  if (status === "completed") stripe.classList.add("stripe-completed");
-  if (status === "skipped") stripe.classList.add("stripe-skipped");
+  if (displayStatus === "serving") stripe.classList.add("stripe-serving");
+  if (displayStatus === "completed") stripe.classList.add("stripe-completed");
+  if (displayStatus === "skipped" || displayStatus === "cancelled")
+    stripe.classList.add("stripe-skipped");
 
   const numEl = document.getElementById("ticketNumber");
   numEl.className = "ticket-number";
-  if (status === "serving") numEl.classList.add("serving-num");
-  if (status === "completed" || status === "skipped")
+  if (displayStatus === "serving") numEl.classList.add("serving-num");
+  if (displayStatus === "completed" || displayStatus === "skipped" || displayStatus === "cancelled")
     numEl.classList.add("done-num");
 
   if (window.CampusMap)
     window.CampusMap.setDestination(office_name, building_hint || "");
 
-  if (expired || status === "completed" || status === "skipped") {
-    renderDone(status);
+  if (expired || displayStatus === "completed" || displayStatus === "skipped" || displayStatus === "cancelled") {
+    renderDone(displayStatus);
     clearInterval(pollInterval);
     document.getElementById("refreshHint").style.display = "none";
+    const cancelRowDone = document.getElementById("cancelRow");
+    if (cancelRowDone) cancelRowDone.classList.remove("visible");
     triggerHaptic("celebration");
     playNotificationSound("complete");
     if (!confettiFired) {
@@ -374,7 +482,7 @@ function render(data) {
   document.getElementById("ticketCard").style.display = "block";
 
   const statRow = document.getElementById("statRow");
-  if (status === "serving") {
+  if (displayStatus === "serving") {
     statRow.style.display = "none";
   } else {
     statRow.style.display = "flex";
@@ -396,7 +504,7 @@ function render(data) {
     nsBanner.style.display = "none";
   }
 
-  renderAlerts(status, people_ahead);
+  renderAlerts(displayStatus, people_ahead);
 
   if (lastStatus !== null && lastStatus !== "serving" && status === "serving") {
     sendNotification(
@@ -420,6 +528,7 @@ function renderStatusPill(status, peopleAhead) {
     serving: ["pill-serving", "Now serving you"],
     completed: ["pill-completed", "Completed"],
     skipped: ["pill-skipped", "Skipped"],
+    cancelled: ["pill-skipped", "Cancelled"],
     "on-hold": ["pill-onhold", "On hold"],
   };
   const [cls, label] = map[status] || ["pill-waiting", status];
@@ -466,6 +575,10 @@ function renderDone(status) {
     title.textContent = "Transaction complete!";
     sub.innerHTML =
       "Your transaction has been completed.<br>Thank you for visiting OLFU.";
+  } else if (status === "cancelled") {
+    title.textContent = "Ticket cancelled";
+    sub.innerHTML =
+      "Your ticket has been cancelled.<br>You can request a new ticket if needed.";
   } else if (status === "skipped") {
     title.textContent = "Ticket skipped";
     sub.innerHTML =

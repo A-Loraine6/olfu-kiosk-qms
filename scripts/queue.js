@@ -37,7 +37,7 @@ function initQueue() {
 
 async function loadAllTabCounts() {
   try {
-    const tabs = ["waiting", "on-hold", "skipped", "done"];
+    const tabs = ["waiting", "on-hold", "skipped", "cancelled", "done"];
     const promises = tabs.map(async (tab) => {
       const params = {
         action: "get_queue",
@@ -288,6 +288,7 @@ function updateTabCount(tab, count) {
     waiting: "tabCountWaiting",
     "on-hold": "tabCountOnHold",
     skipped: "tabCountSkipped",
+    cancelled: "tabCountCancelled",
     done: "tabCountDone",
   };
   const el = document.getElementById(map[tab]);
@@ -591,18 +592,25 @@ function renderTicketRow(t, index) {
   const isSkipped = t.status === "skipped";
   const isDone = t.status === "completed";
   const isOnHold = t.status === "on-hold";
+  const isCancelled = t.status === "cancelled";
   const isFirst =
-    !isServing && !isSkipped && !isDone && !isOnHold && index === 0;
+    !isServing &&
+    !isSkipped &&
+    !isDone &&
+    !isOnHold &&
+    !isCancelled &&
+    index === 0;
 
   let rowClass = "ticket-row";
   if (isServing) rowClass += " is-serving";
   if (isSkipped) rowClass += " is-skipped";
   if (isDone) rowClass += " is-done";
   if (isOnHold) rowClass += " is-on-hold";
+  if (isCancelled) rowClass += " is-cancelled";
 
   const pos = isServing
     ? `<span class="ticket-pos" style="background:var(--primary);color:#fff;border-color:var(--primary);font-size:9px;">NOW</span>`
-    : isDone || isSkipped || isOnHold
+    : isDone || isSkipped || isOnHold || isCancelled
       ? ""
       : `<span class="ticket-pos${isFirst ? " pos-first" : ""}">${index + 1}</span>`;
 
@@ -620,10 +628,12 @@ function renderTicketRow(t, index) {
       ? `<span class="ticket-status-chip chip-skipped"><i class="fas fa-forward"></i> Skipped</span>`
       : isOnHold
         ? `<span class="ticket-status-chip chip-on-hold"><i class="fas fa-pause"></i> On Hold</span>`
-        : "";
+        : isCancelled
+          ? `<span class="ticket-status-chip chip-cancelled"><i class="fas fa-ban"></i> Cancelled</span>`
+          : "";
 
   let actionsHtml = "";
-  if (!isDone) {
+  if (!isDone && !isCancelled) {
     if (isSkipped) {
       actionsHtml = `
         <div class="ticket-actions-inline">
