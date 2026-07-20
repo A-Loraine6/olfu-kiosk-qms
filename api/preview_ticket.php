@@ -17,7 +17,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$office_id = isset($_POST['office_id']) ? (int)$_POST['office_id'] : 0;
+$office_id   = isset($_POST['office_id']) ? (int)$_POST['office_id'] : 0;
+$is_priority = isset($_POST['is_priority']) && $_POST['is_priority'] === '1';
 
 if (!$office_id) {
     ob_end_clean();
@@ -28,7 +29,7 @@ if (!$office_id) {
 
 try {
     $generator     = new TicketGenerator($db);
-    $previewTicket = $generator->previewNextTicketNumber($office_id);
+    $previewTicket = $generator->previewNextTicketNumber($office_id, $is_priority);
 
     ob_end_clean();
 
@@ -50,6 +51,7 @@ try {
     echo json_encode([
         'success'        => true,
         'preview_ticket' => $previewTicket,
+        'is_priority'    => $is_priority,
     ]);
 } catch (Exception $e) {
     ob_end_clean();

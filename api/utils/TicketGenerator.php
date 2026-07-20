@@ -8,7 +8,7 @@ class TicketGenerator
         $this->db = $db;
     }
 
-    public function issueTicket(int $office_id, string $service_name = ''): array
+    public function issueTicket(int $office_id, string $service_name = '', bool $is_priority = false): array
     {
         $office = $this->fetchOffice($office_id);
         if (!$office) {
@@ -77,16 +77,17 @@ class TicketGenerator
                 ];
             }
 
-            $ticketNumber  = $this->generateTicketNumber($office);
+            $ticketNumber  = $this->generateTicketNumber($office, $is_priority);
             $trackingToken = $this->generateTrackingToken();
+            $isPriorityInt = $is_priority ? 1 : 0;
 
             $insert = $this->db->prepare("
                 INSERT INTO tickets
-                    (office_id, transaction_type, ticket_number, tracking_token, window_id, status, created_at)
+                    (office_id, is_priority, transaction_type, ticket_number, tracking_token, window_id, status, created_at)
                 VALUES
-                    (?, ?, ?, ?, ?, 'waiting', NOW())
+                    (?, ?, ?, ?, ?, ?, 'waiting', NOW())
             ");
-            $insert->bind_param('isssi', $office_id, $transaction_type, $ticketNumber, $trackingToken, $window_id);
+            $insert->bind_param('iisssi', $office_id, $isPriorityInt, $transaction_type, $ticketNumber, $trackingToken, $window_id);
 
             if (!$insert->execute()) {
                 throw new RuntimeException('Failed to insert ticket: ' . $insert->error);
@@ -106,16 +107,17 @@ class TicketGenerator
             'people_ahead'   => $peopleAhead,
             'waiting_count'  => $waitingCount + 1,
             'window_id'      => $window_id,
+            'is_priority'    => $is_priority,
         ];
     }
 
-    public function previewNextTicketNumber(int $office_id): string|false
+    public function previewNextTicketNumber(int $office_id, bool $is_priority = false): string|false
     {
         $office = $this->fetchOffice($office_id);
         if (!$office) {
             return false;
         }
-        return $this->generateTicketNumber($office);
+        return $this->generateTicketNumber($office, $is_priority);
     }
 
 
@@ -127,7 +129,7 @@ class TicketGenerator
     private function fetchOffice(int $office_id): array|false
     {
         $stmt = $this->db->prepare("
-            SELECT id, name, code, queue_prefix, queue_mode,
+            SELECT id, name, code, queue_prefix, priority_prefix, queue_mode,
                    max_queue_limit, queue_start_num, daily_reset,
                    auto_close, open_time, close_time,
                    break_start, break_end, queue_cutoff
@@ -180,21 +182,27 @@ class TicketGenerator
         return count($rows) === 1 ? (int)$rows[0]['window_number'] : null;
     }
 
-    private function generateTicketNumber(array $office): string
+    private function generateTicketNumber(array $office, bool $is_priority = false): string
     {
-        $prefix = $office['queue_prefix'] ?: strtoupper(substr($office['code'], 0, 3));
-        $today  = date('Y-m-d');
+        $basePrefix = $office['queue_prefix'] ?: strtoupper(substr($office['code'], 0, 3));
+
+        $prefix = $is_priority
+            ? ($office['priority_prefix'] ?: ($basePrefix . '-P'))
+            : $basePrefix;
+
+        $today = date('Y-m-d');
+        $isPriorityInt = $is_priority ? 1 : 0;
 
         if ($office['daily_reset']) {
             $stmt = $this->db->prepare(
-                "SELECT COUNT(*) AS cnt FROM tickets WHERE office_id = ? AND DATE(created_at) = ?"
+                "SELECT COUNT(*) AS cnt FROM tickets WHERE office_id = ? AND is_priority = ? AND DATE(created_at) = ?"
             );
-            $stmt->bind_param('is', $office['id'], $today);
+            $stmt->bind_param('iis', $office['id'], $isPriorityInt, $today);
         } else {
             $stmt = $this->db->prepare(
-                "SELECT COUNT(*) AS cnt FROM tickets WHERE office_id = ?"
+                "SELECT COUNT(*) AS cnt FROM tickets WHERE office_id = ? AND is_priority = ?"
             );
-            $stmt->bind_param('i', $office['id']);
+            $stmt->bind_param('ii', $office['id'], $isPriorityInt);
         }
 
         $stmt->execute();
@@ -207,16 +215,26 @@ class TicketGenerator
         return sprintf('%s-%03d', $prefix, $next);
     }
 
-    private function countWaiting(int $office_id, string $today): int
+    private function countWaiting(int $office_id, string $today, ?bool $is_priority = null): int
     {
-        $stmt = $this->db->prepare("
+        $sql = "
             SELECT COUNT(*) AS cnt
             FROM   tickets
             WHERE  office_id        = ?
               AND  status IN ('waiting', 'serving')
               AND  DATE(created_at) = ?
-        ");
-        $stmt->bind_param('is', $office_id, $today);
+        ";
+
+        if ($is_priority !== null) {
+            $sql .= " AND is_priority = ?";
+            $stmt = $this->db->prepare($sql);
+            $isPriorityInt = $is_priority ? 1 : 0;
+            $stmt->bind_param('isi', $office_id, $today, $isPriorityInt);
+        } else {
+            $stmt = $this->db->prepare($sql);
+            $stmt->bind_param('is', $office_id, $today);
+        }
+
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -242,15 +260,18 @@ class TicketGenerator
         if (!$office) {
             return ['is_full' => false];
         }
-        if ($office['max_queue_limit'] <= 0) {
-            return ['is_full' => false];
-        }
+
         $today      = date('Y-m-d');
         $dailyCount = $this->countAllToday($office_id, $today);
-        return [
-            'is_full' => $dailyCount >= $office['max_queue_limit'],
-            'count'   => $dailyCount,
-            'limit'   => $office['max_queue_limit'],
+
+        $status = [
+            'is_full'          => $office['max_queue_limit'] > 0 && $dailyCount >= $office['max_queue_limit'],
+            'count'            => $dailyCount,
+            'limit'            => $office['max_queue_limit'],
+            'waiting_regular'  => $this->countWaiting($office_id, $today, false),
+            'waiting_priority' => $this->countWaiting($office_id, $today, true),
         ];
+
+        return $status;
     }
 }

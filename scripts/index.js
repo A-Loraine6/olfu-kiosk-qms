@@ -1,8 +1,9 @@
 let state = {
-  screen: 1,
+  screen: 0,
   office: null,
   service: null,
-  history: [1],
+  history: [0],
+  isPriority: false,
 };
 
 const DEFAULT_AVG_MINUTES = 5;
@@ -11,6 +12,13 @@ function getAvgMinutes(office) {
   return office && office.avg_minutes != null && office.avg_minutes > 0
     ? office.avg_minutes
     : DEFAULT_AVG_MINUTES;
+}
+
+function selectPriority(isPriority) {
+  state.isPriority = isPriority;
+  updatePriorityPills();
+  state.history = [0, 1];
+  showScreen(1);
 }
 
 if (!KIOSK_ENABLED) {
@@ -153,18 +161,19 @@ setInterval(updateClocks, 1000);
 function getTotalSteps() {
   const o = state.office;
   return o && o.mode === "service-based" && o.services && o.services.length
-    ? 3
-    : 2;
+    ? 4
+    : 3;
 }
 
-function updateStepLabels(currentStep) {
+function updateStepLabels() {
   const total = getTotalSteps();
-  let displayStep = currentStep;
-  if (total === 2 && currentStep === 3) displayStep = 2;
+  const stepMap = { 0: 1, 1: 2, 2: 3, 3: total };
 
-  document.querySelectorAll(".eyebrow").forEach((el) => {
-    if (el.closest("#screen" + currentStep)) {
-      el.textContent = `Step ${displayStep} of ${total}`;
+  [0, 1, 2, 3].forEach((screenNum) => {
+    const screenEl = document.getElementById("screen" + screenNum);
+    const eyebrow = screenEl && screenEl.querySelector(".eyebrow");
+    if (eyebrow) {
+      eyebrow.textContent = `Step ${stepMap[screenNum]}`;
     }
   });
 }
@@ -179,13 +188,15 @@ function showScreen(n) {
   const body = nxt.querySelector(".screen-body");
   if (body) body.scrollTop = 0;
   state.screen = n;
-  updateStepLabels(n);
+  updateStepLabels();
   resetIdle();
 }
 
 function goBack() {
   state.history.pop();
-  const prev = state.history[state.history.length - 1] || 1;
+  const prev = state.history.length
+    ? state.history[state.history.length - 1]
+    : 0;
   showScreen(prev);
 }
 
@@ -247,7 +258,7 @@ function isOfficeAcceptingQueue(office) {
 }
 
 function renderOffices() {
-  updateStepLabels(1);
+  updateStepLabels();
   const grid = document.getElementById("officeGrid");
   grid.innerHTML = "";
   OFFICES.forEach((o) => {
@@ -277,13 +288,15 @@ function renderOffices() {
 function selectOffice(o) {
   state.office = o;
   state.service = null;
-  state.history = [1];
+  state.history = [0, 1];
 
   const check = isOfficeAcceptingQueue(o);
   if (!check.ok) {
     showBlockedMessage(check.code, check.reason);
     return;
   }
+
+  updatePriorityPills();
 
   if (o.mode === "service-based" && o.services && o.services.length) {
     renderServices(o);
@@ -292,6 +305,14 @@ function selectOffice(o) {
   } else {
     checkAndPrepareConfirm();
   }
+}
+
+function updatePriorityPills() {
+  const show = !!state.isPriority;
+  ["s1PriorityPill", "s2PriorityPill", "s3PriorityPill", "s4PriorityPill"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = show ? "inline-flex" : "none";
+  });
 }
 
 function renderServices(o) {
@@ -327,11 +348,12 @@ function prepareConfirm() {
     ? s.name
     : "General Queue";
   document.getElementById("s3QueuePreview").textContent = "—";
+  updatePriorityPills();
 
   fetch("api/preview_ticket.php", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `office_id=${o.id}`,
+    body: `office_id=${o.id}&is_priority=${state.isPriority ? 1 : 0}`,
   })
     .then((r) => r.json())
     .then((data) => {
@@ -362,7 +384,7 @@ function confirmQueue() {
   fetch("api/issue_ticket.php", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `office_id=${o.id}&service_name=${encodeURIComponent(s ? s.name : "")}`,
+    body: `office_id=${o.id}&service_name=${encodeURIComponent(s ? s.name : "")}&is_priority=${state.isPriority ? 1 : 0}`,
   })
     .then((r) => r.json())
     .then((data) => {
@@ -481,6 +503,7 @@ function showTicket(data) {
     ? s.name
     : "General Queue";
   document.getElementById("s4TicketNumber").textContent = data.ticket_number;
+  updatePriorityPills();
 
   const position = (data.people_ahead ?? 0) + 1;
   document.getElementById("s4PeopleAhead").textContent = position;
@@ -585,7 +608,7 @@ function checkAndPrepareConfirm() {
   fetch("api/preview_ticket.php", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `office_id=${o.id}`,
+    body: `office_id=${o.id}&is_priority=${state.isPriority ? 1 : 0}`,
   })
     .then((r) => r.json())
     .then((data) => {
@@ -601,6 +624,7 @@ function checkAndPrepareConfirm() {
         : "General Queue";
       document.getElementById("s3QueuePreview").textContent =
         data.preview_ticket;
+      updatePriorityPills();
 
       const avg = getAvgMinutes(o);
       const est = o.waiting * avg;
