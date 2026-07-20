@@ -97,6 +97,7 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
                             <div class="ticket-body">
                                 <div class="ticket-office" id="officeName"></div>
                                 <div class="ticket-service" id="serviceName"></div>
+                                <div class="ticket-window" id="windowBadge" style="display:none"></div>
                                 <div class="ticket-number" id="ticketNumber" role="img" aria-label="Your ticket number"></div>
 
                                 <div class="stat-row" id="statRow">

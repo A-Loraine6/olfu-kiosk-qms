@@ -315,6 +315,7 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
                                 <i class="fas fa-star" style="font-size:12px"></i>
                                 Priority Lane
                             </div>
+                            <div class="ticket-window" id="s4WindowLabel" style="display:none"></div>
                             <div class="ticket-number" id="s4TicketNumber"></div>
                             <div class="ticket-stats">
                                 <div>

@@ -142,6 +142,7 @@ if ($queueMode === 'service-based') {
                                 <div class="serving-meta" id="servingMeta">
                                     <span id="servingStudent"><i class="fas fa-user"></i> Waiting for next student…</span>
                                     <span id="servingType" class="serving-type-badge" style="display:none;"></span>
+                                    <span id="servingWindow" class="serving-type-badge" style="display:none;"></span>
                                 </div>
 
                                 <div class="serving-timer" id="servingTimer" style="display:none;">

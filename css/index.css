@@ -628,8 +628,24 @@ body {
   font-size: 18px;
   font-weight: 600;
   color: var(--ink-2);
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   line-height: 1.4;
+}
+
+.ticket-window {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--green-50);
+  color: var(--green-700);
+  border: 1px solid var(--green-100);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .ticket-number {
@@ -1309,8 +1325,6 @@ body {
   color: rgba(255, 255, 255, 0.55);
   line-height: 1.6;
 }
-
-/* ---------- Priority lane additions: append to css/index.css ---------- */
 
 .priority-grid {
   display: grid;

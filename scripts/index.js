@@ -495,6 +495,19 @@ const TOTAL_CD = 15;
 let cdTimer = null,
   cdSecs = TOTAL_CD;
 
+function renderWindowBadge(elId, windowNumber) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const value = Number(windowNumber);
+  if (Number.isFinite(value) && value > 0) {
+    el.textContent = `Window ${value}`;
+    el.style.display = "inline-flex";
+  } else {
+    el.textContent = "";
+    el.style.display = "none";
+  }
+}
+
 function showTicket(data) {
   const o = state.office,
     s = state.service;
@@ -502,6 +515,7 @@ function showTicket(data) {
   document.getElementById("s4ServiceName").textContent = s
     ? s.name
     : "General Queue";
+  renderWindowBadge("s4WindowLabel", data.window_number ?? data.window_id ?? null);
   document.getElementById("s4TicketNumber").textContent = data.ticket_number;
   updatePriorityPills();
 
