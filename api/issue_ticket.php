@@ -19,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $office_id    = isset($_POST['office_id'])    ? (int)$_POST['office_id']    : 0;
 $service_name = isset($_POST['service_name']) ? trim($_POST['service_name']) : '';
+$is_priority  = isset($_POST['is_priority']) && $_POST['is_priority'] === '1';
 
 if (!$office_id) {
     ob_end_clean();
@@ -29,7 +30,7 @@ if (!$office_id) {
 
 try {
     $generator = new TicketGenerator($db);
-    $result    = $generator->issueTicket($office_id, $service_name);
+    $result    = $generator->issueTicket($office_id, $service_name, $is_priority);
 
     ob_end_clean();
     echo json_encode($result);

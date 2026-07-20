@@ -44,7 +44,7 @@ $avgTimeStmt->execute();
 $avgTimeResult = $avgTimeStmt->get_result();
 $avgTimes = [];
 foreach ($avgTimeResult->fetch_all(MYSQLI_ASSOC) as $row) {
-    $avgTimes[$row['office_id']] = (int) round($row['avg_seconds'] / 60); // convert to minutes
+    $avgTimes[$row['office_id']] = (int) round($row['avg_seconds'] / 60);
 }
 
 $servicesResult = $db->query("
@@ -201,10 +201,43 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
 
     <div class="screens">
 
-        <div class="screen active" id="screen1">
+        <div class="screen active" id="screen0">
             <div class="screen-head">
-                <div class="eyebrow">Step 1 of 3</div>
-                <h1 class="screen-title">Select an Office</h1>
+                <div class="eyebrow">Step 1</div>
+                <h1 class="screen-title">Who Is This Queue For?</h1>
+            </div>
+            <div class="screen-body">
+                <div class="priority-grid stagger">
+                    <button class="priority-card" onclick="selectPriority(false)">
+                        <div class="priority-card-icon"><i class="fas fa-user"></i></div>
+                        <div class="priority-card-name">Regular</div>
+                        <div class="priority-card-desc">Standard queue</div>
+                    </button>
+                    <button class="priority-card priority-card-accent" onclick="selectPriority(true)">
+                        <div class="priority-card-icon"><i class="fas fa-star"></i></div>
+                        <div class="priority-card-name">Priority Lane</div>
+                        <div class="priority-card-desc">Senior Citizen / PWD / Pregnant</div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="screen" id="screen1">
+            <div class="screen-head screen-head-with-nav">
+                <button class="btn-nav-back" onclick="goBack()">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <div style="text-align:center">
+                    <div class="eyebrow">Step 2</div>
+                    <h1 class="screen-title">Select an Office</h1>
+                    <div style="margin-top:14px" id="s1PriorityPillWrap">
+                        <div class="priority-pill" id="s1PriorityPill" style="display:none">
+                            <i class="fas fa-star" style="font-size:12px"></i>
+                            Priority Lane
+                        </div>
+                    </div>
+                </div>
+                <div style="width:48px"></div>
             </div>
             <div class="screen-body">
                 <div class="office-grid stagger" id="officeGrid"></div>
@@ -217,12 +250,16 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
                     <i class="fas fa-arrow-left"></i> Back
                 </button>
                 <div style="text-align:center">
-                    <div class="eyebrow">Step 2 of 3</div>
+                    <div class="eyebrow">Step 3 of 4</div>
                     <h1 class="screen-title">Select a Service</h1>
-                    <div style="margin-top:14px">
+                    <div style="margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
                         <div class="office-label-pill">
                             <i class="fas fa-building" style="font-size:12px"></i>
                             <span id="s2OfficeName"></span>
+                        </div>
+                        <div class="priority-pill" id="s2PriorityPill" style="display:none">
+                            <i class="fas fa-star" style="font-size:12px"></i>
+                            Priority Lane
                         </div>
                     </div>
                 </div>
@@ -248,6 +285,10 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
                     <div class="confirm-card">
                         <div class="confirm-office" id="s3OfficeName"></div>
                         <div class="confirm-service" id="s3ServiceName"></div>
+                        <div class="priority-pill" id="s3PriorityPill" style="display:none;margin:0 auto 20px">
+                            <i class="fas fa-star" style="font-size:12px"></i>
+                            Priority Lane
+                        </div>
                         <div class="confirm-divider"></div>
                         <div class="confirm-preview-label">Your ticket number will be</div>
                         <div class="confirm-number" id="s3QueuePreview">—</div>
@@ -270,6 +311,10 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
                         <div class="ticket-body">
                             <div class="ticket-office" id="s4OfficeName"></div>
                             <div class="ticket-service" id="s4ServiceName"></div>
+                            <div class="priority-pill" id="s4PriorityPill" style="display:none;margin:0 auto 12px">
+                                <i class="fas fa-star" style="font-size:12px"></i>
+                                Priority Lane
+                            </div>
                             <div class="ticket-number" id="s4TicketNumber"></div>
                             <div class="ticket-stats">
                                 <div>
