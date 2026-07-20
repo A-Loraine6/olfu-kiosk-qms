@@ -500,6 +500,7 @@ function renderServingCard(ticket, showNew = false) {
   const ticketEl = document.getElementById("servingTicket");
   const studentEl = document.getElementById("servingStudent");
   const typeEl = document.getElementById("servingType");
+  const windowEl = document.getElementById("servingWindow");
   const timerEl = document.getElementById("servingTimer");
   const actionsEl = document.getElementById("servingActions");
   const cardEl = document.getElementById("servingCard");
@@ -541,6 +542,14 @@ function renderServingCard(ticket, showNew = false) {
     typeEl.style.display = "none";
   }
 
+  const windowNumber = ticket.window_number ?? ticket.window_id ?? null;
+  if (windowNumber && Number(windowNumber) > 0) {
+    windowEl.innerHTML = `<i class="fas fa-window-maximize" style="font-size:10px;opacity:0.7;"></i> Window ${Number(windowNumber)}`;
+    windowEl.style.display = "";
+  } else {
+    windowEl.style.display = "none";
+  }
+
   timerEl.style.display = "";
   actionsEl.style.display = "grid";
   disableServingActions(false);
@@ -560,6 +569,7 @@ function clearServingCard() {
   studentEl.style.display = "";
 
   document.getElementById("servingType").style.display = "none";
+  document.getElementById("servingWindow").style.display = "none";
   document.getElementById("servingTimer").style.display = "none";
   document.getElementById("servingActions").style.display = "none";
   document.getElementById("timerDisplay").textContent = "00:00";

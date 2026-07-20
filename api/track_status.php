@@ -93,6 +93,7 @@ if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < 5) {
 $stmt = $db->prepare("
     SELECT t.id, t.ticket_number, t.status, t.office_id,
            t.transaction_type, t.created_at, t.served_at, t.completed_at,
+           t.window_id,
            o.name AS office_name, o.window_count
     FROM   tickets t
     JOIN   offices o ON o.id = t.office_id
@@ -233,7 +234,7 @@ $response = [
     'now_serving'       => $nowServing,
     'est_wait_mins'     => $estWaitMins,
     'total_in_queue'    => $totalInQueue,
-    'counter_window'    => null,
+    'counter_window'    => isset($ticket['window_id']) && $ticket['window_id'] !== null ? (int) $ticket['window_id'] : null,
     'service_hours'     => null,
     'location_info'     => null,
     'expired'           => false,

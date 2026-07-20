@@ -107,6 +107,7 @@ class TicketGenerator
             'people_ahead'   => $peopleAhead,
             'waiting_count'  => $waitingCount + 1,
             'window_id'      => $window_id,
+            'window_number'  => $window_id,
             'is_priority'    => $is_priority,
         ];
     }

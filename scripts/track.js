@@ -418,6 +418,19 @@ function cancelTicket() {
   }).then((r) => r.json());
 }
 
+function renderWindowBadge(windowNumber) {
+  const el = document.getElementById("windowBadge");
+  if (!el) return;
+  const value = Number(windowNumber);
+  if (Number.isFinite(value) && value > 0) {
+    el.textContent = `Window ${value}`;
+    el.style.display = "inline-flex";
+  } else {
+    el.textContent = "";
+    el.style.display = "none";
+  }
+}
+
 function render(data) {
   const {
     ticket_number,
@@ -430,6 +443,8 @@ function render(data) {
     expired,
     building_hint,
     cancelled,
+    counter_window,
+    window_number,
   } = data;
 
   const displayStatus = cancelled ? "cancelled" : status;
@@ -439,6 +454,7 @@ function render(data) {
 
   document.getElementById("officeName").textContent = office_name;
   document.getElementById("serviceName").textContent = service_name;
+  renderWindowBadge(counter_window ?? window_number ?? null);
   document.getElementById("ticketNumber").textContent = ticket_number;
   document
     .getElementById("ticketNumber")
