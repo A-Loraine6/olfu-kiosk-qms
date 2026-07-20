@@ -122,7 +122,7 @@ if ($action === 'get_queue') {
     $statuses = $statusMap[$tab] ?? ['waiting'];
 
     $placeholders = implode(',', array_fill(0, count($statuses), '?'));
-    $orderBy = ($tab === 'done') ? 'completed_at DESC' : 'created_at ASC';
+    $orderBy = ($tab === 'done') ? 'completed_at DESC' : 't.is_priority DESC, t.created_at ASC';
     $today   = date('Y-m-d');
 
     $types  = 'is' . str_repeat('s', count($statuses));
@@ -224,7 +224,7 @@ if ($action === 'call_next') {
                 SELECT 1 FROM service_windows sw
                 WHERE sw.service_id = tt.id AND sw.window_number = ?
             )
-            ORDER BY t.created_at ASC
+            ORDER BY t.is_priority DESC, t.created_at ASC
             LIMIT 1";
         $types   .= 'i';
         $params[] = $windowNumber;
@@ -234,7 +234,7 @@ if ($action === 'call_next') {
                 WHERE t.office_id = ?
                   AND t.status = 'waiting'
                   AND DATE(t.created_at) = ?
-                ORDER BY t.created_at ASC
+                ORDER BY t.is_priority DESC, t.created_at ASC
                 LIMIT 1";
     }
 
@@ -278,6 +278,84 @@ if ($action === 'call_next') {
     $now  = date(DATETIME_FORMAT);
     $stmt = $db->prepare("UPDATE tickets SET status='serving', served_at=?, served_by=?, window_id=? WHERE id=?");
     $stmt->bind_param('siii', $now, $staffId, $assignedWindowId, $ticket['id']);
+    $stmt->execute();
+
+    $ticket['status']    = 'serving';
+    $ticket['served_at'] = $now;
+    $ticket['window_id'] = $assignedWindowId;
+    respond(['success' => true, 'ticket' => $ticket]);
+}
+
+if ($action === 'serve_ticket') {
+    $ticketId = (int) ($_POST['ticket_id'] ?? 0);
+
+    // Staff can only serve one ticket at a time
+    $stmt = $db->prepare("SELECT id FROM tickets WHERE office_id=? AND status='serving' AND served_by=? LIMIT 1");
+    $stmt->bind_param('ii', $officeId, $staffId);
+    $stmt->execute();
+    if ($stmt->get_result()->fetch_assoc()) {
+        respond(['success' => false, 'message' => 'You already have a ticket in progress.']);
+    }
+
+    $stmt = $db->prepare("SELECT * FROM tickets WHERE id=? AND office_id=? AND status='waiting'");
+    $stmt->bind_param('ii', $ticketId, $officeId);
+    $stmt->execute();
+    $ticket = $stmt->get_result()->fetch_assoc();
+
+    if (!$ticket) {
+        respond(['success' => false, 'message' => 'Ticket not found or no longer waiting.']);
+    }
+
+    $stmt = $db->prepare("SELECT window_number, overflow_mode FROM users WHERE id = ? LIMIT 1");
+    $stmt->bind_param('i', $staffId);
+    $stmt->execute();
+    $staffData    = $stmt->get_result()->fetch_assoc();
+    $windowNumber = (int)  ($staffData['window_number']  ?? 0);
+    $overflowMode = (bool) ($staffData['overflow_mode']  ?? false);
+    $queueMode    = getOfficeQueueMode($db, $officeId);
+
+    // In service-based mode without overflow, only allow serving tickets that
+    // actually belong to this staff member's window
+    if ($queueMode !== 'unified' && !$overflowMode && $windowNumber > 0 && $ticket['transaction_type'] !== null) {
+        $checkStmt = $db->prepare("
+            SELECT 1 FROM service_windows sw
+            LEFT JOIN transaction_types tt2 ON tt2.id = sw.service_id
+            WHERE tt2.name = ? AND tt2.office_id = ? AND sw.window_number = ?
+            LIMIT 1
+        ");
+        $checkStmt->bind_param('sii', $ticket['transaction_type'], $officeId, $windowNumber);
+        $checkStmt->execute();
+        if (!$checkStmt->get_result()->fetch_assoc()) {
+            respond(['success' => false, 'message' => 'This ticket belongs to another window. Enable Peak Hours Mode to serve it.']);
+        }
+    }
+
+    $assignedWindowId = $ticket['window_id'];
+    if ($assignedWindowId === null && $ticket['transaction_type'] !== null) {
+        $serviceStmt = $db->prepare("
+            SELECT sw.window_number
+            FROM service_windows sw
+            LEFT JOIN transaction_types tt ON tt.id = sw.service_id
+            WHERE tt.name = ? AND tt.office_id = ? AND sw.office_id = ?
+        ");
+        $serviceStmt->bind_param('sii', $ticket['transaction_type'], $officeId, $officeId);
+        $serviceStmt->execute();
+        $serviceWindows = $serviceStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $serviceStmt->close();
+
+        if (count($serviceWindows) > 0 && $windowNumber > 0) {
+            $validWindows = array_column($serviceWindows, 'window_number');
+            $assignedWindowId = in_array($windowNumber, $validWindows)
+                ? $windowNumber
+                : (int) $serviceWindows[0]['window_number'];
+        } elseif ($windowNumber > 0) {
+            $assignedWindowId = $windowNumber;
+        }
+    }
+
+    $now  = date(DATETIME_FORMAT);
+    $stmt = $db->prepare("UPDATE tickets SET status='serving', served_at=?, served_by=?, window_id=? WHERE id=?");
+    $stmt->bind_param('siii', $now, $staffId, $assignedWindowId, $ticketId);
     $stmt->execute();
 
     $ticket['status']    = 'serving';
