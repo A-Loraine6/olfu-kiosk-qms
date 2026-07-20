@@ -388,6 +388,7 @@ async function confirmAction() {
     complete: "complete_ticket",
     hold: "hold_ticket",
     skip: "skip_ticket",
+    serve: "serve_ticket",
   };
   const apiAction = actionMap[action] || "skip_ticket";
 
@@ -409,7 +410,12 @@ async function confirmAction() {
     console.log("[confirmAction] response:", res);
 
     if (res.success) {
-      if (isServingTicket) {
+      if (action === "serve") {
+        currentTicket = res.ticket;
+        serveStartTime = new Date();
+        renderServingCard(res.ticket, true);
+        startTimer();
+      } else if (isServingTicket) {
         stopTimer();
         currentTicket = null;
         serveStartTime = null;
@@ -419,12 +425,12 @@ async function confirmAction() {
         complete: "Transaction completed!",
         hold: "Ticket placed on hold.",
         skip: "Ticket skipped.",
+        serve: `Now serving ${res.ticket?.ticket_number ?? ""}`.trim(),
       };
       showToast(msgMap[action] || "Action completed.", "success");
       await Promise.all([loadQueue(), loadAllTabCounts(), loadStats()]);
       startRefreshCountdown();
     } else {
-      console.error("[confirmAction] server error:", res.message);
       showToast(res.message || "Action failed.", "error");
       if (isServingTicket) disableServingActions(false);
     }
@@ -649,12 +655,19 @@ function renderTicketRow(t, index) {
           </button>
         </div>`;
     } else if (!isServing) {
+      const serveBtn =
+        CAN_MANAGE_QUEUE && t.status === "waiting"
+          ? `<button class="ticket-btn ticket-btn-serve" title="Serve this ticket" onclick="serveSpecificTicket(${t.id}, '${escHtml(t.ticket_number)}')">
+         <i class="fas fa-bell"></i>
+       </button>`
+          : "";
       actionsHtml = `
-        <div class="ticket-actions-inline">
-          <button class="ticket-btn btn-danger" title="Skip this ticket" onclick="manualSkip(${t.id}, '${escHtml(t.ticket_number)}')">
-            <i class="fas fa-forward"></i>
-          </button>
-        </div>`;
+      <div class="ticket-actions-inline">
+        ${serveBtn}
+        <button class="ticket-btn btn-danger" title="Skip this ticket" onclick="manualSkip(${t.id}, '${escHtml(t.ticket_number)}')">
+          <i class="fas fa-forward"></i>
+        </button>
+      </div>`;
     }
   }
 
@@ -704,6 +717,22 @@ function manualSkip(ticketId, ticketNum) {
     `Skip ticket <strong>${escHtml(ticketNum)}</strong> from the queue?`,
     "btn-warning",
     { action: "skip", ticketId },
+  );
+}
+
+function serveSpecificTicket(ticketId, ticketNum) {
+  if (currentTicket) {
+    showToast(
+      "Complete or skip your current ticket before serving another.",
+      "error",
+    );
+    return;
+  }
+  openConfirmModal(
+    "Serve This Ticket",
+    `Start serving <strong>${escHtml(ticketNum)}</strong> now? This skips the normal queue order.`,
+    "btn-primary",
+    { action: "serve", ticketId },
   );
 }
 

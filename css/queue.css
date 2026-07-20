@@ -971,6 +971,12 @@ kbd {
   background: rgba(198, 40, 40, 0.06);
 }
 
+.ticket-btn-serve:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(0, 139, 67, 0.08);
+}
+
 .ticket-status-chip {
   display: inline-flex;
   align-items: center;
