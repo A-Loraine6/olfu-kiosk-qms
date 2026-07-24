@@ -1,21 +1,109 @@
 (function () {
   "use strict";
 
-  const CAL = {
-    gpsA: { lat: 14.619259, lng: 121.151592 },
-    svgA: { x: 608, y: 791 },
-    gpsB: { lat: 14.620553, lng: 121.15381 },
-    svgB: { x: 3660, y: 596 },
-  };
+  const CALIBRATION_POINTS = [
+    { lat: 14.620303859819074, lng: 121.15358155696558, x: 3300, y: 639 },
+    { lat: 14.62001165707186, lng: 121.15312420991697, x: 2687, y: 784 },
+    { lat: 14.61943626769976, lng: 121.15247410852331, x: 1735, y: 760 },
+    { lat: 14.61959129503177, lng: 121.15203968057038, x: 1168, y: 654 },
+    { lat: 14.619564463385176, lng: 121.15166379256078, x: 610, y: 443 },
+    { lat: 14.619263352459713, lng: 121.1516791978071, x: 608, y: 791 },
+    { lat: 14.61928295764446, lng: 121.15189987667863, x: 830, y: 879 },
+    { lat: 14.619672262909887, lng: 121.15284669652685, x: 2225, y: 850 },
+    { lat: 14.619918822564339, lng: 121.153348269658, x: 2980, y: 980 },
+    { lat: 14.620471634244192, lng: 121.1539061691739, x: 3700, y: 596 },
+  ];
 
-  const SCALE_X = (CAL.svgB.x - CAL.svgA.x) / (CAL.gpsB.lng - CAL.gpsA.lng);
-  const SCALE_Y = (CAL.svgB.y - CAL.svgA.y) / (CAL.gpsB.lat - CAL.gpsA.lat);
+  function solve3x3(M, b) {
+    const det = (m) =>
+      m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) -
+      m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
+      m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+    const D = det(M);
+    const Mx = [
+      [b[0], M[0][1], M[0][2]],
+      [b[1], M[1][1], M[1][2]],
+      [b[2], M[2][1], M[2][2]],
+    ];
+    const My = [
+      [M[0][0], b[0], M[0][2]],
+      [M[1][0], b[1], M[1][2]],
+      [M[2][0], b[2], M[2][2]],
+    ];
+    const Mz = [
+      [M[0][0], M[0][1], b[0]],
+      [M[1][0], M[1][1], b[1]],
+      [M[2][0], M[2][1], b[2]],
+    ];
+    return [det(Mx) / D, det(My) / D, det(Mz) / D];
+  }
+
+  function fitAffine(pts) {
+    let Sxx = 0,
+      Sxy = 0,
+      Sx = 0,
+      Syy = 0,
+      Sy = 0,
+      S = 0,
+      SxX = 0,
+      SyX = 0,
+      SX = 0,
+      SxY = 0,
+      SyY = 0,
+      SY = 0;
+    for (const p of pts) {
+      const { lng, lat, x, y } = p;
+      Sxx += lng * lng;
+      Sxy += lng * lat;
+      Sx += lng;
+      Syy += lat * lat;
+      Sy += lat;
+      S += 1;
+      SxX += lng * x;
+      SyX += lat * x;
+      SX += x;
+      SxY += lng * y;
+      SyY += lat * y;
+      SY += y;
+    }
+    const M = [
+      [Sxx, Sxy, Sx],
+      [Sxy, Syy, Sy],
+      [Sx, Sy, S],
+    ];
+    const [A, B, C] = solve3x3(M, [SxX, SyX, SX]);
+    const [D, E, F] = solve3x3(M, [SxY, SyY, SY]);
+    return { A, B, C, D, E, F };
+  }
+
+  const T = fitAffine(CALIBRATION_POINTS);
+
+  // Precompute each calibration point's residual (actual - base affine prediction)
+  const CALIB_RESIDUALS = CALIBRATION_POINTS.map((p) => {
+    const bx = T.A * p.lng + T.B * p.lat + T.C;
+    const by = T.D * p.lng + T.E * p.lat + T.F;
+    return { lat: p.lat, lng: p.lng, rx: p.x - bx, ry: p.y - by };
+  });
 
   function gpsToSvg(lat, lng) {
-    return {
-      x: CAL.svgA.x + (lng - CAL.gpsA.lng) * SCALE_X,
-      y: CAL.svgA.y + (lat - CAL.gpsA.lat) * SCALE_Y,
-    };
+    const bx = T.A * lng + T.B * lat + T.C;
+    const by = T.D * lng + T.E * lat + T.F;
+
+    // Inverse-distance-weighted local correction using calibration residuals
+    let wSum = 0,
+      cx = 0,
+      cy = 0;
+    for (const r of CALIB_RESIDUALS) {
+      const dlat = lat - r.lat,
+        dlng = lng - r.lng;
+      const d2 = dlat * dlat + dlng * dlng;
+      if (d2 < 1e-18) return { x: bx + r.rx, y: by + r.ry }; // essentially on a calib point
+      const w = 1 / d2; // power=2
+      wSum += w;
+      cx += w * r.rx;
+      cy += w * r.ry;
+    }
+    return { x: bx + cx / wSum, y: by + cy / wSum };
   }
 
   const NODES = [
@@ -114,8 +202,10 @@
     ["j_26", "j_28"],
     ["j_26", "b_sch"],
     ["gate4", "j_26"],
-    ["j_27", "j_28"],
+    ["j_28", "j_27"],
     ["j_27", "j_29"],
+    ["j_27", "b_spcb"],
+    ["j_29", "b_spcb"],
     ["j_28", "j_27"],
     ["j_28", "j_26"],
     ["j_29", "j_27"],
@@ -372,6 +462,10 @@
   let firstFix = true;
   let autoCenterOnLocation = true;
   let disableDeviceOrientation = true;
+
+  let smoothedLat = null;
+  let smoothedLng = null;
+  const SMOOTHING_ALPHA = 0.35;
 
   let labelItems = [];
   let poiItems = [];
@@ -989,6 +1083,7 @@
 
     buildCompass();
     startCompass();
+    buildNodeDebugLayer();
     buildZoomControls();
     buildLocateButton();
     buildResetViewButton();
@@ -1939,8 +2034,21 @@
       }
     }
 
+    if (pos.coords.accuracy && pos.coords.accuracy > 25) {
+      return;
+    }
+
     const { latitude: lat, longitude: lng } = pos.coords;
-    const svgPos = gpsToSvg(lat, lng);
+
+    if (smoothedLat === null) {
+      smoothedLat = lat;
+      smoothedLng = lng;
+    } else {
+      smoothedLat += SMOOTHING_ALPHA * (lat - smoothedLat);
+      smoothedLng += SMOOTHING_ALPHA * (lng - smoothedLng);
+    }
+
+    const svgPos = gpsToSvg(smoothedLat, smoothedLng);
     const snapped = nearestNode(svgPos.x, svgPos.y, currentUserNode);
     currentUserNode = snapped.id;
     moveUserDot(snapped.x, snapped.y);
@@ -2007,6 +2115,20 @@
       const casingEmpty = document.getElementById("pathCasing");
       if (casingEmpty) casingEmpty.setAttribute("opacity", "0");
       destMarker.setAttribute("opacity", "0");
+      return;
+    }
+
+    if (currentUserNode === destNodeId) {
+      pathLine.setAttribute("opacity", "0");
+      const casing = document.getElementById("pathCasing");
+      if (casing) casing.setAttribute("opacity", "0");
+      destMarker.setAttribute("opacity", "1"); // keep the destination pin visible
+      const bar = document.getElementById("mapDirectionsBar");
+      const txt = document.getElementById("mapDirectionsText");
+      if (bar && txt) {
+        txt.textContent = "You've arrived!";
+        bar.style.display = "flex";
+      }
       return;
     }
 
