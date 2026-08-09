@@ -655,12 +655,230 @@ function escapeHtml(str) {
 
 let logsCurrentPage = 1;
 let logsStaffId = null;
+let feedbackCurrentPage = 1;
+let feedbackStaffId = null;
+let feedbackRatingFilter = null;
+
+function renderFeedbackRatingChips(summary = {}) {
+  const container = document.getElementById("feedbackRatingFilters");
+  if (!container) return;
+
+  const options = [
+    { value: null, label: "All" },
+    { value: 5, label: "5 stars" },
+    { value: 4, label: "4 stars" },
+    { value: 3, label: "3 stars" },
+    { value: 2, label: "2 stars" },
+    { value: 1, label: "1 star" },
+  ];
+
+  container.innerHTML = options
+    .map(({ value, label }) => {
+      const rating = value === null ? "all" : String(value);
+      const count = summary[rating] ?? 0;
+      const activeClass = feedbackRatingFilter === value ? "active" : "";
+      const starLabel = value === null ? "All" : `${label}`;
+      return `
+        <button class="feedback-rating-chip ${activeClass}" type="button" data-rating="${value === null ? "all" : value}">
+          <span>${starLabel}</span>
+          <span class="feedback-rating-chip-count">${count}</span>
+        </button>
+      `;
+    })
+    .join("");
+
+  container.querySelectorAll(".feedback-rating-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const value = chip.dataset.rating === "all" ? null : Number(chip.dataset.rating);
+      feedbackRatingFilter = value;
+      feedbackCurrentPage = 1;
+      fetchStaffFeedback();
+    });
+  });
+}
 
 async function openStaffLogsModal(staffId) {
   logsStaffId = staffId;
   logsCurrentPage = 1;
   openModal("staffLogsModal");
   await fetchStaffLogs();
+}
+
+async function openStaffFeedbackModal(staffId) {
+  if (!CAN_MANAGE || !CAN_DELETE) {
+    showToast("Only administrators can view feedback.", "error");
+    return;
+  }
+
+  feedbackStaffId = staffId;
+  feedbackCurrentPage = 1;
+  feedbackRatingFilter = null;
+
+  const loading = document.getElementById("feedbackLoading");
+  const empty = document.getElementById("feedbackEmpty");
+  const list = document.getElementById("feedbackList");
+  const pagBar = document.getElementById("feedbackPagination");
+  if (loading) loading.style.display = "flex";
+  if (empty) empty.style.display = "none";
+  if (list) list.innerHTML = "";
+  if (pagBar) pagBar.style.display = "none";
+  openModal("staffFeedbackModal");
+
+  await fetchStaffFeedback();
+}
+
+async function fetchStaffFeedback() {
+  const loading = document.getElementById("feedbackLoading");
+  const empty = document.getElementById("feedbackEmpty");
+  const list = document.getElementById("feedbackList");
+  const pagBar = document.getElementById("feedbackPagination");
+
+  if (loading) loading.style.display = "flex";
+  if (empty) empty.style.display = "none";
+  if (list) list.innerHTML = "";
+  if (pagBar) pagBar.style.display = "none";
+
+  try {
+    const res = await fetch(AJAX_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "get_staff_feedback",
+        staff_id: feedbackStaffId,
+        page: feedbackCurrentPage,
+        limit: 5,
+        rating: feedbackRatingFilter,
+        csrf_token: CSRF_TOKEN,
+      }),
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      showToast(data.message || "Failed to load staff feedback.", "error");
+      return;
+    }
+
+    renderFeedbackRatingChips(data.rating_summary || {});
+
+    const staff = data.staff || {};
+    const badge = document.getElementById("feedbackTotalBadge");
+    if (badge) badge.textContent = `${Number(data.total || 0)} feedback`;
+
+    const avatar = document.getElementById("feedbackStaffAvatar");
+    const name = document.getElementById("feedbackStaffName");
+    const sub = document.getElementById("feedbackStaffSub");
+    if (avatar) avatar.textContent = staff.full_name ? staff.full_name.charAt(0).toUpperCase() : "?";
+    if (name) name.textContent = staff.full_name || "Unknown staff";
+    if (sub) {
+      const parts = [staff.role_name ? staff.role_name.charAt(0).toUpperCase() + staff.role_name.slice(1) : null, staff.office_name].filter(Boolean);
+      sub.textContent = parts.join(" · ");
+    }
+
+    if (!data.feedback || !data.feedback.length) {
+      if (loading) loading.style.display = "none";
+      if (empty) empty.style.display = "flex";
+      return;
+    }
+
+    list.innerHTML = data.feedback
+      .map((item) => {
+        const stars = Array.from({ length: 5 }, (_, idx) => `<span class="feedback-star-item ${idx < Number(item.rating) ? "filled" : ""}">★</span>`).join("");
+        const comment = item.comment ? escapeHtml(item.comment) : "No additional comment provided.";
+
+        return `
+          <div class="feedback-item-card">
+            <div class="feedback-item-header">
+              <div class="feedback-item-stars">${stars}</div>
+              <span class="feedback-item-date">${formatFeedbackDate(item.created_at)}</span>
+            </div>
+            <div class="feedback-item-comment">${comment}</div>
+          </div>
+        `;
+      })
+      .join("");
+
+    if (data.totalPages > 1 || data.total > 0) {
+      renderFeedbackPagination(data.page, data.totalPages, data.total, data.limit);
+      if (pagBar) pagBar.style.display = "flex";
+    }
+
+    if (loading) loading.style.display = "none";
+  } catch (e) {
+    if (loading) loading.style.display = "none";
+    showToast("Failed to load feedback.", "error");
+  }
+}
+
+function renderFeedbackPagination(page, totalPages, total, limit) {
+  const infoEl = document.getElementById("feedbackPageInfo");
+  const ctrlEl = document.getElementById("feedbackPageControls");
+  if (!infoEl || !ctrlEl) return;
+
+  const from = total === 0 ? 0 : (page - 1) * limit + 1;
+  const to = Math.min(page * limit, total);
+  infoEl.textContent = total === 0 ? "No feedback" : `Showing ${from}–${to} of ${total}`;
+  ctrlEl.innerHTML = "";
+
+  const navBtn = (icon, title, disabled, onClick) => {
+    const b = document.createElement("button");
+    b.className = "page-nav-btn";
+    b.title = title;
+    b.disabled = disabled;
+    b.innerHTML = `<i class="fas ${icon}"></i>`;
+    if (!disabled) b.addEventListener("click", onClick);
+    return b;
+  };
+
+  const pageBtn = (label, active, onClick) => {
+    const b = document.createElement("button");
+    b.className = "page-nav-btn" + (active ? " page-nav-active" : "");
+    b.textContent = label;
+    if (onClick) b.addEventListener("click", onClick);
+    return b;
+  };
+
+  ctrlEl.appendChild(navBtn("fa-angle-double-left", "First", page <= 1, () => {
+    feedbackCurrentPage = 1;
+    fetchStaffFeedback();
+  }));
+  ctrlEl.appendChild(navBtn("fa-angle-left", "Previous", page <= 1, () => {
+    feedbackCurrentPage = Math.max(1, page - 1);
+    fetchStaffFeedback();
+  }));
+
+  const range = [];
+  for (let p = 1; p <= totalPages; p++) {
+    range.push(p);
+  }
+  range.forEach((p) => {
+    ctrlEl.appendChild(pageBtn(p, p === page, () => {
+      feedbackCurrentPage = p;
+      fetchStaffFeedback();
+    }));
+  });
+
+  ctrlEl.appendChild(navBtn("fa-angle-right", "Next", page >= totalPages, () => {
+    feedbackCurrentPage = Math.min(totalPages, page + 1);
+    fetchStaffFeedback();
+  }));
+  ctrlEl.appendChild(navBtn("fa-angle-double-right", "Last", page >= totalPages, () => {
+    feedbackCurrentPage = totalPages;
+    fetchStaffFeedback();
+  }));
+}
+
+function formatFeedbackDate(dateString) {
+  if (!dateString) return "—";
+  const d = new Date(dateString.replace(" ", "T"));
+  if (Number.isNaN(d.getTime())) return dateString;
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 }
 
 async function fetchStaffLogs() {

@@ -289,7 +289,6 @@ if ($action === 'call_next') {
 if ($action === 'serve_ticket') {
     $ticketId = (int) ($_POST['ticket_id'] ?? 0);
 
-    // Staff can only serve one ticket at a time
     $stmt = $db->prepare("SELECT id FROM tickets WHERE office_id=? AND status='serving' AND served_by=? LIMIT 1");
     $stmt->bind_param('ii', $officeId, $staffId);
     $stmt->execute();
@@ -314,8 +313,6 @@ if ($action === 'serve_ticket') {
     $overflowMode = (bool) ($staffData['overflow_mode']  ?? false);
     $queueMode    = getOfficeQueueMode($db, $officeId);
 
-    // In service-based mode without overflow, only allow serving tickets that
-    // actually belong to this staff member's window
     if ($queueMode !== 'unified' && !$overflowMode && $windowNumber > 0 && $ticket['transaction_type'] !== null) {
         $checkStmt = $db->prepare("
             SELECT 1 FROM service_windows sw
