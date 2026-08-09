@@ -93,10 +93,12 @@ if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < 5) {
 $stmt = $db->prepare("
     SELECT t.id, t.ticket_number, t.status, t.office_id,
            t.transaction_type, t.created_at, t.served_at, t.completed_at,
-           t.window_id,
+           t.window_id, t.served_by,
+           u.full_name AS served_by_name,
            o.name AS office_name, o.window_count
     FROM   tickets t
     JOIN   offices o ON o.id = t.office_id
+    LEFT JOIN users u ON u.id = t.served_by
     WHERE  t.tracking_token = ?
     LIMIT  1
 ");
@@ -127,9 +129,12 @@ if (in_array($ticket['status'], $finalStatuses, true)) {
     $response = [
         'success'          => true,
         'ticket_number'    => $ticket['ticket_number'],
+        'ticket_id'        => (int) $ticket['id'],
         'office_name'      => $ticket['office_name'],
         'service_name'     => $ticket['transaction_type'] ?? 'General Queue',
         'status'           => $ticket['status'],
+        'staff_id'         => (int) ($ticket['served_by'] ?? 0),
+        'staff_name'       => $ticket['served_by_name'] ?? null,
         'cancelled'        => $cancelled,
         'people_ahead'     => 0,
         'now_serving'      => null,

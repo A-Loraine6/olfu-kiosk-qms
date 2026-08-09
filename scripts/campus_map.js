@@ -77,28 +77,67 @@
   }
 
   const T = fitAffine(CALIBRATION_POINTS);
+  const CALIB_NEIGHBOR_LIMIT = 4;
+  const CAMPUS_GATE_POINTS = [
+    { id: "gate1", lat: 14.619263352459713, lng: 121.1516791978071 },
+    { id: "gate2", lat: 14.61928295764446, lng: 121.15189987667863 },
+    { id: "gate3", lat: 14.619672262909887, lng: 121.15284669652685 },
+    { id: "gate4", lat: 14.619918822564339, lng: 121.153348269658 },
+    { id: "gate5", lat: 14.620471634244192, lng: 121.1539061691739 },
+  ];
 
-  // Precompute each calibration point's residual (actual - base affine prediction)
   const CALIB_RESIDUALS = CALIBRATION_POINTS.map((p) => {
     const bx = T.A * p.lng + T.B * p.lat + T.C;
     const by = T.D * p.lng + T.E * p.lat + T.F;
     return { lat: p.lat, lng: p.lng, rx: p.x - bx, ry: p.y - by };
   });
 
+  function haversineMeters(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const toRad = (deg) => (deg * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function nearestCampusGate(lat, lng) {
+    const candidates = CAMPUS_GATE_POINTS.map((gate) => ({
+      ...gate,
+      distance: haversineMeters(lat, lng, gate.lat, gate.lng),
+    }));
+    return candidates.sort((a, b) => a.distance - b.distance)[0];
+  }
+
   function gpsToSvg(lat, lng) {
     const bx = T.A * lng + T.B * lat + T.C;
     const by = T.D * lng + T.E * lat + T.F;
 
-    // Inverse-distance-weighted local correction using calibration residuals
-    let wSum = 0,
-      cx = 0,
-      cy = 0;
-    for (const r of CALIB_RESIDUALS) {
+    const nearby = CALIB_RESIDUALS.map((r) => {
       const dlat = lat - r.lat,
         dlng = lng - r.lng;
       const d2 = dlat * dlat + dlng * dlng;
-      if (d2 < 1e-18) return { x: bx + r.rx, y: by + r.ry }; // essentially on a calib point
-      const w = 1 / d2; // power=2
+      return { r, d2 };
+    })
+      .filter(({ d2 }) => d2 > 0)
+      .sort((a, b) => a.d2 - b.d2)
+      .slice(0, CALIB_NEIGHBOR_LIMIT);
+
+    if (!nearby.length) {
+      return { x: bx, y: by };
+    }
+
+    let wSum = 0,
+      cx = 0,
+      cy = 0;
+    for (const { r, d2 } of nearby) {
+      if (d2 < 1e-18) return { x: bx + r.rx, y: by + r.ry };
+      const w = 1 / d2;
       wSum += w;
       cx += w * r.rx;
       cy += w * r.ry;
@@ -330,8 +369,10 @@
   }
 
   const NODE_SNAP_HYSTERESIS = 60;
+  const GPS_ACCEPTABLE_ACCURACY = 15;
+  const GPS_MAX_ACCEPTABLE_ACCURACY = 60;
 
-  function nearestNode(svgX, svgY, preferId) {
+  function nearestNode(svgX, svgY, preferId, accuracyMeters = null) {
     let best = null,
       bestD = Infinity;
     NODES.forEach((n) => {
@@ -341,6 +382,14 @@
         best = n;
       }
     });
+
+    if (!best) return null;
+
+    const maxSnapDistance = accuracyMeters
+      ? Math.min(180, Math.max(45, accuracyMeters * 2.8))
+      : 180;
+
+    if (bestD > maxSnapDistance) return null;
 
     if (preferId) {
       const preferNode = NODE_MAP[preferId];
@@ -352,6 +401,40 @@
       }
     }
     return best;
+  }
+
+  const CAMPUS_BOUNDS = {
+    minLat: 14.6192,
+    maxLat: 14.6206,
+    minLng: 121.1516,
+    maxLng: 121.154,
+  };
+
+  function isInsideCampus(lat, lng) {
+    return (
+      lat >= CAMPUS_BOUNDS.minLat &&
+      lat <= CAMPUS_BOUNDS.maxLat &&
+      lng >= CAMPUS_BOUNDS.minLng &&
+      lng <= CAMPUS_BOUNDS.maxLng
+    );
+  }
+
+  function resolveNearestCampusAnchor(lat, lng, accuracyMeters = null) {
+    if (isInsideCampus(lat, lng)) {
+      return null;
+    }
+
+    const nearestGate = nearestCampusGate(lat, lng);
+    const gateThreshold = accuracyMeters
+      ? Math.max(250, accuracyMeters * 6.5)
+      : 350;
+
+    if (!nearestGate || nearestGate.distance > gateThreshold) {
+      return null;
+    }
+
+    const gateNode = NODE_MAP[nearestGate.id];
+    return gateNode || null;
   }
 
   const BUILDING_NODE = {
@@ -829,8 +912,8 @@
     );
     pathCasing.id = "pathCasing";
     pathCasing.setAttribute("fill", "none");
-    pathCasing.setAttribute("stroke", "#8a6a00");
-    pathCasing.setAttribute("stroke-width", "24");
+    pathCasing.setAttribute("stroke", "#0a4d2b");
+    pathCasing.setAttribute("stroke-width", "20");
     pathCasing.setAttribute("stroke-linecap", "round");
     pathCasing.setAttribute("stroke-linejoin", "round");
     pathCasing.setAttribute("opacity", "0");
@@ -842,8 +925,8 @@
     );
     pathLine.classList.add("path-line");
     pathLine.setAttribute("fill", "none");
-    pathLine.setAttribute("stroke", "#FFD600");
-    pathLine.setAttribute("stroke-width", "18");
+    pathLine.setAttribute("stroke", "url(#routeGrad)");
+    pathLine.setAttribute("stroke-width", "10");
     pathLine.setAttribute("stroke-linecap", "round");
     pathLine.setAttribute("stroke-linejoin", "round");
     pathLine.setAttribute("opacity", "0");
@@ -1083,7 +1166,6 @@
 
     buildCompass();
     startCompass();
-    buildNodeDebugLayer();
     buildZoomControls();
     buildLocateButton();
     buildResetViewButton();
@@ -2008,6 +2090,35 @@
     }
   }
 
+  function ensureGPSDebugPanel() {
+    if (!mapWrapEl) return null;
+    let panel = document.getElementById("gpsDebugPanel");
+    if (!panel) {
+      panel = document.createElement("div");
+      panel.id = "gpsDebugPanel";
+      panel.style.cssText = [
+        "position:absolute",
+        "left:12px",
+        "bottom:52px",
+        "z-index:30",
+        "background:rgba(17,24,39,0.8)",
+        "color:#fff",
+        "font-size:10px",
+        "line-height:1.35",
+        "padding:6px 8px",
+        "border-radius:8px",
+        "font-family:monospace",
+        "pointer-events:none",
+        "max-width:220px",
+        "white-space:nowrap",
+        "overflow:hidden",
+        "text-overflow:ellipsis",
+      ].join(";");
+      mapWrapEl.appendChild(panel);
+    }
+    return panel;
+  }
+
   function showGPSError(msg) {
     if (!mapWrapEl) return;
     const bar = document.getElementById("mapDirectionsBar");
@@ -2034,37 +2145,118 @@
       }
     }
 
-    if (pos.coords.accuracy && pos.coords.accuracy > 25) {
+    const accuracy = pos.coords.accuracy ?? GPS_ACCEPTABLE_ACCURACY;
+    const maxAccuracy = Math.min(
+      GPS_MAX_ACCEPTABLE_ACCURACY,
+      Math.max(GPS_ACCEPTABLE_ACCURACY, accuracy),
+    );
+
+    const { latitude: lat, longitude: lng } = pos.coords;
+    const nearestGate = nearestCampusGate(lat, lng);
+    const gateAnchor = resolveNearestCampusAnchor(lat, lng, accuracy);
+    const insideCampus = isInsideCampus(lat, lng);
+
+    if (
+      accuracy > maxAccuracy &&
+      (!nearestGate || nearestGate.distance > 350)
+    ) {
+      if (currentUserNode) {
+        const prev = NODE_MAP[currentUserNode];
+        if (prev) {
+          moveUserDot(prev.x, prev.y);
+        }
+      }
       return;
     }
 
-    const { latitude: lat, longitude: lng } = pos.coords;
+    const weighting = Math.min(1, 30 / Math.max(accuracy, 10));
 
     if (smoothedLat === null) {
       smoothedLat = lat;
       smoothedLng = lng;
     } else {
-      smoothedLat += SMOOTHING_ALPHA * (lat - smoothedLat);
-      smoothedLng += SMOOTHING_ALPHA * (lng - smoothedLng);
+      smoothedLat += weighting * (lat - smoothedLat);
+      smoothedLng += weighting * (lng - smoothedLng);
     }
 
-    const svgPos = gpsToSvg(smoothedLat, smoothedLng);
-    const snapped = nearestNode(svgPos.x, svgPos.y, currentUserNode);
-    currentUserNode = snapped.id;
-    moveUserDot(snapped.x, snapped.y);
-    if (destBuildingId) drawRoute();
+    const projectedLat = gateAnchor ? nearestGate.lat : smoothedLat;
+    const projectedLng = gateAnchor ? nearestGate.lng : smoothedLng;
+    const svgPos = gpsToSvg(projectedLat, projectedLng);
+    const snapped = gateAnchor
+      ? gateAnchor
+      : nearestNode(svgPos.x, svgPos.y, currentUserNode, accuracy);
 
-    const isFirstFix = firstFix;
+    if (snapped && (!insideCampus || !gateAnchor)) {
+      currentUserNode = snapped.id;
+      moveUserDot(snapped.x, snapped.y);
+      if (destBuildingId) drawRoute();
 
-    if (isFirstFix) {
+      const isFirstFix = firstFix;
+
+      if (isFirstFix) {
+        firstFix = false;
+        autoCenterOnLocation = false;
+        snapToUser(snapped.x, snapped.y);
+        if (locatingToastEl) {
+          locatingToastEl.classList.remove("show");
+        }
+      } else if (autoCenterOnLocation) {
+        centerOnUser(snapped.x, snapped.y);
+      }
+      return;
+    }
+
+    if (insideCampus) {
+      const campusSnap = nearestNode(
+        svgPos.x,
+        svgPos.y,
+        currentUserNode,
+        accuracy,
+      );
+      if (campusSnap) {
+        currentUserNode = campusSnap.id;
+        moveUserDot(campusSnap.x, campusSnap.y);
+        if (destBuildingId) drawRoute();
+
+        if (firstFix) {
+          firstFix = false;
+          autoCenterOnLocation = false;
+          snapToUser(campusSnap.x, campusSnap.y);
+          if (locatingToastEl) {
+            locatingToastEl.classList.remove("show");
+          }
+        } else if (autoCenterOnLocation) {
+          centerOnUser(campusSnap.x, campusSnap.y);
+        }
+        return;
+      }
+    }
+
+    if (currentUserNode) {
+      const prev = NODE_MAP[currentUserNode];
+      if (prev) {
+        moveUserDot(prev.x, prev.y);
+        if (destBuildingId) drawRoute();
+        return;
+      }
+    }
+
+    if (nearestGate) {
+      const gateNode = NODE_MAP[nearestGate.id];
+      if (gateNode) {
+        currentUserNode = gateNode.id;
+        moveUserDot(gateNode.x, gateNode.y);
+        if (destBuildingId) drawRoute();
+        return;
+      }
+    }
+
+    if (firstFix) {
       firstFix = false;
       autoCenterOnLocation = false;
-      snapToUser(snapped.x, snapped.y);
       if (locatingToastEl) {
         locatingToastEl.classList.remove("show");
       }
-    } else if (autoCenterOnLocation) {
-      centerOnUser(snapped.x, snapped.y);
     }
   }
 

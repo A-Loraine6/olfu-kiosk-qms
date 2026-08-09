@@ -445,6 +445,8 @@ function render(data) {
     cancelled,
     counter_window,
     window_number,
+    staff_id,
+    staff_name,
   } = data;
 
   const displayStatus = cancelled ? "cancelled" : status;
@@ -491,6 +493,14 @@ function render(data) {
       sessionStorage.setItem("confetti_fired", "true");
       createConfetti();
     }
+    if (displayStatus === "completed" && staff_id) {
+      showFeedbackModal({
+        ticket_number,
+        staff_id,
+        staff_name: staff_name || "Staff member",
+        ticket_id: data.ticket_id || null,
+      });
+    }
     return;
   }
 
@@ -532,6 +542,91 @@ function render(data) {
 
   lastPeopleAhead = people_ahead;
   lastStatus = status;
+}
+
+function showFeedbackModal(ticket) {
+  const key = `feedback_seen_${TOKEN || ticket.ticket_number || 'ticket'}`;
+  if (sessionStorage.getItem(key) === "true") return;
+
+  const modal = document.getElementById("feedbackModal");
+  if (!modal) return;
+
+  const avatar = document.getElementById("feedbackStaffAvatar");
+  const nameEl = document.getElementById("feedbackStaffName");
+  if (avatar) avatar.textContent = (ticket.staff_name || "S").charAt(0).toUpperCase();
+  if (nameEl) nameEl.textContent = ticket.staff_name || "Staff member";
+
+  let selectedRating = 5;
+  const starButtons = [...document.querySelectorAll(".feedback-star")];
+  const updateStars = (value) => {
+    selectedRating = value;
+    starButtons.forEach((star) => {
+      const active = Number(star.dataset.value) <= value;
+      star.classList.toggle("active", active);
+      star.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  };
+
+  starButtons.forEach((star) => {
+    star.onclick = () => updateStars(Number(star.dataset.value));
+  });
+  updateStars(selectedRating);
+
+  const commentEl = document.getElementById("feedbackComment");
+  if (commentEl) commentEl.value = "";
+
+  const submit = document.getElementById("feedbackSubmitBtn");
+  const skip = document.getElementById("feedbackSkipBtn");
+  const close = document.getElementById("feedbackCloseBtn");
+
+  const closeModal = () => {
+    modal.classList.remove("show");
+    modal.setAttribute("aria-hidden", "true");
+    sessionStorage.setItem(key, "true");
+  };
+
+  [skip, close].forEach((button) => {
+    if (button) button.onclick = closeModal;
+  });
+
+  if (submit) {
+    submit.onclick = async () => {
+      const payload = {
+        action: "submit_feedback",
+        tracking_token: TOKEN,
+        rating: selectedRating,
+        comment: commentEl ? commentEl.value.trim() : "",
+        ticket_number: ticket.ticket_number || "",
+        ticket_id: ticket.ticket_id || null,
+      };
+
+      submit.disabled = true;
+      submit.textContent = "Submitting…";
+
+      try {
+        const response = await fetch("api/feedback_actions.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (data.success) {
+          closeModal();
+        } else {
+          submit.disabled = false;
+          submit.textContent = "Submit feedback";
+          window.alert(data.message || "Unable to submit feedback.");
+        }
+      } catch (e) {
+        submit.disabled = false;
+        submit.textContent = "Submit feedback";
+        window.alert("Unable to submit feedback right now.");
+      }
+    };
+  }
+
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
 }
 
 function renderStatusPill(status, peopleAhead) {

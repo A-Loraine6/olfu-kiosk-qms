@@ -7,6 +7,7 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/staff_functions.php';
+require_once __DIR__ . '/feedback_functions.php';
 
 if (!isLoggedIn()) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
@@ -123,6 +124,70 @@ switch ($action) {
             $input['new_password'] ?? ''
         );
         break;
+
+    case 'get_staff_feedback':
+        if (!$isAdmin) {
+            echo json_encode(['success' => false, 'message' => 'Only administrators can view feedback.']);
+            exit;
+        }
+
+        $staffId = (int) ($input['staff_id'] ?? 0);
+        if ($staffId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Invalid staff member selected.']);
+            exit;
+        }
+
+        $staff = getStaffById($conn, $staffId);
+        if (!$staff) {
+            echo json_encode(['success' => false, 'message' => 'Staff member not found.']);
+            exit;
+        }
+
+        $roleName = $conn->prepare("SELECT name FROM roles WHERE id = ? LIMIT 1");
+        $roleName->bind_param('i', $staff['role_id']);
+        $roleName->execute();
+        $roleRow = $roleName->get_result()->fetch_assoc();
+        $roleName->close();
+        $staff['role_name'] = $roleRow['name'] ?? 'staff';
+
+        $officeName = $conn->prepare("SELECT name FROM offices WHERE id = ? LIMIT 1");
+        $officeName->bind_param('i', $staff['office_id']);
+        $officeName->execute();
+        $officeRow = $officeName->get_result()->fetch_assoc();
+        $officeName->close();
+        $staff['office_name'] = $officeRow['name'] ?? null;
+
+        $ratingFilter = isset($input['rating']) && $input['rating'] !== '' ? (int) $input['rating'] : null;
+        if ($ratingFilter !== null && ($ratingFilter < 1 || $ratingFilter > 5)) {
+            $ratingFilter = null;
+        }
+
+        $allFeedback = getStaffFeedbackForStaff($conn, $staffId, $ratingFilter);
+        $page = max(1, (int) ($input['page'] ?? 1));
+        $limit = max(1, min(20, (int) ($input['limit'] ?? 5)));
+        $totalCount = count($allFeedback);
+        $totalPages = max(1, (int) ceil($totalCount / $limit));
+        $page = min($page, $totalPages);
+        $offset = ($page - 1) * $limit;
+        $feedback = array_slice($allFeedback, $offset, $limit);
+
+        $summary = ['all' => count(getStaffFeedbackForStaff($conn, $staffId))];
+        for ($star = 5; $star >= 1; $star--) {
+            $summary[(string) $star] = count(getStaffFeedbackForStaff($conn, $staffId, $star));
+        }
+
+        echo json_encode([
+            'success' => true,
+            'staff' => $staff,
+            'feedback' => $feedback,
+            'page' => $page,
+            'limit' => $limit,
+            'total' => $totalCount,
+            'totalPages' => $totalPages,
+            'rating_summary' => $summary,
+            'rating_filter' => $ratingFilter,
+        ]);
+        exit;
 
     case 'get_staff_list':
         $staff        = getAllStaff($conn);
@@ -262,6 +327,11 @@ function renderStaffRows(array $staff, bool $canManage = false): void
                                 <button onclick="openToggleModal(<?php echo $member['id']; ?>, <?php echo $member['is_active'] ? 'true' : 'false'; ?>)">
                                     <i class="fas fa-<?php echo $member['is_active'] ? 'toggle-off' : 'toggle-on'; ?>"></i>
                                     <?php echo $member['is_active'] ? 'Deactivate' : 'Activate'; ?>
+                                </button>
+                            <?php endif; ?>
+                            <?php if ($isAdminRole): ?>
+                                <button onclick="openStaffFeedbackModal(<?php echo $member['id']; ?>)">
+                                    <i class="fas fa-star"></i> View Feedback
                                 </button>
                             <?php endif; ?>
                             <?php if ($canDelete): ?>

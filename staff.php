@@ -61,9 +61,9 @@ $pageLimit = 10;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Staff Management</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/dashboard.css">
-    <link rel="stylesheet" href="css/staff.css">
+    <link rel="stylesheet" href="css/style.css?v=<?php echo filemtime(__DIR__ . '/css/style.css'); ?>">
+    <link rel="stylesheet" href="css/dashboard.css?v=<?php echo filemtime(__DIR__ . '/css/dashboard.css'); ?>">
+    <link rel="stylesheet" href="css/staff.css?v=<?php echo filemtime(__DIR__ . '/css/staff.css'); ?>">
     <link rel="shortcut icon" href="img/olfu-logo.png" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -225,6 +225,11 @@ $pageLimit = 10;
                                                                 <button onclick="openToggleModal(<?php echo $member['id']; ?>, <?php echo $member['is_active'] ? 'true' : 'false'; ?>)">
                                                                     <i class="fas fa-<?php echo $member['is_active'] ? 'toggle-off' : 'toggle-on'; ?>"></i>
                                                                     <?php echo $member['is_active'] ? 'Deactivate' : 'Activate'; ?>
+                                                                </button>
+                                                            <?php endif; ?>
+                                                            <?php if ($isAdmin): ?>
+                                                                <button onclick="openStaffFeedbackModal(<?php echo $member['id']; ?>)">
+                                                                    <i class="fas fa-star"></i> View Feedback
                                                                 </button>
                                                             <?php endif; ?>
                                                             <?php if ($canDelete): ?>
@@ -481,8 +486,44 @@ $pageLimit = 10;
         </div>
     </div>
 
-    <script src="scripts/staff.js"></script>
-    <script src="scripts/modal-shortcuts.js"></script>
+    <div id="staffFeedbackModal" class="modal">
+        <div class="modal-content modal-logs">
+            <div class="modal-header">
+                <h2><i class="fas fa-star"></i> Staff Feedback</h2>
+                <button class="modal-close" onclick="closeModal('staffFeedbackModal')">&times;</button>
+            </div>
+
+            <div class="logs-staff-strip" id="feedbackStaffStrip">
+                <div class="logs-staff-avatar" id="feedbackStaffAvatar"></div>
+                <div class="logs-staff-meta">
+                    <div class="logs-staff-name" id="feedbackStaffName"></div>
+                    <div class="logs-staff-sub" id="feedbackStaffSub"></div>
+                </div>
+                <div class="logs-total-badge" id="feedbackTotalBadge"></div>
+            </div>
+
+            <div class="feedback-rating-filters" id="feedbackRatingFilters" aria-label="Feedback rating filters"></div>
+
+            <div class="logs-body" id="feedbackBody">
+                <div class="logs-loading" id="feedbackLoading">
+                    <div class="logs-spinner"></div>
+                </div>
+                <div class="feedback-list" id="feedbackList"></div>
+                <div class="logs-empty" id="feedbackEmpty" style="display:none;">
+                    <i class="fas fa-star-half-alt"></i>
+                    <span>No feedback submitted yet.</span>
+                </div>
+            </div>
+
+            <div class="logs-pagination" id="feedbackPagination" style="display:none;">
+                <div class="logs-page-info" id="feedbackPageInfo"></div>
+                <div class="logs-page-controls" id="feedbackPageControls"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="scripts/staff.js?v=<?php echo filemtime(__DIR__ . '/scripts/staff.js'); ?>"></script>
+    <script src="scripts/modal-shortcuts.js?v=<?php echo filemtime(__DIR__ . '/scripts/modal-shortcuts.js'); ?>"></script>
     <script>
         const CSRF_TOKEN = <?php echo json_encode($csrf_token); ?>;
         const PAGINATION_LIMIT = 10;

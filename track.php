@@ -185,7 +185,6 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
                 </button>
             </nav>
 
-            <!-- Cancel ticket confirmation modal -->
             <div class="modal-overlay" id="cancelModalOverlay" role="dialog" aria-modal="true" aria-labelledby="cancelModalTitle">
                 <div class="modal-card">
                     <div class="modal-icon"><i class="fas fa-triangle-exclamation"></i></div>
@@ -206,6 +205,49 @@ $tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
         </script>
         <script src="scripts/campus_map.js"></script>
         <script src="scripts/track.js"></script>
+
+        <div id="feedbackModal" class="feedback-modal" aria-hidden="true">
+            <div class="feedback-modal-card" role="dialog" aria-modal="true" aria-labelledby="feedbackModalTitle">
+                <div class="feedback-modal-header">
+                    <div>
+                        <div class="feedback-kicker">Transaction complete</div>
+                        <h2 id="feedbackModalTitle">How was your experience?</h2>
+                    </div>
+                    <button type="button" class="feedback-close" id="feedbackCloseBtn" aria-label="Close feedback form">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div class="feedback-staff-wrap">
+                    <div class="feedback-staff-avatar" id="feedbackStaffAvatar">?</div>
+                    <div>
+                        <div class="feedback-staff-label">Served by</div>
+                        <div class="feedback-staff-name" id="feedbackStaffName">Staff member</div>
+                    </div>
+                </div>
+
+                <div class="feedback-rating-block">
+                    <label>Rate your experience</label>
+                    <div class="feedback-stars" id="feedbackStars" aria-label="Select a rating">
+                        <button type="button" class="feedback-star active" data-value="1" aria-label="1 star">★</button>
+                        <button type="button" class="feedback-star active" data-value="2" aria-label="2 stars">★</button>
+                        <button type="button" class="feedback-star active" data-value="3" aria-label="3 stars">★</button>
+                        <button type="button" class="feedback-star" data-value="4" aria-label="4 stars">★</button>
+                        <button type="button" class="feedback-star" data-value="5" aria-label="5 stars">★</button>
+                    </div>
+                </div>
+
+                <div class="feedback-comment-block">
+                    <label for="feedbackComment">Comments</label>
+                    <textarea id="feedbackComment" rows="4" maxlength="1000" placeholder="Optional: share what went well or how we can improve."></textarea>
+                </div>
+
+                <div class="feedback-actions">
+                    <button type="button" class="feedback-skip" id="feedbackSkipBtn">Skip</button>
+                    <button type="button" class="feedback-submit" id="feedbackSubmitBtn">Submit</button>
+                </div>
+            </div>
+        </div>
 
     <?php endif; ?>
 </body>
