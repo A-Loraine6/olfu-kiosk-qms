@@ -155,7 +155,7 @@ async function togglePermission(checkbox) {
     }
     showToast(
       enable ? "Permission granted." : "Permission removed.",
-      "success",
+      enable ? "success" : "error",
     );
   } else {
     checkbox.checked = !enable;
