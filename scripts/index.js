@@ -15,10 +15,26 @@ function getAvgMinutes(office) {
 }
 
 function selectPriority(isPriority) {
-  state.isPriority = isPriority;
-  updatePriorityPills();
-  state.history = [0, 1];
-  showScreen(1);
+  fetch("api/kiosk_status.php", { cache: "no-store" })
+    .then((r) => r.json())
+    .then((data) => {
+      if (!data.enabled) {
+        location.href = location.pathname + "?_=" + Date.now();
+        return;
+      }
+      state.isPriority = isPriority;
+      updatePriorityPills();
+      state.history = [0, 1];
+      showScreen(1);
+    })
+    .catch(() => {
+      // Fail open: if the status check itself fails (network blip),
+      // don't block a legitimate user — let them proceed.
+      state.isPriority = isPriority;
+      updatePriorityPills();
+      state.history = [0, 1];
+      showScreen(1);
+    });
 }
 
 if (!KIOSK_ENABLED) {
@@ -106,7 +122,9 @@ if (!KIOSK_ENABLED) {
     fetch("api/kiosk_status.php", { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
-        if (data.enabled) location.reload();
+        if (data.enabled) {
+          location.href = location.pathname + "?_=" + Date.now();
+        }
       })
       .catch(() => {});
   }, 10000);
@@ -309,7 +327,12 @@ function selectOffice(o) {
 
 function updatePriorityPills() {
   const show = !!state.isPriority;
-  ["s1PriorityPill", "s2PriorityPill", "s3PriorityPill", "s4PriorityPill"].forEach((id) => {
+  [
+    "s1PriorityPill",
+    "s2PriorityPill",
+    "s3PriorityPill",
+    "s4PriorityPill",
+  ].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.style.display = show ? "inline-flex" : "none";
   });
@@ -515,7 +538,10 @@ function showTicket(data) {
   document.getElementById("s4ServiceName").textContent = s
     ? s.name
     : "General Queue";
-  renderWindowBadge("s4WindowLabel", data.window_number ?? data.window_id ?? null);
+  renderWindowBadge(
+    "s4WindowLabel",
+    data.window_number ?? data.window_id ?? null,
+  );
   document.getElementById("s4TicketNumber").textContent = data.ticket_number;
   updatePriorityPills();
 
