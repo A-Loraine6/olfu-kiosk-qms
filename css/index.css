@@ -1217,7 +1217,6 @@ body {
 
 .screen-head-with-nav {
   position: relative;
-  display: flex;
   align-items: center;
   justify-content: center;
   padding: 28px 48px 20px !important;
