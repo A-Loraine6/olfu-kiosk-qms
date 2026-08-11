@@ -153,14 +153,18 @@
     { id: "gate5", x: 3700, y: 596 },
     { id: "j_1", x: 700, y: 693 },
     { id: "j_2", x: 800, y: 550 },
+    { id: "j_41", x: 875, y: 465 },
     { id: "j_3", x: 730, y: 493 },
     { id: "j_4", x: 950, y: 380 },
     { id: "j_5", x: 980, y: 330 },
     { id: "j_6", x: 1032, y: 328 },
+    { id: "j_38", x: 1196, y: 374 },
     { id: "j_7", x: 1360, y: 420 },
     { id: "j_8", x: 1330, y: 470 },
     { id: "j_9", x: 1500, y: 460 },
     { id: "j_10", x: 1270, y: 750 },
+    { id: "j_39", x: 1385, y: 605 },
+    { id: "j_40", x: 1503, y: 755 },
     { id: "j_11", x: 1160, y: 890 },
     { id: "j_12", x: 1120, y: 920 },
     { id: "j_13", x: 1060, y: 940 },
@@ -171,6 +175,7 @@
     { id: "j_18", x: 1650, y: 600 },
     { id: "j_19", x: 1700, y: 650 },
     { id: "j_20", x: 1745, y: 655 },
+    { id: "j_42", x: 1923, y: 669 },
     { id: "j_21", x: 2101, y: 683 },
     { id: "j_22", x: 2063, y: 760 },
     { id: "j_24", x: 2263, y: 745 },
@@ -204,17 +209,19 @@
     ["j_3", "b_vms"],
     ["b_vms", "1a"],
     ["b_vms", "1b"],
-    ["j_2", "j_4"],
+    ["j_2", "j_41"],
+    ["j_41", "j_4"],
     ["j_4", "j_5"],
     ["j_5", "j_6"],
-    ["j_6", "j_7"],
-    ["j_7", "b_lounge"],
+    ["j_6", "j_38"],
+    ["j_38", "j_7"],
     ["j_7", "j_8"],
     ["j_8", "b_jsb"],
     ["b_jsb", "2a"],
     ["j_7", "j_9"],
     ["j_9", "j_16"],
-    ["j_9", "j_10"],
+    ["j_9", "j_39"],
+    ["j_39", "j_10"],
     ["j_1", "j_15"],
     ["gate2", "j_15"],
     ["j_15", "j_14"],
@@ -226,9 +233,11 @@
     ["j_17", "j_18"],
     ["j_18", "j_19"],
     ["j_19", "j_20"],
-    ["j_20", "j_21"],
+    ["j_20", "j_42"],
+    ["j_42", "j_21"],
     ["j_20", "b_canteen"],
-    ["j_10", "b_sjbh"],
+    ["j_10", "j_40"],
+    ["j_40", "b_sjbh"],
     ["j_20", "b_sjbh"],
     ["b_sjbh", "3a"],
     ["j_21", "j_24"],
@@ -245,9 +254,11 @@
     ["j_27", "j_29"],
     ["j_27", "b_spcb"],
     ["j_29", "b_spcb"],
+    ["j_29", "gate5"],
     ["j_28", "j_27"],
     ["j_28", "j_26"],
     ["j_29", "j_27"],
+    ["j_29", "b_spcb"],
     ["j_29", "gate5"],
   ];
 
@@ -295,6 +306,22 @@
     const dx = a.x - b.x,
       dy = a.y - b.y;
     return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function pointToSegment(px, py, ax, ay, bx, by) {
+    const dx = bx - ax,
+      dy = by - ay;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq < 1e-12) {
+      const cx = (ax + bx) / 2,
+        cy = (ay + by) / 2;
+      return { t: 0.5, distSq: (px - cx) ** 2 + (py - cy) ** 2, cx, cy };
+    }
+    let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
+    t = Math.max(0, Math.min(1, t));
+    const cx = ax + t * dx,
+      cy = ay + t * dy;
+    return { t, distSq: (px - cx) ** 2 + (py - cy) ** 2, cx, cy };
   }
 
   function buildGraph() {
@@ -386,8 +413,8 @@
     if (!best) return null;
 
     const maxSnapDistance = accuracyMeters
-      ? Math.min(180, Math.max(45, accuracyMeters * 2.8))
-      : 180;
+      ? Math.min(360, Math.max(120, accuracyMeters * 5))
+      : 240;
 
     if (bestD > maxSnapDistance) return null;
 
@@ -400,6 +427,45 @@
         }
       }
     }
+    return best;
+  }
+
+  function snapToNearestEdge(svgX, svgY) {
+    let best = { a: null, b: null, t: 0, distSq: Infinity, x: svgX, y: svgY };
+
+    for (let i = 0; i < EDGES.length; i++) {
+      const [aId, bId] = EDGES[i];
+      const na = NODE_MAP[aId],
+        nb = NODE_MAP[bId];
+      if (!na || !nb) continue;
+      const r = pointToSegment(svgX, svgY, na.x, na.y, nb.x, nb.y);
+      if (r.distSq < best.distSq) {
+        best = { a: na, b: nb, t: r.t, distSq: r.distSq, x: r.cx, y: r.cy };
+      }
+    }
+
+    if (currentEdge.a && currentEdge.b) {
+      const cur = pointToSegment(
+        svgX,
+        svgY,
+        currentEdge.a.x,
+        currentEdge.a.y,
+        currentEdge.b.x,
+        currentEdge.b.y,
+      );
+      if (cur.distSq < best.distSq + EDGE_SNAP_HYSTERESIS_SQ) {
+        return {
+          a: currentEdge.a,
+          b: currentEdge.b,
+          t: cur.t,
+          distSq: cur.distSq,
+          x: cur.cx,
+          y: cur.cy,
+        };
+      }
+    }
+
+    currentEdge = best;
     return best;
   }
 
@@ -420,7 +486,7 @@
   }
 
   function resolveNearestCampusAnchor(lat, lng, accuracyMeters = null) {
-    if (isInsideCampus(lat, lng)) {
+    if (isInsideCampus(lat, lng) || debugDisableGateAnchor) {
       return null;
     }
 
@@ -486,7 +552,7 @@
     )
       return "ACCOUNTING";
 
-    if (/vms|vicente|santos\s+build/i.test(s)) return "VMS";
+    if (/vms\b|vicente\s+m/i.test(s)) return "VMS";
     if (/jsb|juliet|lrc|library|resource\s+center|guidance|counseling/i.test(s))
       return "JSB";
     if (/(sjbh|john|baptist|accounting|accountancy|finance)/i.test(s)) {
@@ -512,7 +578,6 @@
   let clipWrapEl = null;
   let mapWrapEl = null;
   let userDot = null;
-  let pathLine = null;
   let destMarker = null;
   let popupEl = null;
   let compassEl = null;
@@ -560,8 +625,26 @@
   let smoothAngle = 0;
   const HEADING_ALPHA = 0.08;
   const METERS_PER_PIXEL = 0.045;
-  const WALK_SPEED_M_PER_MIN = 1.2;
+  const WALK_SPEED_M_PER_MIN = 80;
   const MIN_WALK_MINUTES = 1;
+
+  let currentEdge = { a: null, b: null, t: 0, x: 0, y: 0 };
+  let currentPath = [];
+  let currentPathIdx = 0;
+  let pathTraveledLine = null;
+  let pathRemainingLine = null;
+  let pathTraveledCasing = null;
+  let pathRemainingCasing = null;
+  const EDGE_SNAP_HYSTERESIS_SQ = 900;
+  const GPS_DEVIATION_TOLERANCE = 3;
+
+  var breadcrumbs = [];
+  var breadcrumbGroup = null;
+  const BREADCRUMB_MAX = 80;
+  const BREADCRUMB_FADE_SEC = 90;
+
+  var startFlag = null;
+  var startFlagSet = false;
 
   const BUILDINGS_INFO = [
     {
@@ -906,31 +989,57 @@
       </defs>
     `;
 
-    const pathCasing = document.createElementNS(
+    const pathRemainingCasingEl = document.createElementNS(
       "http://www.w3.org/2000/svg",
       "polyline",
     );
-    pathCasing.id = "pathCasing";
-    pathCasing.setAttribute("fill", "none");
-    pathCasing.setAttribute("stroke", "#0a4d2b");
-    pathCasing.setAttribute("stroke-width", "20");
-    pathCasing.setAttribute("stroke-linecap", "round");
-    pathCasing.setAttribute("stroke-linejoin", "round");
-    pathCasing.setAttribute("opacity", "0");
-    overlayEl.appendChild(pathCasing);
+    pathRemainingCasingEl.setAttribute("fill", "none");
+    pathRemainingCasingEl.setAttribute("stroke", "#0a4d2b");
+    pathRemainingCasingEl.setAttribute("stroke-width", "20");
+    pathRemainingCasingEl.setAttribute("stroke-linecap", "round");
+    pathRemainingCasingEl.setAttribute("stroke-linejoin", "round");
+    pathRemainingCasingEl.setAttribute("opacity", "0");
+    overlayEl.appendChild(pathRemainingCasingEl);
+    pathRemainingCasing = pathRemainingCasingEl;
 
-    pathLine = document.createElementNS(
+    pathRemainingLine = document.createElementNS(
       "http://www.w3.org/2000/svg",
       "polyline",
     );
-    pathLine.classList.add("path-line");
-    pathLine.setAttribute("fill", "none");
-    pathLine.setAttribute("stroke", "url(#routeGrad)");
-    pathLine.setAttribute("stroke-width", "10");
-    pathLine.setAttribute("stroke-linecap", "round");
-    pathLine.setAttribute("stroke-linejoin", "round");
-    pathLine.setAttribute("opacity", "0");
-    overlayEl.appendChild(pathLine);
+    pathRemainingLine.setAttribute("fill", "none");
+    pathRemainingLine.setAttribute("stroke", "#1a73e8");
+    pathRemainingLine.setAttribute("stroke-width", "10");
+    pathRemainingLine.setAttribute("stroke-linecap", "round");
+    pathRemainingLine.setAttribute("stroke-linejoin", "round");
+    pathRemainingLine.setAttribute("opacity", "0");
+    overlayEl.appendChild(pathRemainingLine);
+
+    const pathTraveledCasingEl = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "polyline",
+    );
+    pathTraveledCasingEl.setAttribute("fill", "none");
+    pathTraveledCasingEl.setAttribute("stroke", "#0a4d2b");
+    pathTraveledCasingEl.setAttribute("stroke-width", "20");
+    pathTraveledCasingEl.setAttribute("stroke-linecap", "round");
+    pathTraveledCasingEl.setAttribute("stroke-linejoin", "round");
+    pathTraveledCasingEl.setAttribute("opacity", "0");
+    pathTraveledCasingEl.setAttribute("stroke-dasharray", "10 6");
+    overlayEl.appendChild(pathTraveledCasingEl);
+    pathTraveledCasing = pathTraveledCasingEl;
+
+    pathTraveledLine = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "polyline",
+    );
+    pathTraveledLine.setAttribute("fill", "none");
+    pathTraveledLine.setAttribute("stroke", "#4ade80");
+    pathTraveledLine.setAttribute("stroke-width", "10");
+    pathTraveledLine.setAttribute("stroke-linecap", "round");
+    pathTraveledLine.setAttribute("stroke-linejoin", "round");
+    pathTraveledLine.setAttribute("opacity", "0");
+    pathTraveledLine.setAttribute("stroke-dasharray", "10 6");
+    overlayEl.appendChild(pathTraveledLine);
 
     destMarker = document.createElementNS("http://www.w3.org/2000/svg", "g");
     destMarker.setAttribute("opacity", "0");
@@ -963,6 +1072,17 @@
       showYouAreHerePopup(e.changedTouches[0]);
     });
     overlayEl.appendChild(userDot);
+
+    breadcrumbGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    breadcrumbGroup.id = "breadcrumbGroup";
+    overlayEl.appendChild(breadcrumbGroup);
+
+    startFlag = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    startFlag.setAttribute("opacity", "0");
+    startFlag.innerHTML =
+      '<circle r="16" fill="#0a6635" opacity="0.25"/>' +
+      '<circle r="8" fill="#10b981" stroke="#0a6635" stroke-width="3"/>';
+    overlayEl.appendChild(startFlag);
 
     labelGroupEl = document.createElementNS("http://www.w3.org/2000/svg", "g");
     labelGroupEl.id = "labelGroup";
@@ -1164,6 +1284,7 @@
 
     overlayEl.addEventListener("click", hidePopup);
 
+    buildNodeDebugLayer();
     buildCompass();
     startCompass();
     buildZoomControls();
@@ -1188,6 +1309,10 @@
     fitMap();
     bindPanZoom();
     startGPS();
+
+    buildTestMode();
+
+    overlayEl.appendChild(userDot);
 
     if (destBuildingId) drawRoute();
   }
@@ -1403,6 +1528,192 @@
     }, 8000);
   }
 
+  var testModeActive = false;
+  var testModePin = null;
+
+  function buildTestMode() {
+    if (!mapWrapEl || !overlayEl) return;
+
+    testModePin = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    testModePin.setAttribute("r", "14");
+    testModePin.setAttribute("fill", "#f59e0b");
+    testModePin.setAttribute("stroke", "#fff");
+    testModePin.setAttribute("stroke-width", "3");
+    testModePin.setAttribute("opacity", "0");
+    testModePin.style.cursor = "default";
+    testModePin.style.pointerEvents = "none";
+    overlayEl.appendChild(testModePin);
+
+    var testToggleBtn = document.createElement("button");
+    testToggleBtn.type = "button";
+    testToggleBtn.id = "mapTestBtn";
+    testToggleBtn.textContent = "TEST";
+    testToggleBtn.style.cssText = [
+      "display:none","background:#f59e0b","color:#000","font-size:11px","font-weight:800",
+      "padding:6px 12px","border-radius:8px","border:none","cursor:pointer",
+      "box-shadow:0 3px 14px rgba(0,40,20,0.18)","flex-shrink:0","min-width:44px",
+    ].join(";");
+
+    var searchWrap = document.querySelector(".map-search-row");
+    if (searchWrap) {
+      searchWrap.appendChild(testToggleBtn);
+    } else {
+      mapWrapEl.appendChild(testToggleBtn);
+      testToggleBtn.style.cssText += ";position:absolute;top:14px;right:14px;z-index:41;";
+    }
+
+    var testPanelEl = document.createElement("div");
+    testPanelEl.id = "mapTestPanel";
+    testPanelEl.style.cssText = [
+      "position:absolute","top:100%","right:14px","z-index:50",
+      "background:#1a1a2e","color:#fff","border-radius:10px",
+      "padding:12px","min-width:180px","display:none",
+      "font-size:12px","font-family:monospace",
+      "box-shadow:0 4px 20px rgba(0,0,0,0.5)","max-height:70vh","overflow-y:auto",
+      "margin-top:6px",
+    ].join(";");
+
+    var presetGates = ["gate1","gate2","gate3","gate4","gate5"];
+    var presetBldgs = ["b_vms","b_jsb","b_sjbh","b_sch","b_spcb","b_canteen","b_lounge","1a","1b","2a","3a"];
+
+    var html = '<div style="font-weight:800;margin-bottom:8px;color:#f59e0b;">TEST MODE</div>';
+    html += '<div style="margin:6px 0 10px;color:#aaa;font-size:10px;">Click map to place yourself</div>';
+
+    html += '<div style="font-weight:600;margin:8px 0 4px;color:#60a5fa;">Gates:</div>';
+    presetGates.forEach(function(g){
+      var n = NODE_MAP[g]; if(!n) return;
+      html += '<button class="tm-preset" data-node="'+g+'" style="display:block;width:100%;text-align:left;padding:4px 8px;margin:2px 0;background:#333;border:none;color:#fff;border-radius:4px;cursor:pointer;font-family:monospace;font-size:11px;">'+g+' ('+Math.round(n.x)+','+Math.round(n.y)+')</button>';
+    });
+
+    html += '<div style="font-weight:600;margin:8px 0 4px;color:#60a5fa;">Buildings:</div>';
+    presetBldgs.forEach(function(g){
+      var n = NODE_MAP[g]; if(!n) return;
+      html += '<button class="tm-preset" data-node="'+g+'" style="display:block;width:100%;text-align:left;padding:4px 8px;margin:2px 0;background:#333;border:none;color:#fff;border-radius:4px;cursor:pointer;font-family:monospace;font-size:11px;">'+g+' ('+Math.round(n.x)+','+Math.round(n.y)+')</button>';
+    });
+
+    html += '<button id="tmClear" style="display:block;width:100%;padding:6px;margin-top:10px;background:#dc2626;border:none;color:#fff;border-radius:4px;cursor:pointer;font-weight:600;">Clear & Exit Test</button>';
+    testPanelEl.innerHTML = html;
+
+    var headerBar = document.getElementById("mapHeaderBar");
+    if (headerBar) {
+      headerBar.appendChild(testPanelEl);
+    } else {
+      mapWrapEl.appendChild(testPanelEl);
+    }
+
+    var nodeBtn = document.createElement("button");
+    nodeBtn.type = "button";
+    nodeBtn.id = "mapNodeBtn";
+    nodeBtn.textContent = "NODES";
+    nodeBtn.style.cssText = [
+      "display:none","background:#111","color:#fff","font-size:11px","font-weight:800",
+      "padding:6px 12px","border-radius:8px","border:none","cursor:pointer",
+      "box-shadow:0 3px 14px rgba(0,40,20,0.18)","flex-shrink:0","min-width:44px",
+    ].join(";");
+    nodeBtn.addEventListener("click", function(e){
+      e.stopPropagation();
+      toggleNodeDebug();
+    });
+    nodeBtn.style.background = nodeDebugVisible ? "#10b981" : "#111";
+    if (searchWrap) searchWrap.appendChild(nodeBtn);
+
+    testToggleBtn.addEventListener("click", function(e){
+      e.stopPropagation();
+      testModeActive = !testModeActive;
+      testPanelEl.style.display = testModeActive ? "block" : "none";
+      testToggleBtn.style.background = testModeActive ? "#10b981" : "#f59e0b";
+      testToggleBtn.style.color = testModeActive ? "#fff" : "#000";
+      testToggleBtn.textContent = testModeActive ? "TEST: ON" : "TEST";
+      if (!testModeActive) testModePin.setAttribute("opacity","0");
+    });
+
+    testPanelEl.querySelector("#tmClear").addEventListener("click", function(e){
+      e.stopPropagation();
+      testModeActive = false;
+      testPanelEl.style.display = "none";
+      testToggleBtn.style.background = "#f59e0b";
+      testToggleBtn.style.color = "#000";
+      testToggleBtn.textContent = "TEST";
+      testModePin.setAttribute("opacity","0");
+      clearAllPaths();
+      clearBreadcrumbs();
+      startFlagSet = false;
+      if (startFlag) startFlag.setAttribute("opacity", "0");
+    });
+
+    testPanelEl.querySelectorAll(".tm-preset").forEach(function(btn){
+      btn.addEventListener("click", function(e){
+        e.stopPropagation();
+        var nodeId = btn.getAttribute("data-node");
+        var node = NODE_MAP[nodeId];
+        if (!node) return;
+        simTestPosition(node.x, node.y, nodeId);
+      });
+    });
+
+    overlayEl.addEventListener("click", function(e){
+      if (!testModeActive) return;
+      if (e.target !== overlayEl) return;
+      e.stopPropagation();
+      var pt = overlayEl.createSVGPoint();
+      pt.x = e.clientX;
+      pt.y = e.clientY;
+      var svgP = pt.matrixTransform(overlayEl.getScreenCTM().inverse());
+      simTestPosition(svgP.x, svgP.y, null);
+    }, true);
+  }
+
+  function simTestPosition(svgX, svgY, forceNodeId) {
+    gpsErrorShown = false;
+    gpsPermissionDenied = false;
+    firstFix = false;
+
+    var edgeSnap = snapToNearestEdge(svgX, svgY);
+    currentEdge = edgeSnap;
+    testModePin.setAttribute("cx", edgeSnap.x);
+    testModePin.setAttribute("cy", edgeSnap.y);
+    testModePin.setAttribute("opacity", "1");
+
+    moveUserDot(edgeSnap.x, edgeSnap.y);
+
+    var prevUserNode = currentUserNode;
+
+    if (forceNodeId) {
+      currentUserNode = forceNodeId;
+    } else {
+      var nodeSnap = nearestNode(edgeSnap.x, edgeSnap.y, null, 15);
+      if (nodeSnap) {
+        currentUserNode = nodeSnap.id;
+      } else if (edgeSnap.a) {
+        currentUserNode = edgeSnap.t <= 0.5 ? edgeSnap.a.id : edgeSnap.b.id;
+      }
+    }
+
+    if (prevUserNode && currentUserNode && prevUserNode !== currentUserNode) {
+      var pathNodes = aStar(prevUserNode, currentUserNode);
+      if (pathNodes && pathNodes.length > 0) {
+        var pts = [];
+        for (var p = 0; p < pathNodes.length; p++) {
+          var pn = NODE_MAP[pathNodes[p]];
+          if (pn) pts.push({ x: pn.x, y: pn.y });
+        }
+        if (pts.length > 0) addBreadcrumbBulk(pts);
+      }
+    } else {
+      addBreadcrumb(edgeSnap.x, edgeSnap.y);
+    }
+
+    currentPath = [];
+    currentPathIdx = 0;
+    if (destBuildingId) {
+      drawRoute();
+    } else {
+      clearAllPaths();
+      var bar = document.getElementById("mapDirectionsBar");
+      if (bar) bar.style.display = "none";
+    }
+  }
+
   function buildSearchBar() {
     const headerBar = document.getElementById("mapHeaderBar");
     if (!headerBar) return;
@@ -1521,7 +1832,11 @@
     viewY = ch * 0.5 - clipY * viewScale;
     clampPan();
     applyTransform();
-    const resolvedId = resolveBuildingId(officeName || b.name, b.name) || b.id;
+    const resolvedId = b.id;
+    if (resolvedId !== destBuildingId) {
+      startFlagSet = false;
+      if (startFlag) startFlag.setAttribute("opacity", "0");
+    }
     destBuildingId = resolvedId;
     updateHeader();
     if (mapInitialized) {
@@ -1609,7 +1924,7 @@
     btn.id = "mapNodeDebugBtn";
     btn.textContent = "Nodes";
     btn.style.cssText = `
-      position:absolute; top:14px; right:62px; z-index:41;
+      display:none; position:absolute; top:14px; right:62px; z-index:41;
       background:#111; color:#fff; font-size:12px; font-weight:700;
       padding:8px 12px; border-radius:10px; border:none; cursor:pointer;
       box-shadow:0 3px 14px rgba(0,40,20,0.18);
@@ -1620,15 +1935,14 @@
       btn.style.background = nodeDebugVisible ? "#0a6635" : "#111";
     });
     mapWrapEl.appendChild(btn);
-
-    toggleNodeDebug(true);
-    btn.style.background = "#0a6635";
   }
 
   function toggleNodeDebug(force) {
     if (!nodeDebugGroupEl) return;
     nodeDebugVisible = force !== undefined ? force : !nodeDebugVisible;
     nodeDebugGroupEl.style.display = nodeDebugVisible ? "block" : "none";
+    var nb = document.getElementById("mapNodeBtn");
+    if (nb) nb.style.background = nodeDebugVisible ? "#10b981" : "#111";
   }
 
   function buildCompass() {
@@ -2090,9 +2404,12 @@
     }
   }
 
+  var gpsDebugPanelEl = null;
+
   function ensureGPSDebugPanel() {
     if (!mapWrapEl) return null;
-    let panel = document.getElementById("gpsDebugPanel");
+    if (gpsDebugPanelEl) return gpsDebugPanelEl;
+    var panel = document.getElementById("gpsDebugPanel");
     if (!panel) {
       panel = document.createElement("div");
       panel.id = "gpsDebugPanel";
@@ -2101,22 +2418,33 @@
         "left:12px",
         "bottom:52px",
         "z-index:30",
-        "background:rgba(17,24,39,0.8)",
+        "background:rgba(17,24,39,0.85)",
         "color:#fff",
         "font-size:10px",
-        "line-height:1.35",
-        "padding:6px 8px",
+        "line-height:1.4",
+        "padding:8px 10px",
         "border-radius:8px",
         "font-family:monospace",
         "pointer-events:none",
-        "max-width:220px",
-        "white-space:nowrap",
-        "overflow:hidden",
-        "text-overflow:ellipsis",
+        "max-width:280px",
       ].join(";");
       mapWrapEl.appendChild(panel);
     }
+    gpsDebugPanelEl = panel;
     return panel;
+  }
+
+  function updateDebugPanel(data) {
+    var panel = ensureGPSDebugPanel();
+    if (!panel) return;
+    panel.innerHTML =
+      "GPS raw: " + data.rawLat + ", " + data.rawLng + "<br>" +
+      "Acc: " + data.acc + " | inside: " + data.inside + "<br>" +
+      "Gate anchor: " + data.anchor + "<br>" +
+      "Smooth: " + data.smoothLat + ", " + data.smoothLng + "<br>" +
+      "SVG raw: (" + data.svgX + ", " + data.svgY + ")<br>" +
+      "Edge: " + data.edge + " snap(" + data.snapX + ", " + data.snapY + ")<br>" +
+      "Node: " + data.node + " (" + data.nodeX + ", " + data.nodeY + ")";
   }
 
   function showGPSError(msg) {
@@ -2128,6 +2456,19 @@
       txt.textContent = msg;
       bar.style.display = "flex";
     }
+  }
+
+  function handlePathProgress(nodeId) {
+    if (!currentPath.length || currentPathIdx >= currentPath.length - 1) return false;
+    var nextNodeId = currentPath[currentPathIdx + 1];
+    if (nodeId === nextNodeId) {
+      currentPathIdx++;
+      return true;
+    }
+    if (nodeId !== currentPath[currentPathIdx] && currentPath.indexOf(nodeId) === -1) {
+      return true;
+    }
+    return false;
   }
 
   function onPosition(pos) {
@@ -2182,26 +2523,32 @@
     const projectedLat = gateAnchor ? nearestGate.lat : smoothedLat;
     const projectedLng = gateAnchor ? nearestGate.lng : smoothedLng;
     const svgPos = gpsToSvg(projectedLat, projectedLng);
+    const edgeSnap = snapToNearestEdge(svgPos.x, svgPos.y);
     const snapped = gateAnchor
       ? gateAnchor
       : nearestNode(svgPos.x, svgPos.y, currentUserNode, accuracy);
 
     if (snapped && (!insideCampus || !gateAnchor)) {
       currentUserNode = snapped.id;
-      moveUserDot(snapped.x, snapped.y);
-      if (destBuildingId) drawRoute();
+      moveUserDot(edgeSnap.x, edgeSnap.y);
+      addBreadcrumb(edgeSnap.x, edgeSnap.y);
+      if (destBuildingId) {
+        if (handlePathProgress(snapped.id)) drawRoute();
+        else updatePathProgress();
+      }
 
       const isFirstFix = firstFix;
 
       if (isFirstFix) {
         firstFix = false;
         autoCenterOnLocation = false;
-        snapToUser(snapped.x, snapped.y);
+        snapToUser(edgeSnap.x, edgeSnap.y);
+        drawRoute();
         if (locatingToastEl) {
           locatingToastEl.classList.remove("show");
         }
       } else if (autoCenterOnLocation) {
-        centerOnUser(snapped.x, snapped.y);
+        centerOnUser(edgeSnap.x, edgeSnap.y);
       }
       return;
     }
@@ -2215,18 +2562,23 @@
       );
       if (campusSnap) {
         currentUserNode = campusSnap.id;
-        moveUserDot(campusSnap.x, campusSnap.y);
-        if (destBuildingId) drawRoute();
+        moveUserDot(edgeSnap.x, edgeSnap.y);
+        addBreadcrumb(edgeSnap.x, edgeSnap.y);
+        if (destBuildingId) {
+          if (handlePathProgress(campusSnap.id)) drawRoute();
+          else updatePathProgress();
+        }
 
         if (firstFix) {
           firstFix = false;
           autoCenterOnLocation = false;
-          snapToUser(campusSnap.x, campusSnap.y);
+          snapToUser(edgeSnap.x, edgeSnap.y);
+          drawRoute();
           if (locatingToastEl) {
             locatingToastEl.classList.remove("show");
           }
         } else if (autoCenterOnLocation) {
-          centerOnUser(campusSnap.x, campusSnap.y);
+          centerOnUser(edgeSnap.x, edgeSnap.y);
         }
         return;
       }
@@ -2236,6 +2588,7 @@
       const prev = NODE_MAP[currentUserNode];
       if (prev) {
         moveUserDot(prev.x, prev.y);
+        addBreadcrumb(prev.x, prev.y);
         if (destBuildingId) drawRoute();
         return;
       }
@@ -2245,7 +2598,8 @@
       const gateNode = NODE_MAP[nearestGate.id];
       if (gateNode) {
         currentUserNode = gateNode.id;
-        moveUserDot(gateNode.x, gateNode.y);
+        moveUserDot(edgeSnap.x, edgeSnap.y);
+        addBreadcrumb(edgeSnap.x, edgeSnap.y);
         if (destBuildingId) drawRoute();
         return;
       }
@@ -2260,6 +2614,16 @@
     }
   }
 
+  function updateETAFromPosition(edgeSnap, nodeSnap) {
+    var bar = document.getElementById("mapDirectionsBar");
+    var txt = document.getElementById("mapDirectionsText");
+    if (!bar || !txt) return;
+    gpsErrorShown = false;
+    var bInfo = BUILDING_INFO[destBuildingId];
+    txt.textContent = "Head towards " + (bInfo ? bInfo.name : "your destination");
+    bar.style.display = "flex";
+  }
+
   function moveUserDot(svgX, svgY) {
     userSvgX = svgX;
     userSvgY = svgY;
@@ -2269,6 +2633,57 @@
     if (activePopupSVG && popupEl && popupEl.style.display !== "none") {
       activePopupSVG = { x: svgX, y: svgY };
     }
+  }
+
+  function addBreadcrumb(x, y) {
+    var now = Date.now();
+    var last = breadcrumbs.length ? breadcrumbs[breadcrumbs.length - 1] : null;
+    if (last) {
+      var dx = x - last.x, dy = y - last.y;
+      if (dx * dx + dy * dy < 16) return;
+    }
+    breadcrumbs.push({ x: x, y: y, t: now });
+    if (breadcrumbs.length > BREADCRUMB_MAX) breadcrumbs.shift();
+    renderBreadcrumbs();
+  }
+
+  function addBreadcrumbBulk(points) {
+    for (var i = 0; i < points.length; i++) {
+      var p = points[i];
+      var last = breadcrumbs.length ? breadcrumbs[breadcrumbs.length - 1] : null;
+      if (last) {
+        var dx = p.x - last.x, dy = p.y - last.y;
+        if (dx * dx + dy * dy < 16) continue;
+      }
+      breadcrumbs.push({ x: p.x, y: p.y, t: Date.now() });
+    }
+    if (breadcrumbs.length > BREADCRUMB_MAX) breadcrumbs.splice(0, breadcrumbs.length - BREADCRUMB_MAX);
+    renderBreadcrumbs();
+  }
+
+  function renderBreadcrumbs() {
+    if (!breadcrumbGroup) return;
+    var now = Date.now();
+    var points = "";
+    var totalElapsed = 0;
+    for (var i = 0; i < breadcrumbs.length; i++) {
+      var b = breadcrumbs[i];
+      var elapsed = (now - b.t) / 1000;
+      if (elapsed > BREADCRUMB_FADE_SEC) continue;
+      points += b.x + "," + b.y + " ";
+      if (i === breadcrumbs.length - 1) totalElapsed = elapsed;
+    }
+    if (!points) { breadcrumbGroup.innerHTML = ""; return; }
+    var pts = points.trim();
+    var alpha = Math.max(0.15, 1 - totalElapsed / BREADCRUMB_FADE_SEC);
+    breadcrumbGroup.innerHTML =
+      '<polyline points="' + pts + '" fill="none" stroke="#374151" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" opacity="' + alpha.toFixed(2) + '"/>' +
+      '<polyline points="' + pts + '" fill="none" stroke="#6b7280" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 4" opacity="' + alpha.toFixed(2) + '"/>';
+  }
+
+  function clearBreadcrumbs() {
+    breadcrumbs = [];
+    if (breadcrumbGroup) breadcrumbGroup.innerHTML = "";
   }
 
   function centerOnUser(svgX, svgY) {
@@ -2297,65 +2712,129 @@
     applyTransform();
   }
 
-  function drawRoute() {
-    if (!destBuildingId) return;
-    const destNodeId = BUILDING_NODE[destBuildingId];
-    if (!destNodeId) return;
+  function clearAllPaths() {
+    pathTraveledCasing.setAttribute("opacity", "0");
+    pathTraveledLine.setAttribute("opacity", "0");
+    pathRemainingCasing.setAttribute("opacity", "0");
+    pathRemainingLine.setAttribute("opacity", "0");
+    destMarker.setAttribute("opacity", "0");
+    startFlagSet = false;
+    if (startFlag) startFlag.setAttribute("opacity", "0");
+  }
 
-    if (!currentUserNode) {
-      pathLine.setAttribute("opacity", "0");
-      const casingEmpty = document.getElementById("pathCasing");
-      if (casingEmpty) casingEmpty.setAttribute("opacity", "0");
-      destMarker.setAttribute("opacity", "0");
-      return;
-    }
+  function drawRoute() {
+    if (!destBuildingId) { clearAllPaths(); return; }
+    var destNodeId = BUILDING_NODE[destBuildingId];
+    if (!destNodeId) { clearAllPaths(); return; }
+
+    if (!currentUserNode) { clearAllPaths(); return; }
 
     if (currentUserNode === destNodeId) {
-      pathLine.setAttribute("opacity", "0");
-      const casing = document.getElementById("pathCasing");
-      if (casing) casing.setAttribute("opacity", "0");
-      destMarker.setAttribute("opacity", "1"); // keep the destination pin visible
-      const bar = document.getElementById("mapDirectionsBar");
-      const txt = document.getElementById("mapDirectionsText");
-      if (bar && txt) {
-        txt.textContent = "You've arrived!";
-        bar.style.display = "flex";
+      clearAllPaths();
+      destMarker.setAttribute("opacity", "1");
+      var barA = document.getElementById("mapDirectionsBar");
+      var txtA = document.getElementById("mapDirectionsText");
+      if (barA && txtA) {
+        txtA.textContent = "You've arrived!";
+        barA.style.display = "flex";
       }
+      currentPath = [];
+      currentPathIdx = 0;
       return;
     }
 
-    const pathIds = aStar(currentUserNode, destNodeId);
+    var pathIds = aStar(currentUserNode, destNodeId);
+    if (!pathIds) { clearAllPaths(); return; }
 
-    if (!pathIds) {
-      pathLine.setAttribute("opacity", "0");
-      const casing = document.getElementById("pathCasing");
-      if (casing) casing.setAttribute("opacity", "0");
-      return;
+    currentPath = pathIds;
+
+    if (!startFlagSet && startFlag && pathIds.length > 0) {
+      startFlagSet = true;
+      var flagX = currentEdge.x !== undefined ? currentEdge.x : NODE_MAP[pathIds[0]].x;
+      var flagY = currentEdge.y !== undefined ? currentEdge.y : NODE_MAP[pathIds[0]].y;
+      startFlag.setAttribute("transform", "translate(" + flagX + "," + flagY + ")");
+      startFlag.setAttribute("opacity", "1");
     }
 
-    const pts = pathIds
-      .map((id) => {
-        const n = NODE_MAP[id];
-        return `${n.x},${n.y}`;
-      })
-      .join(" ");
-    pathLine.setAttribute("points", pts);
-    pathLine.setAttribute("opacity", "1");
-    const casing = document.getElementById("pathCasing");
-    if (casing) {
-      casing.setAttribute("points", pts);
-      casing.setAttribute("opacity", "1");
+    var nodeIdx = pathIds.indexOf(currentUserNode);
+    if (nodeIdx === -1) {
+      nodeIdx = 0;
+      currentPathIdx = 0;
+    } else {
+      currentPathIdx = nodeIdx;
     }
 
-    const destNode = NODE_MAP[destNodeId];
-    destMarker.setAttribute(
-      "transform",
-      `translate(${destNode.x},${destNode.y})`,
-    );
+    renderPathSplit(nodeIdx, NODE_MAP[pathIds[nodeIdx]].x, NODE_MAP[pathIds[nodeIdx]].y);
+
+    var destNode = NODE_MAP[destNodeId];
+    destMarker.setAttribute("transform", "translate(" + destNode.x + "," + destNode.y + ")");
     destMarker.setAttribute("opacity", "1");
 
     updateHeader();
-    updateDirectionsBar(pathIds);
+    updateETA(pathIds, nodeIdx);
+  }
+
+  function updatePathProgress() {
+    if (!currentPath.length || !destBuildingId || !currentUserNode) return;
+    if (!currentEdge.a || !currentEdge.b) return;
+
+    var traveledIdx = currentPathIdx;
+    for (var i = currentPathIdx; i < currentPath.length - 1; i++) {
+      var a = currentPath[i], b = currentPath[i + 1];
+      var ea = currentEdge.a.id, eb = currentEdge.b.id;
+      if ((ea === a && eb === b) || (ea === b && eb === a)) {
+        traveledIdx = i;
+        break;
+      }
+    }
+
+    if (currentPath.indexOf(currentUserNode) === -1 && traveledIdx === currentPathIdx) {
+      drawRoute();
+      return;
+    }
+
+    renderPathSplit(traveledIdx, currentEdge.x, currentEdge.y);
+    updateETAFromPosition(currentEdge, null);
+  }
+
+  function renderPathSplit(nodeIdx, splitX, splitY) {
+    var tp = "";
+    for (var t = 0; t <= nodeIdx; t++) {
+      var tn = NODE_MAP[currentPath[t]];
+      if (tn) tp += tn.x + "," + tn.y + " ";
+    }
+    tp += splitX + "," + splitY;
+
+    var rp = splitX + "," + splitY + " ";
+    for (var r = nodeIdx + 1; r < currentPath.length; r++) {
+      var rn = NODE_MAP[currentPath[r]];
+      if (rn) rp += rn.x + "," + rn.y + " ";
+    }
+
+    if (nodeIdx > 0) {
+      pathTraveledCasing.setAttribute("points", tp.trim());
+      pathTraveledCasing.setAttribute("opacity", "1");
+      pathTraveledLine.setAttribute("points", tp.trim());
+      pathTraveledLine.setAttribute("opacity", "1");
+    } else {
+      pathTraveledCasing.setAttribute("opacity", "0");
+      pathTraveledLine.setAttribute("opacity", "0");
+    }
+
+    pathRemainingCasing.setAttribute("points", rp.trim());
+    pathRemainingCasing.setAttribute("opacity", "1");
+    pathRemainingLine.setAttribute("points", rp.trim());
+    pathRemainingLine.setAttribute("opacity", "1");
+  }
+
+  function updateETA(pathIds, traveledIdx) {
+    var bar = document.getElementById("mapDirectionsBar");
+    var txt = document.getElementById("mapDirectionsText");
+    if (!bar || !txt) return;
+    gpsErrorShown = false;
+    var bInfo = BUILDING_INFO[destBuildingId];
+    txt.textContent = "Head towards " + (bInfo ? bInfo.name : "your destination");
+    bar.style.display = "flex";
   }
 
   function updateHeader() {
@@ -2364,24 +2843,22 @@
     if (destEl && bInfo) destEl.textContent = bInfo.short;
   }
 
-  function updateDirectionsBar(pathIds) {
-    const bar = document.getElementById("mapDirectionsBar");
-    const txt = document.getElementById("mapDirectionsText");
-    if (!bar || !txt) return;
-    gpsErrorShown = false;
-    const bInfo = BUILDING_INFO[destBuildingId];
-    txt.textContent = `Head towards ${bInfo ? bInfo.name : "your destination"} — follow the yellow path`;
-    bar.style.display = "flex";
-  }
+  let debugDisableGateAnchor = false;
 
   window.CampusMap = {
     init: initMap,
     refit: fitMap,
     toggleNodes: toggleNodeDebug,
+    toggleGateAnchor: function () { debugDisableGateAnchor = !debugDisableGateAnchor; return debugDisableGateAnchor; },
+    debugData: function () { return { currentUserNode: currentUserNode, currentEdge: currentEdge, currentPath: currentPath, currentPathIdx: currentPathIdx }; },
 
     setDestination(officeName, buildingHint) {
       const id = resolveBuildingId(officeName, buildingHint);
       if (!id) return;
+      if (id !== destBuildingId) {
+        startFlagSet = false;
+        if (startFlag) startFlag.setAttribute("opacity", "0");
+      }
       destBuildingId = id;
       updateHeader();
       if (mapInitialized) {
