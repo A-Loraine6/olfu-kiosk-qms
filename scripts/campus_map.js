@@ -341,9 +341,16 @@
   }
 
   const GRAPH = buildGraph();
+  var PATH_CACHE = {};
+
+  function clearPathCache() {
+    PATH_CACHE = {};
+  }
 
   function aStar(startId, goalId) {
     if (startId === goalId) return [startId];
+    var key = startId + "|" + goalId;
+    if (PATH_CACHE[key]) return PATH_CACHE[key].slice();
     const goal = NODE_MAP[goalId];
     if (!goal || !NODE_MAP[startId]) return null;
 
@@ -372,6 +379,7 @@
           node = parent.get(node) ?? null;
           if (path.length > 300) break;
         }
+        PATH_CACHE[key] = path.slice();
         return path;
       }
 
