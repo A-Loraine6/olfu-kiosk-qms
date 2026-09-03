@@ -29,7 +29,7 @@ $action    = $_POST['action']    ?? '';
 $officeId  = (int) ($_POST['office_id'] ?? 0);
 $staffId   = (int) $currentUser['id'];
 
-if ($officeId !== (int) ($currentUser['office_id'] ?? 0)) {
+if ($action !== 'transfer_ticket' && $officeId !== (int) ($currentUser['office_id'] ?? 0)) {
     echo json_encode(['success' => false, 'message' => 'Office mismatch.']);
     exit;
 }
@@ -520,6 +520,180 @@ if ($action === 'resume_ticket') {
     respond(['success' => true, 'ticket' => $ticket]);
 }
 
+if ($action === 'transfer_ticket') {
+    $ticketId       = (int) ($_POST['ticket_id'] ?? 0);
+    $targetOfficeId = (int) ($_POST['target_office_id'] ?? 0);
+    $targetServiceId = (int) ($_POST['target_service_id'] ?? 0);
+    $placement      = $_POST['placement'] ?? 'top';
+
+    if ($ticketId <= 0 || $targetOfficeId <= 0) {
+        respond(['success' => false, 'message' => 'A valid ticket and department are required.']);
+    }
+
+    $stmt = $db->prepare("SELECT * FROM tickets WHERE id = ? AND office_id = ? LIMIT 1");
+    $stmt->bind_param('ii', $ticketId, $officeId);
+    $stmt->execute();
+    $ticket = $stmt->get_result()->fetch_assoc();
+
+    if (!$ticket) {
+        respond(['success' => false, 'message' => 'Ticket not found in this office.']);
+    }
+
+    $targetOfficeCheck = $db->prepare("SELECT id FROM offices WHERE id = ? LIMIT 1");
+    $targetOfficeCheck->bind_param('i', $targetOfficeId);
+    $targetOfficeCheck->execute();
+    if (!$targetOfficeCheck->get_result()->fetch_assoc()) {
+        respond(['success' => false, 'message' => 'Target department not found.']);
+    }
+    $targetOfficeCheck->close();
+
+    if ($ticket['status'] === 'completed' || $ticket['status'] === 'cancelled') {
+        respond(['success' => false, 'message' => 'Only active or waiting tickets can be transferred.']);
+    }
+
+    // --- resolve destination service ---
+    $targetQueueMode    = getOfficeQueueMode($db, $targetOfficeId);
+    $newTransactionType = $ticket['transaction_type']; // default: carry over as-is for unified offices
+
+    if ($targetQueueMode === 'service-based') {
+        if ($targetServiceId <= 0) {
+            respond(['success' => false, 'message' => 'Please select a service for the destination department.']);
+        }
+
+        $svcStmt = $db->prepare("
+            SELECT name FROM transaction_types
+            WHERE id = ? AND office_id = ? AND is_active = 1 AND is_deleted = 0
+            LIMIT 1
+        ");
+        $svcStmt->bind_param('ii', $targetServiceId, $targetOfficeId);
+        $svcStmt->execute();
+        $svcRow = $svcStmt->get_result()->fetch_assoc();
+        $svcStmt->close();
+
+        if (!$svcRow) {
+            respond(['success' => false, 'message' => 'Selected service is not valid for that department.']);
+        }
+
+        $newTransactionType = $svcRow['name'];
+    }
+
+    $newStatus      = 'waiting';
+    $newPriority    = ($placement === 'top') ? 1 : 0;
+    $newServedBy    = null;
+    $newServedAt    = null;
+    $newCompletedAt = null;
+    $newOnHoldAt    = null;
+    $newTimeSpent   = 0;
+
+    if ($ticket['status'] === 'on-hold') {
+        $newTimeSpent = (int) ($ticket['time_spent'] ?? 0);
+    }
+
+    $transferNow = date(DATETIME_FORMAT);
+
+    $stmt = $db->prepare("
+        UPDATE tickets
+        SET office_id = ?,
+            status = ?,
+            is_priority = ?,
+            served_by = ?,
+            served_at = ?,
+            completed_at = ?,
+            on_hold_at = ?,
+            time_spent = ?,
+            created_at = ?,
+            transaction_type = ?,
+            window_id = NULL
+        WHERE id = ?
+    ");
+    $stmt->bind_param('isiissiissi',
+        $targetOfficeId,
+        $newStatus,
+        $newPriority,
+        $newServedBy,
+        $newServedAt,
+        $newCompletedAt,
+        $newOnHoldAt,
+        $newTimeSpent,
+        $transferNow,
+        $newTransactionType,
+        $ticketId
+    );
+    $stmt->execute();
+
+    respond([
+        'success' => true,
+        'message' => ($placement === 'top')
+            ? 'Ticket moved to the top of the target queue.'
+            : 'Ticket queued again at the end of the target queue.',
+        'ticket_id' => $ticketId,
+        'target_office_id' => $targetOfficeId,
+        'placement' => $placement,
+    ]);
+}
+
+if ($action === 'transfer_window') {
+    $ticketId = (int) ($_POST['ticket_id'] ?? 0);
+    $targetWindow = (int) ($_POST['target_window'] ?? 0);
+    $placement = $_POST['placement'] ?? 'top';
+
+    if ($ticketId <= 0 || $targetWindow <= 0) {
+        respond(['success' => false, 'message' => 'A valid ticket and destination window are required.']);
+    }
+    $currentWindow = (int) ($currentUser['window_number'] ?? 0);
+    if ($currentWindow > 0 && $targetWindow === $currentWindow) {
+        respond(['success' => false, 'message' => 'Choose a different window from your current assignment.']);
+    }
+
+    $stmt = $db->prepare("SELECT * FROM tickets WHERE id = ? AND office_id = ? LIMIT 1");
+    $stmt->bind_param('ii', $ticketId, $officeId);
+    $stmt->execute();
+    $ticket = $stmt->get_result()->fetch_assoc();
+
+    if (!$ticket) {
+        respond(['success' => false, 'message' => 'Ticket not found in this office.']);
+    }
+    if (in_array($ticket['status'], ['completed', 'cancelled'], true)) {
+        respond(['success' => false, 'message' => 'Only active or waiting tickets can be transferred.']);
+    }
+
+    $windowStmt = $db->prepare("SELECT window_count, queue_mode FROM offices WHERE id = ? LIMIT 1");
+    $windowStmt->bind_param('i', $officeId);
+    $windowStmt->execute();
+    $officeRow = $windowStmt->get_result()->fetch_assoc();
+    if (!$officeRow || $targetWindow > (int) $officeRow['window_count']) {
+        respond(['success' => false, 'message' => 'Destination window is not valid for this department.']);
+    }
+
+    if (($officeRow['queue_mode'] ?? 'unified') === 'service-based' && $ticket['transaction_type'] !== null) {
+        $serviceWindowStmt = $db->prepare("\n            SELECT 1\n            FROM service_windows sw\n            INNER JOIN transaction_types tt ON tt.id = sw.service_id\n            WHERE tt.office_id = ? AND tt.name = ? AND sw.window_number = ?\n            LIMIT 1\n        ");
+        $serviceWindowStmt->bind_param('isi', $officeId, $ticket['transaction_type'], $targetWindow);
+        $serviceWindowStmt->execute();
+        if (!$serviceWindowStmt->get_result()->fetch_assoc()) {
+            respond(['success' => false, 'message' => 'That window does not handle this ticket service.']);
+        }
+    }
+
+    $newPriority = $placement === 'top' ? 1 : 0;
+    $newTimeSpent = $ticket['status'] === 'on-hold' ? (int) ($ticket['time_spent'] ?? 0) : 0;
+    $transferNow = date(DATETIME_FORMAT);
+    $newStatus = 'waiting';
+
+    $stmt = $db->prepare("\n        UPDATE tickets\n        SET status = ?, is_priority = ?, served_by = NULL, served_at = NULL,\n            completed_at = NULL, on_hold_at = NULL, time_spent = ?, created_at = ?, window_id = ?\n        WHERE id = ? AND office_id = ?\n    ");
+    $stmt->bind_param('siisiii', $newStatus, $newPriority, $newTimeSpent, $transferNow, $targetWindow, $ticketId, $officeId);
+    $stmt->execute();
+
+    respond([
+        'success' => true,
+        'message' => $placement === 'top'
+            ? 'Ticket moved to the top of the target window queue.'
+            : 'Ticket queued at the end of the target window queue.',
+        'ticket_id' => $ticketId,
+        'target_window' => $targetWindow,
+        'placement' => $placement,
+    ]);
+}
+
 if ($action === 'toggle_overflow') {
     $stmt = $db->prepare("SELECT overflow_mode FROM users WHERE id = ?");
     $stmt->bind_param('i', $staffId);
@@ -549,6 +723,32 @@ if ($action === 'get_overflow_state') {
         'success'       => true,
         'overflow_mode' => (bool) ($row['overflow_mode'] ?? false),
     ]);
+}
+
+if ($action === 'get_office_services') {
+    $targetOfficeId = (int) ($_POST['target_office_id'] ?? 0);
+
+    if ($targetOfficeId <= 0) {
+        respond(['success' => false, 'message' => 'Invalid target department.']);
+    }
+
+    $queueMode = getOfficeQueueMode($db, $targetOfficeId);
+
+    if ($queueMode !== 'service-based') {
+        respond(['success' => true, 'queue_mode' => $queueMode, 'services' => []]);
+    }
+
+    $stmt = $db->prepare("
+        SELECT id, name, category
+        FROM transaction_types
+        WHERE office_id = ? AND is_active = 1 AND is_deleted = 0
+        ORDER BY name ASC
+    ");
+    $stmt->bind_param('i', $targetOfficeId);
+    $stmt->execute();
+    $services = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+    respond(['success' => true, 'queue_mode' => $queueMode, 'services' => $services]);
 }
 
 respond(['success' => false, 'message' => 'Unknown action.']);

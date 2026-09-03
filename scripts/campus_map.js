@@ -643,6 +643,9 @@
   let pathRemainingLine = null;
   let pathTraveledCasing = null;
   let pathRemainingCasing = null;
+  let gpsStatusEl = null;
+  let gpsAccuracyMeters = null;
+  const SAVED_ROUTE_KEY = "campus_map_saved_route";
   const EDGE_SNAP_HYSTERESIS_SQ = 900;
   const GPS_DEVIATION_TOLERANCE = 3;
 
@@ -1299,9 +1302,11 @@
     buildLocateButton();
     buildResetViewButton();
     buildSearchBar();
+    ensureGPSStatus();
     buildLocatingToast();
     injectPullStyles();
     buildPullToRefresh();
+    restoreSavedRoute();
 
     popupEl = document.createElement("div");
     popupEl.id = "mapPopup";
@@ -1791,11 +1796,9 @@
       .map(
         (b) => `
       <button type="button" class="search-result" data-id="${b.id}">
-        <span class="sr-dot" style="background:${b.color}"></span>
         <span class="sr-text">
           <span class="sr-name">${escapeHtml(b.short)}</span>
         </span>
-        <i class="fas fa-chevron-right sr-chev"></i>
       </button>`,
       )
       .join("");
@@ -1847,6 +1850,7 @@
     }
     destBuildingId = resolvedId;
     updateHeader();
+    saveRouteState();
     if (mapInitialized) {
       drawRoute();
     }
@@ -2383,13 +2387,15 @@
   function startGPS() {
     if (!navigator.geolocation) {
       gpsPermissionDenied = true;
+      updateGPSStatus("GPS unavailable", "weak");
       showGPSError(
-        "Location isn't supported on this device — directions can't be shown.",
+        "Location isn't supported on this device — using the last saved route.",
       );
-      drawRoute();
+      restoreSavedRoute();
       return;
     }
     showLocatingToast("Finding your location…");
+    updateGPSStatus("Searching…", "neutral");
     watchId = navigator.geolocation.watchPosition(onPosition, onGeoError, {
       enableHighAccuracy: true,
       maximumAge: 3000,
@@ -2403,10 +2409,13 @@
       gpsPermissionDenied = true;
       msg =
         "Location permission denied — enable it in your browser settings to see directions.";
+      updateGPSStatus("Permission denied", "weak");
+      restoreSavedRoute();
     } else if (err && err.code === err.TIMEOUT) {
       msg = "Couldn't get your location — retrying…";
+      updateGPSStatus("Retrying…", "neutral");
     }
-    showGPSError(msg);
+    showGPSError(msg, err && err.code === err.PERMISSION_DENIED ? "weak" : "neutral");
     if (err && err.code !== err.TIMEOUT) {
       drawRoute();
     }
@@ -2455,15 +2464,89 @@
       "Node: " + data.node + " (" + data.nodeX + ", " + data.nodeY + ")";
   }
 
-  function showGPSError(msg) {
+  function ensureGPSStatus() {
+    if (!mapWrapEl) return null;
+    if (gpsStatusEl) return gpsStatusEl;
+
+    const wrapper = document.createElement("div");
+    wrapper.id = "mapGpsStatus";
+    wrapper.setAttribute("data-tone", "neutral");
+    wrapper.innerHTML = `
+      <span class="map-gps-label">Location</span>
+      <span class="map-gps-value">Searching…</span>
+    `;
+
+    const header = document.getElementById("mapHeaderBar");
+    if (header) {
+      const directionsBar = document.getElementById("mapDirectionsBar");
+      if (directionsBar) {
+        header.insertBefore(wrapper, directionsBar);
+      } else {
+        header.appendChild(wrapper);
+      }
+    }
+
+    gpsStatusEl = wrapper;
+    return wrapper;
+  }
+
+  function updateGPSStatus(label, tone = "neutral") {
+    const el = ensureGPSStatus();
+    if (!el) return;
+    const value = el.querySelector(".map-gps-value");
+    if (value) value.textContent = label;
+    el.setAttribute("data-tone", tone);
+  }
+
+  function saveRouteState() {
+    if (!destBuildingId && !currentUserNode) return;
+    const state = {
+      destBuildingId,
+      currentUserNode,
+      savedAt: Date.now(),
+    };
+    try {
+      localStorage.setItem(SAVED_ROUTE_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.warn("Failed to save route state:", e);
+    }
+  }
+
+  function restoreSavedRoute() {
+    try {
+      const raw = localStorage.getItem(SAVED_ROUTE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (!saved || !saved.destBuildingId) return;
+
+      destBuildingId = saved.destBuildingId;
+      if (saved.currentUserNode && NODE_MAP[saved.currentUserNode]) {
+        currentUserNode = saved.currentUserNode;
+      } else if (saved.currentUserNode && saved.currentUserNode.startsWith("gate")) {
+        currentUserNode = saved.currentUserNode;
+      } else {
+        currentUserNode = "gate1";
+      }
+
+      updateHeader();
+      if (mapInitialized) {
+        drawRoute();
+      }
+    } catch (e) {
+      console.warn("Failed to restore saved route:", e);
+    }
+  }
+
+  function showGPSError(msg, tone = "weak") {
     if (!mapWrapEl) return;
     const bar = document.getElementById("mapDirectionsBar");
     const txt = document.getElementById("mapDirectionsText");
-    if (bar && txt && !gpsErrorShown) {
+    if (bar && txt) {
       gpsErrorShown = true;
       txt.textContent = msg;
       bar.style.display = "flex";
     }
+    updateGPSStatus(tone === "weak" ? "Weak signal" : "No GPS", tone);
   }
 
   function handlePathProgress(nodeId) {
@@ -2495,6 +2578,7 @@
     }
 
     const accuracy = pos.coords.accuracy ?? GPS_ACCEPTABLE_ACCURACY;
+    gpsAccuracyMeters = accuracy;
     const maxAccuracy = Math.min(
       GPS_MAX_ACCEPTABLE_ACCURACY,
       Math.max(GPS_ACCEPTABLE_ACCURACY, accuracy),
@@ -2504,6 +2588,29 @@
     const nearestGate = nearestCampusGate(lat, lng);
     const gateAnchor = resolveNearestCampusAnchor(lat, lng, accuracy);
     const insideCampus = isInsideCampus(lat, lng);
+
+    if (accuracy > 30) {
+      updateGPSStatus(`${Math.round(accuracy)}m accuracy`, "weak");
+      if (nearestGate || currentUserNode) {
+        const fallbackNode = nearestGate ? nearestGate.id : currentUserNode;
+        if (fallbackNode && NODE_MAP[fallbackNode]) {
+          currentUserNode = fallbackNode;
+          const nodePos = NODE_MAP[fallbackNode];
+          moveUserDot(nodePos.x, nodePos.y);
+          addBreadcrumb(nodePos.x, nodePos.y);
+          if (destBuildingId) drawRoute();
+        }
+      }
+      const msg = "Location is weak. You may be off by a few meters.";
+      const bar = document.getElementById("mapDirectionsBar");
+      const txt = document.getElementById("mapDirectionsText");
+      if (bar && txt) {
+        txt.textContent = msg;
+        bar.style.display = "flex";
+      }
+    } else {
+      updateGPSStatus(`${Math.round(accuracy)}m accuracy`, "good");
+    }
 
     if (
       accuracy > maxAccuracy &&
@@ -2515,6 +2622,7 @@
           moveUserDot(prev.x, prev.y);
         }
       }
+      saveRouteState();
       return;
     }
 
@@ -2558,6 +2666,7 @@
       } else if (autoCenterOnLocation) {
         centerOnUser(edgeSnap.x, edgeSnap.y);
       }
+      saveRouteState();
       return;
     }
 
@@ -2588,6 +2697,7 @@
         } else if (autoCenterOnLocation) {
           centerOnUser(edgeSnap.x, edgeSnap.y);
         }
+        saveRouteState();
         return;
       }
     }
@@ -2598,6 +2708,7 @@
         moveUserDot(prev.x, prev.y);
         addBreadcrumb(prev.x, prev.y);
         if (destBuildingId) drawRoute();
+        saveRouteState();
         return;
       }
     }
@@ -2609,6 +2720,7 @@
         moveUserDot(edgeSnap.x, edgeSnap.y);
         addBreadcrumb(edgeSnap.x, edgeSnap.y);
         if (destBuildingId) drawRoute();
+        saveRouteState();
         return;
       }
     }

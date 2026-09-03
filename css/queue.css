@@ -12,6 +12,11 @@
   .queue-layout {
     grid-template-columns: 1fr;
   }
+
+  .queue-col-main,
+  .queue-col-side {
+    min-width: 0;
+  }
 }
 
 .serving-card {
@@ -39,21 +44,15 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(
-      ellipse at 15% -10%,
+    radial-gradient(ellipse at 15% -10%,
       rgba(0, 220, 100, 0.22) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse at 85% 110%,
+      transparent 50%),
+    radial-gradient(ellipse at 85% 110%,
       rgba(0, 0, 0, 0.35) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse at 50% 50%,
+      transparent 50%),
+    radial-gradient(ellipse at 50% 50%,
       rgba(0, 60, 30, 0.2) 0%,
-      transparent 70%
-    );
+      transparent 70%);
   pointer-events: none;
 }
 
@@ -106,9 +105,11 @@
   0% {
     box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.5);
   }
+
   50% {
     box-shadow: 0 0 0 6px rgba(74, 222, 128, 0);
   }
+
   100% {
     box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
   }
@@ -189,10 +190,12 @@
     transform: scale(1);
     opacity: 1;
   }
+
   30% {
     transform: scale(1.08);
     opacity: 0.9;
   }
+
   100% {
     transform: scale(1);
     opacity: 1;
@@ -222,9 +225,11 @@
     transform: scale(0.6);
     opacity: 0;
   }
+
   60% {
     transform: scale(1.1);
   }
+
   100% {
     transform: scale(1);
     opacity: 1;
@@ -294,7 +299,7 @@
 .serving-actions {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
   padding: 14px 20px 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
@@ -323,11 +328,9 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.06) 0%,
-    transparent 60%
-  );
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.06) 0%,
+      transparent 60%);
   pointer-events: none;
 }
 
@@ -398,11 +401,9 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    transparent 55%
-  );
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      transparent 55%);
   pointer-events: none;
 }
 
@@ -429,7 +430,7 @@
   flex-shrink: 0;
 }
 
-.call-next-btn > span {
+.call-next-btn>span {
   flex: 1;
 }
 
@@ -450,10 +451,12 @@
 }
 
 @keyframes countPulse {
+
   0%,
   100% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.06);
   }
@@ -498,12 +501,15 @@
 .stat-green::before {
   background: var(--primary);
 }
+
 .stat-orange::before {
   background: #e07b1a;
 }
+
 .stat-blue::before {
   background: #1a6faa;
 }
+
 .stat-purple::before {
   background: #7c3aed;
 }
@@ -517,12 +523,15 @@
 .stat-green .stat-mini-icon {
   color: var(--primary);
 }
+
 .stat-orange .stat-mini-icon {
   color: #e07b1a;
 }
+
 .stat-blue .stat-mini-icon {
   color: #1a6faa;
 }
+
 .stat-purple .stat-mini-icon {
   color: #7c3aed;
 }
@@ -544,9 +553,11 @@
   0% {
     transform: scale(1);
   }
+
   40% {
     transform: scale(1.15);
   }
+
   100% {
     transform: scale(1);
   }
@@ -564,12 +575,15 @@
 .stat-green .stat-mini-val {
   color: var(--primary);
 }
+
 .stat-orange .stat-mini-val {
   color: #e07b1a;
 }
+
 .stat-blue .stat-mini-val {
   color: #1a6faa;
 }
+
 .stat-purple .stat-mini-val {
   color: #7c3aed;
 }
@@ -592,15 +606,22 @@
 .last-refreshed-bar .shortcut-hint {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
   font-size: 10px;
   color: var(--text-3);
+  flex: 1;
+  min-width: 0;
+  margin-left: 10px;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 kbd {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
   padding: 1px 5px;
   background: var(--bg);
   border: 1px solid var(--border-strong);
@@ -632,6 +653,7 @@ kbd {
   border-bottom: 1px solid var(--border);
   background: linear-gradient(to right, var(--primary-ghost), transparent);
   flex-shrink: 0;
+  gap: 10px;
 }
 
 .queue-panel-title {
@@ -642,6 +664,7 @@ kbd {
   font-weight: 700;
   color: var(--text-1);
   letter-spacing: -0.01em;
+  flex-shrink: 0;
 }
 
 .queue-panel-title i {
@@ -652,6 +675,7 @@ kbd {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .queue-type-filter {
@@ -667,6 +691,7 @@ kbd {
   cursor: pointer;
   transition: border-color var(--t) var(--ease);
   max-width: 190px;
+  min-width: 0;
 }
 
 .queue-type-filter:focus {
@@ -686,6 +711,7 @@ kbd {
   font-size: 12px;
   font-weight: 700;
   transition: all 0.25s var(--ease);
+  flex-shrink: 0;
 }
 
 .queue-count-badge.zero {
@@ -701,12 +727,16 @@ kbd {
 }
 
 .queue-tab {
-  flex: 1;
+  /* Equal-width, always all visible — no horizontal scroll to discover.
+     Labels shrink and wrap (see breakpoints below) rather than the row
+     overflowing, so every tab stays on screen and tappable. */
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 12px 10px;
+  padding: 12px 6px;
   border: none;
   background: transparent;
   font-size: 12.5px;
@@ -718,6 +748,8 @@ kbd {
   margin-bottom: -1px;
   transition: all var(--t) var(--ease);
   position: relative;
+  white-space: nowrap;
+  text-align: center;
 }
 
 .queue-tab i {
@@ -764,9 +796,11 @@ kbd {
 .queue-list-wrap::-webkit-scrollbar {
   width: 4px;
 }
+
 .queue-list-wrap::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .queue-list-wrap::-webkit-scrollbar-thumb {
   background: var(--border-strong);
   border-radius: 4px;
@@ -841,6 +875,7 @@ kbd {
     opacity: 0;
     transform: translateX(-6px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -864,6 +899,7 @@ kbd {
 .ticket-row.is-skipped {
   opacity: 0.72;
 }
+
 .ticket-row.is-done {
   opacity: 0.6;
 }
@@ -993,6 +1029,7 @@ kbd {
   background: rgba(0, 139, 67, 0.1);
   color: var(--primary);
 }
+
 .chip-skipped {
   background: rgba(224, 123, 26, 0.1);
   color: #e07b1a;
@@ -1062,6 +1099,7 @@ kbd {
     opacity: 0;
     transform: translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1175,27 +1213,596 @@ kbd {
   opacity: 0.85;
 }
 
+/* ============================================================
+   RESPONSIVE — general small screens (phones in portrait)
+   ============================================================ */
 @media (max-width: 860px) {
-  .stats-row {
-    grid-template-columns: repeat(2, 1fr);
+  /* Stats stay 4-across at every width now — see the max-width:480px
+     and max-width:340px blocks below for the compact sizing that makes
+     that work. (Previously this dropped to 2 columns here, then flipped
+     back to 4 below 580px — that contradiction is what produced the
+     tall, empty-feeling 2x2 block in the 580-860px range.) */
+}
+
+@media (max-width: 1100px) {
+
+  /* Once the two columns stack, the queue panel no longer needs to
+     match a fixed viewport-height sidebar — let its own content set
+     the height so an empty ticket list doesn't leave a huge blank block. */
+  .queue-panel {
+    min-height: unset;
   }
 }
 
 @media (max-width: 580px) {
+  .dashboard-header {
+    min-height: 58px;
+  }
+
+  .dashboard-header .header-page-title {
+    font-size: 14px;
+  }
+
+  .dashboard-header .office-badge {
+    display: none;
+  }
+
+  .dashboard-header .header-timestamp {
+    display: none;
+  }
+
+  .dashboard-header .btn-refresh {
+    padding: 8px 10px;
+    font-size: 0;
+  }
+
+  .dashboard-header .btn-refresh i {
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .dashboard-main {
+    padding: 12px;
+  }
+
+  .queue-layout {
+    gap: 12px;
+  }
+
+  .serving-card-content {
+    padding: 20px 16px 14px;
+  }
+
+  .serving-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 0 12px 12px;
+  }
+
+  .serving-actions .action-btn {
+    min-width: 0;
+    padding: 10px 6px;
+    font-size: 11px;
+  }
+
+  .call-next-btn {
+    min-height: 46px;
+    padding: 10px 12px;
+  }
+
+  .last-refreshed-bar {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .last-refreshed-bar>span:first-child {
+    flex: 1;
+    min-width: 0;
+    line-height: 1.4;
+  }
+
+  .last-refreshed-bar .shortcut-hint {
+    flex: 0 0 auto;
+    margin-left: 0;
+    gap: 3px;
+  }
+
+  .last-refreshed-bar .shortcut-hint kbd {
+    padding: 1px 4px;
+    font-size: 8px;
+  }
+
+  .queue-panel-header {
+    padding: 12px 14px;
+  }
+
+  .queue-panel-controls {
+    min-width: 0;
+  }
+
+  .queue-type-filter {
+    max-width: 145px;
+  }
+
   .serving-ticket {
     font-size: 44px;
   }
+
   .serving-ticket.is-idle {
     font-size: 24px;
   }
+
   .stats-row {
     grid-template-columns: repeat(4, 1fr);
     gap: 6px;
   }
+
   .stat-mini-val {
     font-size: 20px;
   }
+
   .queue-panel {
     min-height: unset;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE — short/wide split panes (landscape browser split)
+   ============================================================ */
+@media (min-width: 581px) and (max-width: 800px) and (max-height: 600px) {
+  .dashboard-header {
+    min-height: 52px;
+    padding: 8px 14px;
+  }
+
+  .dashboard-header .header-page-title {
+    font-size: 14px;
+  }
+
+  .dashboard-header .office-badge,
+  .dashboard-header .header-timestamp {
+    display: none;
+  }
+
+  .dashboard-header .btn-refresh {
+    padding: 6px 9px;
+    font-size: 0;
+  }
+
+  .dashboard-header .btn-refresh i {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .dashboard-main {
+    padding: 10px;
+  }
+
+  .queue-layout {
+    grid-template-columns: minmax(240px, 0.9fr) minmax(280px, 1.1fr);
+    gap: 10px;
+    align-items: start;
+  }
+
+  .serving-card-content {
+    padding: 12px 16px 10px;
+  }
+
+  .serving-header {
+    margin-bottom: 6px;
+  }
+
+  .serving-ticket-wrap {
+    min-height: 42px;
+    margin-bottom: 6px;
+  }
+
+  .serving-ticket {
+    font-size: 30px;
+  }
+
+  .serving-ticket.is-idle {
+    font-size: 22px;
+  }
+
+  .serving-meta {
+    min-height: 20px;
+  }
+
+  .serving-timer {
+    padding: 3px 8px;
+    font-size: 10px;
+  }
+
+  .serving-actions {
+    gap: 6px;
+    padding: 8px 12px 10px;
+    margin-top: 0;
+  }
+
+  .serving-actions .action-btn {
+    min-height: 34px;
+    padding: 7px 6px;
+    border-radius: 8px;
+    font-size: 11px;
+  }
+
+  .overflow-toggle-row {
+    padding: 8px 12px;
+    margin-bottom: 8px;
+  }
+
+  .overflow-toggle-desc {
+    font-size: 10px;
+  }
+
+  .call-next-btn {
+    min-height: 40px;
+    padding: 8px 12px;
+  }
+
+  .stats-row {
+    gap: 5px;
+    margin-bottom: 8px;
+  }
+
+  .stat-mini {
+    padding: 7px 5px;
+  }
+
+  .stat-mini-val {
+    font-size: 17px;
+  }
+
+  .stat-mini-label {
+    font-size: 9px;
+  }
+
+  .last-refreshed-bar {
+    padding-top: 4px;
+  }
+
+  .last-refreshed-bar .shortcut-hint kbd:nth-child(-n + 6) {
+    display: none;
+  }
+
+  .last-refreshed-bar .shortcut-hint::before {
+    content: "Keys";
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .queue-panel {
+    min-height: 260px;
+  }
+
+  .queue-panel-header {
+    padding: 10px 12px;
+  }
+
+  .queue-tabs {
+    min-height: 34px;
+  }
+
+  .queue-tab {
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 2px;
+    font-size: 0;
+    /* Collapses the text label only — icon and count keep their
+       own explicit font-size below. At this width the panel is
+       sharing space with the 400px serving-card column, so the
+       full-label tabs don't have room to breathe (this is what
+       produced the mashed-together "Waiting1On Hold0Skipped0…"
+       text in the split-screen screenshots). */
+  }
+
+  .queue-tab i {
+    font-size: 13px;
+  }
+
+  .tab-count {
+    font-size: 8px;
+    min-width: 13px;
+    height: 13px;
+    padding: 0 3px;
+  }
+
+  .queue-panel-title span {
+    display: none;
+    /* icon + count badge already say "this is the queue" — free up
+       width for the service filter dropdown next to it */
+  }
+
+  .queue-panel-title {
+    gap: 5px;
+  }
+
+  .queue-type-filter {
+    max-width: 105px;
+    font-size: 11px;
+    padding: 0 6px;
+  }
+}
+
+@media (max-width: 380px) {
+  .last-refreshed-bar .shortcut-hint kbd:nth-child(-n + 6) {
+    display: none;
+  }
+
+  .last-refreshed-bar .shortcut-hint::before {
+    content: "Keys";
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .serving-ticket {
+    font-size: 38px;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE — very narrow split-screen (300–480px, e.g. two
+   browser windows side by side on a laptop). This is the gap
+   the previous breakpoints missed: not quite "mobile portrait"
+   width, but too narrow for the 4 stat tiles + full-width tabs
+   to breathe. Tighten spacing, drop non-essential chrome, and
+   let queue tabs scroll horizontally instead of squeezing text.
+   ============================================================ */
+@media (max-width: 480px) {
+  .dashboard-header {
+    min-height: 50px;
+    padding: 8px 12px;
+  }
+
+  .dashboard-header .header-page-title {
+    font-size: 13px;
+  }
+
+  .dashboard-main {
+    padding: 10px;
+  }
+
+  .queue-layout {
+    gap: 10px;
+  }
+
+  /* Serving card: reclaim vertical rhythm, keep the ticket number
+     as the clear focal point instead of shrinking it to match body text */
+  .serving-card-content {
+    padding: 16px 14px 12px;
+  }
+
+  .serving-header {
+    margin-bottom: 10px;
+  }
+
+  .serving-label {
+    font-size: 9.5px;
+    gap: 6px;
+  }
+
+  .refresh-ring,
+  .refresh-ring svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .serving-ticket-wrap {
+    min-height: 48px;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .serving-ticket {
+    font-size: 34px;
+  }
+
+  .serving-ticket.is-idle {
+    font-size: 18px;
+  }
+
+  .serving-meta {
+    font-size: 11.5px;
+    margin-bottom: 8px;
+  }
+
+  .serving-type-badge {
+    padding: 2px 8px;
+    font-size: 10px;
+  }
+
+  .serving-timer {
+    font-size: 10.5px;
+    padding: 5px 8px;
+  }
+
+  .serving-actions {
+    padding: 10px 14px 14px;
+    gap: 8px;
+  }
+
+  .serving-actions .action-btn {
+    padding: 10px 6px;
+    font-size: 11px;
+  }
+
+  .call-next-btn {
+    padding: 11px 14px;
+    font-size: 13px;
+  }
+
+  /* Stats: keep all 4 tiles on one row (this is the number the
+     dashboard exists to show) but shed inner padding so labels
+     don't wrap and force the row taller than the ticket above it */
+  .stats-row {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+  }
+
+  .stat-mini {
+    padding: 9px 4px 8px;
+    border-radius: 11px;
+  }
+
+  .stat-mini-icon {
+    font-size: 11px;
+    margin-bottom: 3px;
+  }
+
+  .stat-mini-val {
+    font-size: 15px;
+  }
+
+  .stat-mini-label {
+    font-size: 8px;
+    letter-spacing: 0.04em;
+  }
+
+  /* Last refreshed bar: shortcut hints add noise at this width —
+     drop them and keep only the freshness timestamp, which is the
+     one thing a person actually glances at here */
+  .last-refreshed-bar .shortcut-hint {
+    display: none;
+  }
+
+  .last-refreshed-bar {
+    font-size: 10px;
+  }
+
+  /* Queue panel */
+  .queue-panel {
+    border-radius: 16px;
+    min-height: unset;
+  }
+
+  .queue-panel-header {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .queue-panel-title {
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  .queue-panel-title span {
+    display: none;
+    /* icon + count badge carry the meaning; free the width for the filter */
+  }
+
+  .queue-type-filter {
+    height: 30px;
+    font-size: 11px;
+    max-width: 120px;
+    padding: 0 8px;
+  }
+
+  .queue-count-badge {
+    min-width: 24px;
+    height: 24px;
+    font-size: 11px;
+  }
+
+  .tab-count {
+    min-width: 15px;
+    height: 15px;
+    font-size: 9px;
+  }
+
+  .ticket-row {
+    padding: 10px 12px;
+    gap: 9px;
+  }
+
+  .ticket-pos {
+    width: 20px;
+    height: 20px;
+    font-size: 9px;
+  }
+
+  .ticket-num {
+    font-size: 14px;
+    min-width: 58px;
+  }
+
+  .ticket-student {
+    font-size: 11.5px;
+  }
+
+  .ticket-type {
+    font-size: 10px;
+  }
+
+  .ticket-time {
+    font-size: 10px;
+  }
+
+  .ticket-btn {
+    width: 25px;
+    height: 25px;
+  }
+
+  .overflow-toggle-row {
+    padding: 10px 12px;
+  }
+
+  .overflow-toggle-label {
+    font-size: 11px;
+  }
+
+  .overflow-toggle-desc {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 340px) {
+  .serving-ticket {
+    font-size: 28px;
+  }
+
+  .stat-mini-val {
+    font-size: 13px;
+  }
+
+  .stat-mini-label {
+    font-size: 7px;
+  }
+
+  .queue-type-filter {
+    max-width: 90px;
+  }
+}
+
+/* ============================================================
+   QUEUE TABS — icon-only below 640px. There are 5 tabs (Waiting,
+   On Hold, Skipped, Cancelled, Done) — too many labels to fit
+   legibly at split-screen widths without wrapping messily or
+   overflowing. Rather than scroll or wrap, drop the text label
+   and keep icon + count: the active tab is still colored and
+   underlined, and the title="" attribute on each button (see
+   queue.php) gives the full label back as a hover tooltip.
+   Placed last so it wins over earlier breakpoint tweaks.
+   ============================================================ */
+@media (max-width: 640px) {
+  .queue-tab {
+    flex-direction: column;
+    gap: 3px;
+    padding: 9px 2px 8px;
+    font-size: 0;
+    /* Collapses the text label only — icon and count keep their
+       own explicit font-size below, since px values aren't relative
+       to the parent and so are unaffected by this. */
+  }
+
+  .queue-tab i {
+    font-size: 15px;
+  }
+
+  .tab-count {
+    font-size: 9px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 4px;
   }
 }

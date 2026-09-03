@@ -44,6 +44,7 @@
 html,
 body {
   height: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -60,7 +61,7 @@ body {
 }
 
 .dashboard-sidebar {
-  width: var(--sidebar-w);
+  width: var(--sidebar-current-width, var(--sidebar-w));
   flex-shrink: 0;
   background: var(--primary-dark);
   background-image:
@@ -83,14 +84,76 @@ body {
   top: 0;
   height: 100vh;
   overflow-y: auto;
+  overflow-x: hidden;
+  transition: width 0.28s var(--ease);
+  z-index: 200;
+
+  /* Minimized, unobtrusive scrollbar - thin, and invisible until hovered */
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.dashboard-sidebar:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.dashboard-sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.dashboard-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dashboard-sidebar::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 10px;
+}
+
+.dashboard-sidebar:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.dashboard-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
 }
 
 .sidebar-brand {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   padding: 22px 20px 20px;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  top: 12px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease);
+  z-index: 1;
+}
+
+.sidebar-toggle:hover,
+.sidebar-toggle:focus-visible {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.45);
+  outline: none;
+}
+
+.sidebar-toggle i {
+  font-size: 11px;
 }
 
 .logo {
@@ -240,6 +303,99 @@ body {
 
 .sidebar-bottom-nav li {
   margin-top: 0;
+}
+
+/* ===== Collapsed sidebar state ===== */
+
+.sidebar-collapsed .sidebar-title,
+.sidebar-collapsed .nav-label,
+.sidebar-collapsed .sidebar-user-info,
+.sidebar-collapsed .sidebar-nav a span {
+  opacity: 0;
+  visibility: hidden;
+  width: 0;
+  height: 0;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.sidebar-collapsed .dashboard-sidebar {
+  --sidebar-current-width: 72px;
+}
+
+.sidebar-collapsed .sidebar-brand {
+  padding: 20px 10px 16px;
+}
+
+/* Toggle button: take it out of absolute positioning when collapsed so it
+   can't overlap the logo. It's first in the DOM, so removing the absolute
+   positioning lets it stack naturally above the logo, centered by the
+   parent's flexbox. */
+.sidebar-collapsed .sidebar-toggle {
+  position: static;
+  top: auto;
+  right: auto;
+  margin: 0 0 12px;
+}
+
+.sidebar-collapsed .sidebar-divider {
+  margin-left: 14px;
+  margin-right: 14px;
+}
+
+.sidebar-collapsed .sidebar-nav {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.sidebar-collapsed .nav-label {
+  height: 0;
+  padding: 0;
+}
+
+.sidebar-collapsed .sidebar-nav ul {
+  gap: 6px;
+}
+
+/* Uniform rounded icon buttons instead of a bare centered icon */
+.sidebar-collapsed .sidebar-nav a {
+  width: 44px;
+  height: 44px;
+  margin: 0 auto;
+  padding: 0;
+  justify-content: center;
+  border-radius: 10px;
+}
+
+.sidebar-collapsed .sidebar-nav a i {
+  margin: 0;
+  font-size: 16px;
+  opacity: 0.85;
+}
+
+.sidebar-collapsed .sidebar-nav a:hover i,
+.sidebar-collapsed .sidebar-nav a.active i {
+  opacity: 1;
+}
+
+/* Swap the left-edge active indicator (fine on a full-width row, odd on a
+   centered square icon) for a filled background instead */
+.sidebar-collapsed .sidebar-nav a.active {
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.sidebar-collapsed .sidebar-user {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.sidebar-collapsed .sidebar-bottom-nav {
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .dashboard-body {
@@ -702,7 +858,7 @@ body {
 
 @media (max-width: 860px) {
   .dashboard-sidebar {
-    display: none;
+    --sidebar-w: 260px;
   }
   .summary-cards {
     grid-template-columns: 1fr 1fr;

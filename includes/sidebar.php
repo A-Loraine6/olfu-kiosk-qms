@@ -6,6 +6,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 <aside class="dashboard-sidebar">
 
     <div class="sidebar-brand">
+        <button class="sidebar-toggle" type="button" aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar">
+            <i class="fas fa-chevron-left" aria-hidden="true"></i>
+        </button>
         <div class="logo">
             <img src="img/olfu-logo.png" alt="OLFU Logo">
         </div>
@@ -149,3 +152,5 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     </nav>
 
 </aside>
+
+<script src="scripts/sidebar.js"></script>
