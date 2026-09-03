@@ -213,7 +213,7 @@ class TicketGenerator
         $startNum = max(1, (int)($office['queue_start_num'] ?? 1));
         $next     = ((int)($row['cnt'] ?? 0)) + $startNum;
 
-        return sprintf('%s-%03d', $prefix, $next);
+        return sprintf('%s-%d', $prefix, $next);
     }
 
     private function countWaiting(int $office_id, string $today, ?bool $is_priority = null): int

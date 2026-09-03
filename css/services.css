@@ -324,8 +324,35 @@
   }
 }
 
+/* Scroll region for the table only, so overflow never pushes the whole
+   page (or gets silently clipped by html/body overflow-x: hidden). */
+.services-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.services-table-wrap::-webkit-scrollbar {
+  height: 6px;
+}
+
+.services-table-wrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.services-table-wrap::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 10px;
+}
+
+.services-table-wrap::-webkit-scrollbar-thumb:hover {
+  background: var(--text-3);
+}
+
 .services-table {
   width: 100%;
+  min-width: 720px;
   border-collapse: collapse;
 }
 
@@ -342,6 +369,7 @@
   color: var(--text-3);
   text-align: left;
   border-bottom: 1px solid var(--border-strong);
+  white-space: nowrap;
 }
 
 .services-table thead th:nth-child(3),

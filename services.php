@@ -218,6 +218,7 @@ function getCategoryColor(?string $cat): string
                             </div>
                         </div>
 
+                        <div class="services-table-wrap">
                         <table class="services-table">
                             <thead>
                                 <tr>
@@ -311,6 +312,7 @@ function getCategoryColor(?string $cat): string
                                 <?php endif; ?>
                             </tbody>
                         </table>
+                        </div>
 
                         <div class="table-loading" id="tableLoading">
                             <div class="table-spinner"></div>

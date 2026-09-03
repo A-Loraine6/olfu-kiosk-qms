@@ -27,12 +27,12 @@ $officeInfo      = getOfficeInfo($db, $staffOfficeId);
 $officeCode      = $officeInfo['code']      ?? '';
 $officeName      = $officeInfo['name']      ?? 'My Office';
 $queueMode       = $officeInfo['queue_mode'] ?? 'unified';
+$windowCount     = (int) ($officeInfo['window_count'] ?? 0);
+$staffWindowNumber = (int) ($currentUser['window_number'] ?? 0);
 $csrf_token      = getCsrfToken();
 
 $transactionTypes = [];
 if ($queueMode === 'service-based') {
-    $staffWindowNumber = (int) ($currentUser['window_number'] ?? 0);
-
     error_log("Staff ID: {$currentUser['id']}, Window: $staffWindowNumber");
 
     if ($staffWindowNumber > 0) {
@@ -57,6 +57,15 @@ if ($queueMode === 'service-based') {
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) $transactionTypes[] = $row;
+}
+
+$transferOffices = [];
+$transferStmt = $db->prepare("SELECT id, name, code FROM offices WHERE id != ? ORDER BY name ASC");
+$transferStmt->bind_param('i', $staffOfficeId);
+$transferStmt->execute();
+$transferResult = $transferStmt->get_result();
+while ($officeRow = $transferResult->fetch_assoc()) {
+    $transferOffices[] = $officeRow;
 }
 ?>
 <!DOCTYPE html>
@@ -163,6 +172,9 @@ if ($queueMode === 'service-based') {
                                     <button class="action-btn action-skip" id="skipBtn" onclick="skipTicket()">
                                         <i class="fas fa-forward"></i> Skip
                                     </button>
+                                    <button class="action-btn action-transfer" id="transferBtn" onclick="openTransferModal(currentTicket?.id ?? null)">
+                                        <i class="fas fa-right-left"></i> Transfer
+                                    </button>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -217,11 +229,8 @@ if ($queueMode === 'service-based') {
                         <div class="last-refreshed-bar">
                             <span id="lastRefreshedText"><i class="fas fa-circle-notch"></i> Loading…</span>
                             <?php if ($canManageQueue): ?>
-                                <div class="shortcut-hint" title="Keyboard shortcuts">
-                                    <kbd>N</kbd> Next &nbsp;
-                                    <kbd>C</kbd> Complete &nbsp;
-                                    <kbd>H</kbd> Hold &nbsp;
-                                    <kbd>S</kbd> Skip
+                                <div class="shortcut-hint" title="N Next | C Complete | H Hold | S Skip | T Transfer | R Refresh | 1-5 Queue tabs" aria-label="Keyboard shortcuts">
+                                    <kbd>N</kbd><kbd>C</kbd><kbd>H</kbd><kbd>S</kbd><kbd>T</kbd><kbd>R</kbd><kbd>1-5</kbd>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -250,23 +259,23 @@ if ($queueMode === 'service-based') {
                             </div>
 
                             <div class="queue-tabs">
-                                <button class="queue-tab active" data-tab="waiting" onclick="switchTab('waiting', this)">
+                                <button class="queue-tab active" data-tab="waiting" onclick="switchTab('waiting', this)" title="Waiting">
                                     <i class="fas fa-clock"></i> Waiting
                                     <span class="tab-count" id="tabCountWaiting">0</span>
                                 </button>
-                                <button class="queue-tab" data-tab="on-hold" onclick="switchTab('on-hold', this)">
+                                <button class="queue-tab" data-tab="on-hold" onclick="switchTab('on-hold', this)" title="On Hold">
                                     <i class="fas fa-pause"></i> On Hold
                                     <span class="tab-count" id="tabCountOnHold">0</span>
                                 </button>
-                                <button class="queue-tab" data-tab="skipped" onclick="switchTab('skipped', this)">
+                                <button class="queue-tab" data-tab="skipped" onclick="switchTab('skipped', this)" title="Skipped">
                                     <i class="fas fa-forward"></i> Skipped
                                     <span class="tab-count" id="tabCountSkipped">0</span>
                                 </button>
-                                <button class="queue-tab" data-tab="cancelled" onclick="switchTab('cancelled', this)">
+                                <button class="queue-tab" data-tab="cancelled" onclick="switchTab('cancelled', this)" title="Cancelled">
                                     <i class="fas fa-ban"></i> Cancelled
                                     <span class="tab-count" id="tabCountCancelled">0</span>
                                 </button>
-                                <button class="queue-tab" data-tab="done" onclick="switchTab('done', this)">
+                                <button class="queue-tab" data-tab="done" onclick="switchTab('done', this)" title="Done">
                                     <i class="fas fa-check"></i> Done
                                     <span class="tab-count" id="tabCountDone">0</span>
                                 </button>
@@ -285,12 +294,12 @@ if ($queueMode === 'service-based') {
                                 </div>
                             </div>
 
-                            <div class="auto-refresh-bar">
+                            <!-- <div class="auto-refresh-bar">
                                 <div class="auto-refresh-bar-fill" id="autoRefreshBarFill"></div>
-                            </div>
+                            </div> -->
 
                             <div class="queue-panel-footer">
-                                <span id="queueLastRefreshed"><i class="fas fa-circle-notch fa-spin"></i> Loading…</span>
+                                <!-- <span id="queueLastRefreshed"><i class="fas fa-circle-notch fa-spin"></i> Loading…</span> -->
                                 <span style="font-size:10px;">Auto-refreshes every 15s</span>
                             </div>
 
@@ -321,14 +330,77 @@ if ($queueMode === 'service-based') {
         </div>
     </div>
 
+    <div class="modal" id="transferModal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2><i class="fas fa-right-left"></i> Transfer Queue Ticket</h2>
+                <button class="modal-close" onclick="closeModal('transferModal')" title="Press Esc to close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="transferTargetTypeSelect"><i class="fas fa-location-arrow"></i> Transfer to</label>
+                    <select id="transferTargetTypeSelect" onchange="onTransferTargetTypeChange()">
+                        <option value="department">Another department</option>
+                        <option value="window">Another window</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="transferOfficeSelect"><i class="fas fa-building"></i> Transfer to department</label>
+                    <select id="transferOfficeSelect" onchange="onTransferOfficeChange()">
+                        <option value="">Select department</option>
+                        <?php foreach ($transferOffices as $office): ?>
+                            <option value="<?= (int) $office['id']; ?>"><?= htmlspecialchars($office['name']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="form-group" id="transferWindowGroup" style="display:none;">
+                    <label for="transferWindowSelect"><i class="fas fa-window-maximize"></i> Destination window</label>
+                    <select id="transferWindowSelect">
+                        <option value="">Select window</option>
+                        <?php for ($windowNumber = 1; $windowNumber <= $windowCount; $windowNumber++): ?>
+                            <option value="<?= $windowNumber; ?>">Window <?= $windowNumber; ?></option>
+                        <?php endfor; ?>
+                    </select>
+                </div>
+
+                <div class="form-group" id="transferServiceGroup" style="display:none;">
+                    <label for="transferServiceSelect"><i class="fas fa-layer-group"></i> Service at destination</label>
+                    <select id="transferServiceSelect">
+                        <option value="">Select service</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="transferModeSelect"><i class="fas fa-list-ol"></i> Queue placement</label>
+                    <select id="transferModeSelect">
+                        <option value="top">Move to top of target queue</option>
+                        <option value="end">Add to end of target queue</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('transferModal')">
+                    <span>Cancel</span>
+                </button>
+                <button class="btn btn-primary" id="transferConfirmBtn" onclick="submitTransfer()">
+                    <span>Transfer</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast-container"></div>
 
     <script>
         const OFFICE_ID = <?php echo json_encode($staffOfficeId); ?>;
         const OFFICE_NAME = <?php echo json_encode($officeName); ?>;
         const QUEUE_MODE = <?php echo json_encode($queueMode); ?>;
+        const WINDOW_NUMBER = <?php echo json_encode($staffWindowNumber); ?>;
         const CSRF_TOKEN = <?php echo json_encode($csrf_token); ?>;
         const CAN_MANAGE_QUEUE = <?php echo json_encode($canManageQueue); ?>;
+        const TRANSFER_OFFICES = <?php echo json_encode($transferOffices); ?>;
     </script>
     <script src="scripts/queue.js"></script>
     <script src="scripts/modal-shortcuts.js"></script>

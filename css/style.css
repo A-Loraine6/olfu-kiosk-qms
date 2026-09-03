@@ -43,8 +43,7 @@
 
 html {
   height: 100%;
-  scrollbar-gutter: stable;
-  overflow-y: scroll;
+  overflow-y: auto;
 }
 
 body {

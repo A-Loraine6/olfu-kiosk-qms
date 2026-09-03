@@ -8,6 +8,7 @@ let pendingAction = null;
 let refreshCountdown = 0;
 let refreshRingInterval = null;
 let newBadgeTimeout = null;
+let transferTargetQueueMode = "unified";
 
 const AUTO_REFRESH_MS = 15000;
 const TIMER_WARN_SECS = 300;
@@ -67,6 +68,36 @@ function updateClock() {
 
 function registerKeyboardShortcuts() {
   document.addEventListener("keydown", (e) => {
+    const transferModal = document.getElementById("transferModal");
+    const transferModalOpen = transferModal?.classList.contains("show");
+    if (transferModalOpen && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      if (e.key.toUpperCase() === "D") {
+        document.getElementById("transferTargetTypeSelect").value = "department";
+        onTransferTargetTypeChange();
+        document.getElementById("transferOfficeSelect")?.focus();
+        e.preventDefault();
+        return;
+      }
+      if (e.key.toUpperCase() === "W") {
+        document.getElementById("transferTargetTypeSelect").value = "window";
+        onTransferTargetTypeChange();
+        document.getElementById("transferWindowSelect")?.focus();
+        e.preventDefault();
+        return;
+      }
+      if (/^[1-9]$/.test(e.key)) {
+        const windowSelect = document.getElementById("transferWindowSelect");
+        if (windowSelect?.querySelector(`option[value="${e.key}"]`)) {
+          document.getElementById("transferTargetTypeSelect").value = "window";
+          onTransferTargetTypeChange();
+          windowSelect.value = e.key;
+          e.preventDefault();
+          return;
+        }
+      }
+      return;
+    }
+
     if (
       e.target.tagName === "INPUT" ||
       e.target.tagName === "SELECT" ||
@@ -126,11 +157,34 @@ function registerKeyboardShortcuts() {
       case "S":
         if (currentTicket && CAN_MANAGE_QUEUE) skipTicket();
         break;
+      case "T":
+        if (currentTicket && CAN_MANAGE_QUEUE) openTransferModal(currentTicket.id);
+        break;
+      case "1":
+        switchQueueTabByShortcut("waiting");
+        break;
+      case "2":
+        switchQueueTabByShortcut("on-hold");
+        break;
+      case "3":
+        switchQueueTabByShortcut("skipped");
+        break;
+      case "4":
+        switchQueueTabByShortcut("cancelled");
+        break;
+      case "5":
+        switchQueueTabByShortcut("done");
+        break;
       case "R":
         refreshQueue();
         break;
     }
   });
+}
+
+function switchQueueTabByShortcut(tab) {
+  const tabButton = document.querySelector(`.queue-tab[data-tab="${tab}"]`);
+  if (tabButton) switchTab(tab, tabButton);
 }
 
 function startRefreshCountdown() {
@@ -338,6 +392,155 @@ async function callNext() {
       iconEl.classList.add("fa-bell");
     }
     loadStats();
+  }
+}
+
+function openTransferModal(ticketId = null) {
+  const transferTicketId = ticketId ?? currentTicket?.id ?? null;
+  const select = document.getElementById("transferOfficeSelect");
+  const confirmBtn = document.getElementById("transferConfirmBtn");
+  if (!select || !confirmBtn) return;
+
+  if (!transferTicketId) {
+    showToast("Select a ticket to transfer first.", "error");
+    return;
+  }
+
+  confirmBtn.dataset.ticketId = String(transferTicketId);
+  document.getElementById("transferTargetTypeSelect").value = "department";
+  select.value = "";
+  document.getElementById("transferModeSelect").value = "top";
+  document.getElementById("transferWindowSelect").value = "";
+  onTransferTargetTypeChange();
+  resetTransferServiceField();
+  openModal("transferModal");
+}
+
+function onTransferTargetTypeChange() {
+  const targetType = document.getElementById("transferTargetTypeSelect")?.value;
+  const departmentGroup = document.getElementById("transferOfficeSelect")?.closest(".form-group");
+  const windowGroup = document.getElementById("transferWindowGroup");
+  const serviceGroup = document.getElementById("transferServiceGroup");
+  const isWindowTransfer = targetType === "window";
+
+  if (departmentGroup) departmentGroup.style.display = isWindowTransfer ? "none" : "";
+  if (windowGroup) windowGroup.style.display = isWindowTransfer ? "" : "none";
+  if (serviceGroup && isWindowTransfer) serviceGroup.style.display = "none";
+}
+
+function resetTransferServiceField() {
+  transferTargetQueueMode = "unified";
+  const group = document.getElementById("transferServiceGroup");
+  const serviceSelect = document.getElementById("transferServiceSelect");
+  if (group) group.style.display = "none";
+  if (serviceSelect) {
+    serviceSelect.innerHTML = '<option value="">Select service</option>';
+    serviceSelect.value = "";
+  }
+}
+
+async function onTransferOfficeChange() {
+  const targetOfficeId = Number(document.getElementById("transferOfficeSelect").value);
+  resetTransferServiceField();
+  if (!targetOfficeId) return;
+
+  const group = document.getElementById("transferServiceGroup");
+  const serviceSelect = document.getElementById("transferServiceSelect");
+
+  try {
+    const res = await apiFetch("api/queue_handler.php", {
+      action: "get_office_services",
+      office_id: OFFICE_ID, // staff's own office (required by the auth check)
+      target_office_id: targetOfficeId,
+    });
+
+    if (!res.success) {
+      showToast(res.message || "Failed to load destination services.", "error");
+      return;
+    }
+
+    transferTargetQueueMode = res.queue_mode || "unified";
+
+    if (transferTargetQueueMode === "service-based") {
+      serviceSelect.innerHTML =
+        '<option value="">Select service</option>' +
+        (res.services || [])
+          .map((s) => `<option value="${s.id}">${escHtml(s.name)}</option>`)
+          .join("");
+      group.style.display = "";
+    }
+  } catch (e) {
+    showToast("Network error while loading destination services.", "error");
+  }
+}
+
+async function submitTransfer() {
+  const targetType = document.getElementById("transferTargetTypeSelect")?.value || "department";
+  const select = document.getElementById("transferOfficeSelect");
+  const mode = document.getElementById("transferModeSelect");
+  const confirmBtn = document.getElementById("transferConfirmBtn");
+  const serviceSelect = document.getElementById("transferServiceSelect");
+  const windowSelect = document.getElementById("transferWindowSelect");
+  if (!select || !mode || !confirmBtn || !windowSelect) return;
+
+  const targetOfficeId = Number(select.value);
+  const targetWindow = Number(windowSelect.value);
+  const ticketId = Number(confirmBtn.dataset.ticketId || 0);
+  const placement = mode.value || "top";
+
+  if ((!targetOfficeId && targetType === "department") || (!targetWindow && targetType === "window") || !ticketId) {
+    showToast("Please choose a department and ticket to transfer.", "error");
+    return;
+  }
+
+  let targetServiceId = "";
+  if (targetType === "department" && transferTargetQueueMode === "service-based") {
+    targetServiceId = Number(serviceSelect?.value || 0);
+    if (!targetServiceId) {
+      showToast("Please choose a service at the destination department.", "error");
+      return;
+    }
+  }
+
+  confirmBtn.disabled = true;
+  const prevText = confirmBtn.innerHTML;
+  confirmBtn.innerHTML = '<span>Transferring…</span>';
+
+  try {
+    const params = {
+      action: targetType === "window" ? "transfer_window" : "transfer_ticket",
+      office_id: OFFICE_ID,
+      ticket_id: ticketId,
+      placement: placement,
+      csrf_token: CSRF_TOKEN,
+    };
+    if (targetType === "window") {
+      params.target_window = targetWindow;
+    } else {
+      params.target_office_id = targetOfficeId;
+      if (targetServiceId) params.target_service_id = targetServiceId;
+    }
+
+    const res = await apiFetch("api/queue_handler.php", params);
+
+    if (res.success) {
+      closeModal("transferModal");
+      showToast(res.message || "Ticket transferred.", "success");
+      if (currentTicket && Number(currentTicket.id) === ticketId) {
+        currentTicket = null;
+        stopTimer();
+        clearServingCard();
+      }
+      await Promise.all([loadQueue(), loadAllTabCounts(), loadStats()]);
+      startRefreshCountdown();
+    } else {
+      showToast(res.message || "Transfer failed.", "error");
+    }
+  } catch (e) {
+    showToast("Network error while transferring ticket.", "error");
+  } finally {
+    confirmBtn.disabled = false;
+    confirmBtn.innerHTML = prevText;
   }
 }
 
@@ -671,9 +874,15 @@ function renderTicketRow(t, index) {
          <i class="fas fa-bell"></i>
        </button>`
           : "";
+      const transferBtn = CAN_MANAGE_QUEUE
+        ? `<button class="ticket-btn" title="Transfer this ticket" onclick="openTransferModal(${t.id})">
+            <i class="fas fa-right-left"></i>
+          </button>`
+        : "";
       actionsHtml = `
       <div class="ticket-actions-inline">
         ${serveBtn}
+        ${transferBtn}
         <button class="ticket-btn btn-danger" title="Skip this ticket" onclick="manualSkip(${t.id}, '${escHtml(t.ticket_number)}')">
           <i class="fas fa-forward"></i>
         </button>
@@ -765,6 +974,12 @@ function stopTimer() {
   timerInterval = null;
 }
 
+function openModal(id) {
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  modal.classList.add("show");
+}
+
 function openConfirmModal(title, body, btnClass, action) {
   pendingAction = action;
   document.getElementById("confirmModalTitle").innerHTML =
@@ -777,7 +992,8 @@ function openConfirmModal(title, body, btnClass, action) {
 }
 
 function closeModal(id) {
-  document.getElementById(id).classList.remove("show");
+  const modal = document.getElementById(id);
+  if (modal) modal.classList.remove("show");
 }
 
 function showQueueLoading(show) {
