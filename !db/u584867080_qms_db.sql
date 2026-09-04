@@ -871,6 +871,7 @@ CREATE TABLE `users` (
   `full_name` varchar(100) NOT NULL,
   `email` varchar(100) NOT NULL,
   `password` varchar(255) NOT NULL,
+  `must_change_password` tinyint(1) NOT NULL DEFAULT 0,
   `role` varchar(20) DEFAULT 'admin',
   `role_id` int(11) DEFAULT NULL,
   `office_id` int(11) DEFAULT NULL,

@@ -275,7 +275,11 @@ function buildDiffHtml(array $before, array $after): string
 
                                 <div class="security-info-bar">
                                     <i class="fas fa-info-circle"></i>
-                                    Use at least 8 characters with a mix of letters and numbers for a strong password.
+                                    <?php if (!empty($_SESSION['must_change_password'])): ?>
+                                        Your password was reset by an administrator or department head. Please create a new strong password now.
+                                    <?php else: ?>
+                                        Use at least 8 characters with uppercase, lowercase, numbers, and a special character for a strong password.
+                                    <?php endif; ?>
                                 </div>
 
                                 <div class="profile-edit-form">
@@ -304,15 +308,24 @@ function buildDiffHtml(array $before, array $after): string
                                                 </div>
                                                 <span class="pw-strength-label" id="pwStrengthLabel"></span>
                                             </div>
+                                            <ul class="pw-checklist" id="pwChecklist" aria-live="polite">
+                                                <li data-rule="length"><i class="far fa-circle"></i> At least 8 characters</li>
+                                                <li data-rule="lowercase"><i class="far fa-circle"></i> One lowercase letter</li>
+                                                <li data-rule="uppercase"><i class="far fa-circle"></i> One uppercase letter</li>
+                                                <li data-rule="number"><i class="far fa-circle"></i> One number</li>
+                                                <li data-rule="special"><i class="far fa-circle"></i> One special character</li>
+                                            </ul>
                                         </div>
                                         <div class="form-group">
                                             <label for="confirm_password">Confirm New Password <span class="required">*</span></label>
                                             <div class="input-pw-wrap">
-                                                <input type="password" id="confirm_password" placeholder="Re-enter new password">
+                                                <input type="password" id="confirm_password" placeholder="Re-enter new password"
+                                                    oninput="checkPasswordMatch()">
                                                 <button type="button" class="btn-pw-toggle" onclick="togglePw('confirm_password', this)">
                                                     <i class="fas fa-eye"></i>
                                                 </button>
                                             </div>
+                                            <div class="pw-match-feedback" id="pwMatchFeedback" aria-live="polite"></div>
                                         </div>
                                     </div>
                                     <div class="form-actions">

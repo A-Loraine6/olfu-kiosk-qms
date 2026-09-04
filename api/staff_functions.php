@@ -341,14 +341,26 @@ function deactivateStaff($db, int $id): array
 
 function resetStaffPassword($db, int $id, string $new_password): array
 {
+    $currentUser = getCurrentUser();
+    $isAdmin = ($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin';
+    $isOfficeScoped = in_array(strtolower(trim((string) ($_SESSION['role'] ?? ''))), [
+        'supervisor',
+        'department head',
+        'department_head',
+        'department-head',
+    ], true);
     $staff = getStaffById($db, $id);
     if (!$staff) return ['success' => false, 'message' => 'Staff member not found.'];
+
+    if (!$isAdmin && $isOfficeScoped && (int) ($staff['office_id'] ?? 0) !== (int) ($currentUser['office_id'] ?? 0)) {
+        return ['success' => false, 'message' => 'You can only reset passwords for employees in your office.'];
+    }
 
     if (mb_strlen($new_password) < 8)
         return ['success' => false, 'message' => 'Password must be at least 8 characters.'];
 
     $hashed_password = hashPassword($new_password);
-    $updateStmt      = $db->prepare("UPDATE users SET password = ? WHERE id = ?");
+    $updateStmt      = $db->prepare("UPDATE users SET password = ?, must_change_password = 1 WHERE id = ?");
     if (!$updateStmt) return ['success' => false, 'message' => 'Database error occurred.'];
 
     $updateStmt->bind_param('si', $hashed_password, $id);

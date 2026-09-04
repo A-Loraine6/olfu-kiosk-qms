@@ -94,13 +94,28 @@ switch ($action) {
     case 'change_password': {
             $currentPw = $body['current_password'] ?? '';
             $newPw     = $body['new_password']     ?? '';
+            $confirmPw = $body['confirm_password'] ?? '';
 
             if ($currentPw === '' || $newPw === '') {
                 echo json_encode(['success' => false, 'message' => 'All password fields are required.']);
                 exit;
             }
-            if (strlen($newPw) < 8) {
-                echo json_encode(['success' => false, 'message' => 'New password must be at least 8 characters.']);
+            if ($confirmPw === '') {
+                echo json_encode(['success' => false, 'message' => 'Please confirm your new password.']);
+                exit;
+            }
+            if ($newPw !== $confirmPw) {
+                echo json_encode(['success' => false, 'message' => 'New passwords do not match.']);
+                exit;
+            }
+            if (
+                strlen($newPw) < 8
+                || !preg_match('/[a-z]/', $newPw)
+                || !preg_match('/[A-Z]/', $newPw)
+                || !preg_match('/\d/', $newPw)
+                || !preg_match('/[^A-Za-z0-9]/', $newPw)
+            ) {
+                echo json_encode(['success' => false, 'message' => 'New password must be at least 8 characters and include uppercase, lowercase, number, and special character.']);
                 exit;
             }
 
@@ -115,8 +130,8 @@ switch ($action) {
                 exit;
             }
 
-            $newHash = hashPassword($newPw); 
-            $stmt    = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
+            $newHash = hashPassword($newPw);
+            $stmt    = $conn->prepare("UPDATE users SET password = ?, must_change_password = 0 WHERE id = ?");
             $stmt->bind_param('si', $newHash, $currentUser['id']);
             $ok = $stmt->execute();
             $stmt->close();
@@ -125,6 +140,8 @@ switch ($action) {
                 echo json_encode(['success' => false, 'message' => 'Failed to update password. Please try again.']);
                 exit;
             }
+
+            $_SESSION['must_change_password'] = false;
 
             logActivity(
                 $conn,
