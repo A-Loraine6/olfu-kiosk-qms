@@ -12,6 +12,11 @@ if (!isLoggedIn()) {
     exit;
 }
 
+if (($_SESSION['role_id'] ?? null) !== 1 && ($_SESSION['role'] ?? '') !== 'admin') {
+    echo json_encode(['success' => false, 'message' => 'Forbidden']);
+    exit;
+}
+
 $input  = json_decode(file_get_contents('php://input'), true) ?? $_POST;
 $action = $input['action'] ?? '';
 $csrf   = $input['csrf_token'] ?? '';
