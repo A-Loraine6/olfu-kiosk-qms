@@ -5,7 +5,10 @@ require_once 'includes/auth.php';
 require_once __DIR__ . '/api/activity_logger.php';
 
 if (isLoggedIn()) {
-    header('Location: dashboard.php');
+    $destination = !empty($_SESSION['must_change_password'])
+        ? 'profile.php?section=security'
+        : 'dashboard.php';
+    header('Location: ' . $destination);
     exit;
 }
 
@@ -21,7 +24,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $result = login($db, $email, $password, $csrf);
         if ($result['success']) {
-            header('Location: dashboard.php');
+            $destination = !empty($_SESSION['must_change_password'])
+                ? 'profile.php?section=security'
+                : 'dashboard.php';
+            header('Location: ' . $destination);
             exit;
         }
         $error = $result['message'];

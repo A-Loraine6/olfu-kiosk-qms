@@ -89,7 +89,7 @@ function login($db, string $email, string $password, string $csrf): array
 function fetchUserByEmail($db, string $email): ?array
 {
     $stmt = $db->prepare(
-        "SELECT id, full_name, email, password, role, role_id, office_id, window_number, is_active
+        "SELECT id, full_name, email, password, role, role_id, office_id, window_number, is_active, must_change_password
             FROM users WHERE email = ? LIMIT 1"
     );
 
@@ -134,6 +134,7 @@ function establishSession(array $user): void
     $_SESSION['role_id']       = $user['role_id'];
     $_SESSION['office_id']     = $user['office_id'] ?? null;
     $_SESSION['window_number'] = $user['window_number'] ?? null;
+    $_SESSION['must_change_password'] = (bool) ($user['must_change_password'] ?? false);
     $_SESSION['login_time']    = time();
     $_SESSION['last_activity'] = time();
 
@@ -291,6 +292,16 @@ function isLoggedIn(): bool
         return false;
     }
 
+    $scriptPath = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+    if (
+        !empty($_SESSION['must_change_password'])
+        && !str_ends_with($scriptPath, '/profile.php')
+        && !str_contains($scriptPath, '/api/')
+    ) {
+        header('Location: ' . BASE_URL . 'profile.php?section=security');
+        exit;
+    }
+
     $_SESSION['last_activity'] = time();
     return true;
 }
@@ -309,6 +320,7 @@ function getCurrentUser(): ?array
         'office_id' => isset($_SESSION['office_id']) ? (int) $_SESSION['office_id'] : null,
         'window_number' => isset($_SESSION['window_number']) ? (int) $_SESSION['window_number'] : null,
         'role_id'     => isset($_SESSION['role_id']) ? (int) $_SESSION['role_id'] : null,
+        'must_change_password' => !empty($_SESSION['must_change_password']),
         'permissions' => $_SESSION['permissions'] ?? [],
     ];
 }

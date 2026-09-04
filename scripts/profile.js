@@ -208,19 +208,22 @@ function checkPasswordStrength(value) {
   const wrap = document.getElementById("pwStrengthWrap");
   const fill = document.getElementById("pwStrengthFill");
   const label = document.getElementById("pwStrengthLabel");
+  const rules = {
+    length: value.length >= 8,
+    lowercase: /[a-z]/.test(value),
+    uppercase: /[A-Z]/.test(value),
+    number: /[0-9]/.test(value),
+    special: /[^A-Za-z0-9]/.test(value),
+  };
 
   if (!value) {
     wrap.style.display = "none";
+    updatePasswordRules(rules);
     return;
   }
   wrap.style.display = "flex";
 
-  let score = 0;
-  if (value.length >= 8) score++;
-  if (value.length >= 12) score++;
-  if (/[A-Z]/.test(value)) score++;
-  if (/[0-9]/.test(value)) score++;
-  if (/[^A-Za-z0-9]/.test(value)) score++;
+  const score = Object.values(rules).filter(Boolean).length;
 
   const levels = [
     { pct: "20%", bg: "#c62828", text: "Very Weak", color: "#c62828" },
@@ -235,6 +238,34 @@ function checkPasswordStrength(value) {
   fill.style.background = level.bg;
   label.textContent = level.text;
   label.style.color = level.color;
+  updatePasswordRules(rules);
+  checkPasswordMatch();
+}
+
+function updatePasswordRules(rules) {
+  document.querySelectorAll("#pwChecklist li").forEach((item) => {
+    const passed = Boolean(rules[item.dataset.rule]);
+    item.classList.toggle("passed", passed);
+    item.querySelector("i").className = passed
+      ? "fas fa-check-circle"
+      : "far fa-circle";
+  });
+}
+
+function checkPasswordMatch() {
+  const newPw = document.getElementById("new_password").value;
+  const confirm = document.getElementById("confirm_password").value;
+  const feedback = document.getElementById("pwMatchFeedback");
+
+  if (!confirm) {
+    feedback.textContent = "";
+    feedback.className = "pw-match-feedback";
+    return;
+  }
+
+  const matches = newPw === confirm;
+  feedback.textContent = matches ? "Passwords match" : "Passwords do not match";
+  feedback.className = `pw-match-feedback ${matches ? "is-valid" : "is-invalid"}`;
 }
 
 async function submitChangePassword() {
@@ -250,8 +281,18 @@ async function submitChangePassword() {
     showToast("New password is required.", "error");
     return;
   }
-  if (newPw.length < 8) {
-    showToast("Password must be at least 8 characters.", "error");
+  const strongPassword =
+    newPw.length >= 8 &&
+    /[a-z]/.test(newPw) &&
+    /[A-Z]/.test(newPw) &&
+    /[0-9]/.test(newPw) &&
+    /[^A-Za-z0-9]/.test(newPw);
+  if (!strongPassword) {
+    showToast("Password must meet all strength requirements.", "error");
+    return;
+  }
+  if (!confirm) {
+    showToast("Please confirm your new password.", "error");
     return;
   }
   if (newPw !== confirm) {
@@ -269,6 +310,7 @@ async function submitChangePassword() {
     action: "change_password",
     current_password: current,
     new_password: newPw,
+    confirm_password: confirm,
   });
 
   setBtnLoading(
@@ -282,6 +324,8 @@ async function submitChangePassword() {
     document.getElementById("new_password").value = "";
     document.getElementById("confirm_password").value = "";
     document.getElementById("pwStrengthWrap").style.display = "none";
+    document.getElementById("pwMatchFeedback").textContent = "";
+    updatePasswordRules({});
     showToast(data.message, "success");
 
     prependActivityItem(

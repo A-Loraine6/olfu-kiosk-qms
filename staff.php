@@ -15,6 +15,12 @@ $csrf_token  = getCsrfToken();
 $canAdd    = hasPermission('add_staff');
 $canEdit   = hasPermission('edit_staff');
 $isAdmin   = ($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin';
+$isOfficeScoped = in_array(strtolower(trim((string) ($_SESSION['role'] ?? ''))), [
+    'supervisor',
+    'department head',
+    'department_head',
+    'department-head',
+], true);
 $canDelete = $isAdmin;
 $canToggle = hasPermission('toggle_staff');
 $canManage = $canAdd || $canEdit || $canDelete || $canToggle;
@@ -25,7 +31,7 @@ if (!$canView) {
     exit;
 }
 
-if ($canManage) {
+if ($canManage && !$isOfficeScoped) {
     $offices = getAvailableOffices($db->getConnection());
 } else {
     $conn = $db->getConnection();
