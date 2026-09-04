@@ -509,10 +509,11 @@ if ($action === 'resume_ticket') {
     $stmt = $db->prepare("
         UPDATE tickets 
         SET status='serving',
-            served_by=?
+            served_by=?,
+            served_at=?
         WHERE id=?
     ");
-    $stmt->bind_param('ii', $staffId, $ticketId);
+    $stmt->bind_param('isi', $staffId, $now, $ticketId);
     $stmt->execute();
 
     $ticket['status']    = 'serving';
