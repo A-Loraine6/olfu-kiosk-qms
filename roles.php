@@ -8,6 +8,11 @@ if (!isLoggedIn()) {
     exit;
 }
 
+if (($_SESSION['role_id'] ?? null) !== 1 && ($_SESSION['role'] ?? '') !== 'admin') {
+    header('Location: ' . BASE_URL . 'dashboard.php');
+    exit;
+}
+
 $currentUser = getCurrentUser();
 $csrf_token  = getCsrfToken();
 

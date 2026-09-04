@@ -56,9 +56,13 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                         <i class="fas fa-chart-line"></i>
                         <span>
                             <?php
-                            if (hasPermission('view_reports'))         echo 'Reports & Analytics';
-                            elseif (hasPermission('view_reports_office')) echo 'Office Reports';
-                            else                                          echo 'My Metrics';
+                            if (hasPermission('view_reports')) {
+                                echo 'Reports & Analytics';
+                            } elseif (hasPermission('view_reports_office')) {
+                                echo 'Office Reports';
+                            } else {
+                                echo 'My Metrics';
+                            }
                             ?>
                         </span>
                     </a>
@@ -83,7 +87,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </li>
             <?php endif; ?>
 
-            <?php if (!in_array($_SESSION['role'] ?? '', ['staff', 'supervisor', 'Supervisor'])): ?>
+            <?php if (($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin'): ?>
                 <li>
                     <a href="roles.php" class="<?php echo $currentPage === 'roles.php' ? 'active' : ''; ?>">
                         <i class="fas fa-user-shield"></i>
