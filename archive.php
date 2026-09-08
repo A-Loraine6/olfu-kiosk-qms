@@ -57,11 +57,11 @@ $deletedServices = $canDeleteService ? getDeletedServices($conn) : [];
             <div class="dashboard-main">
                 <div class="archive-tabs">
                     <button class="tab-btn active" data-tab="staff-tab">
-                        <i class="fas fa-users"></i> Deleted Staff
+                        <i class="fas fa-users"></i> Archived Staff
                         <span class="tab-badge"><?php echo count($deletedStaff); ?></span>
                     </button>
                     <button class="tab-btn" data-tab="services-tab">
-                        <i class="fas fa-concierge-bell"></i> Deleted Services
+                        <i class="fas fa-concierge-bell"></i> Archived Services
                         <span class="tab-badge"><?php echo count($deletedServices); ?></span>
                     </button>
                 </div>
@@ -69,16 +69,16 @@ $deletedServices = $canDeleteService ? getDeletedServices($conn) : [];
                     <?php if ($canDeleteStaff): ?>
                         <div class="tab-content active" id="staff-tab">
                             <div class="section-header">
-                                <h3><i class="fas fa-users"></i> Deleted Staff Members</h3>
+                                <h3><i class="fas fa-users"></i> Archived Staff Members</h3>
                                 <?php if (count($deletedStaff) > 0): ?>
-                                    <p class="section-subtitle">View and restore deleted staff members or permanently remove them.</p>
+                                    <p class="section-subtitle">View and restore archived staff members or permanently remove them.</p>
                                 <?php endif; ?>
                             </div>
 
                             <?php if (count($deletedStaff) === 0): ?>
                                 <div class="empty-state">
                                     <i class="fas fa-users"></i>
-                                    <h3>No Deleted Staff</h3>
+                                    <h3>No Archived Staff</h3>
                                     <p>All staff members are active.</p>
                                 </div>
                             <?php else: ?>
@@ -87,7 +87,7 @@ $deletedServices = $canDeleteService ? getDeletedServices($conn) : [];
                                         <div class="col-name">Name</div>
                                         <div class="col-email">Email</div>
                                         <div class="col-office">Office</div>
-                                        <div class="col-deleted">Deleted</div>
+                                        <div class="col-deleted">Date Archived</div>
                                         <div class="col-actions">Actions</div>
                                     </div>
                                     <?php foreach ($deletedStaff as $staff): ?>
@@ -120,16 +120,16 @@ $deletedServices = $canDeleteService ? getDeletedServices($conn) : [];
                     <?php if ($canDeleteService): ?>
                         <div class="tab-content" id="services-tab">
                             <div class="section-header">
-                                <h3><i class="fas fa-concierge-bell"></i> Deleted Services</h3>
+                                <h3><i class="fas fa-concierge-bell"></i> Archived Services</h3>
                                 <?php if (count($deletedServices) > 0): ?>
-                                    <p class="section-subtitle">View and restore deleted services or permanently remove them.</p>
+                                    <p class="section-subtitle">View and restore archived services or permanently remove them.</p>
                                 <?php endif; ?>
                             </div>
 
                             <?php if (count($deletedServices) === 0): ?>
                                 <div class="empty-state">
                                     <i class="fas fa-concierge-bell"></i>
-                                    <h3>No Deleted Services</h3>
+                                    <h3>No Archived Services</h3>
                                     <p>All services are active.</p>
                                 </div>
                             <?php else: ?>
@@ -138,7 +138,7 @@ $deletedServices = $canDeleteService ? getDeletedServices($conn) : [];
                                         <div class="col-name">Service Name</div>
                                         <div class="col-category">Category</div>
                                         <div class="col-office">Office</div>
-                                        <div class="col-deleted">Deleted</div>
+                                        <div class="col-deleted">Date Archived</div>
                                         <div class="col-actions">Actions</div>
                                     </div>
                                     <?php foreach ($deletedServices as $service): ?>
