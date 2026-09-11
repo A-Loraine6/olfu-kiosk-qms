@@ -1,10 +1,16 @@
 const AJAX_URL = 'api/settings_actions.php';
 
+function getCsrfToken() {
+    return typeof CSRF_TOKEN !== 'undefined'
+        ? CSRF_TOKEN
+        : document.querySelector('input[name="csrf_token"]')?.value || '';
+}
+
 async function ajax(payload) {
     const res = await fetch(AJAX_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, csrf_token: CSRF_TOKEN })
+        body: JSON.stringify({ ...payload, csrf_token: getCsrfToken() })
     });
     return res.json();
 }

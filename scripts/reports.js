@@ -1,5 +1,7 @@
-Chart.defaults.font.family = "'DM Sans', sans-serif";
-Chart.defaults.color = "#7a9387";
+if (typeof Chart !== "undefined") {
+  Chart.defaults.font.family = "'DM Sans', sans-serif";
+  Chart.defaults.color = "#7a9387";
+}
 
 function updateTime() {
   const opts = { timeZone: "Asia/Manila" };
