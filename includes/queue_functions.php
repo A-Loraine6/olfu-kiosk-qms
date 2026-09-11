@@ -9,26 +9,32 @@ function getTodayQueueSummary($db)
         'total_skipped' => 0
     );
 
-    $query = "SELECT COUNT(*) as count FROM tickets 
-              WHERE DATE(created_at) = '$today' 
-              AND status IN ('waiting', 'serving')";
-    $result = $db->query($query);
+    $stmt = $db->prepare("SELECT COUNT(*) as count FROM tickets
+              WHERE DATE(created_at) = ?
+              AND status IN ('waiting', 'serving')");
+    $stmt->bind_param('s', $today);
+    $stmt->execute();
+    $result = $stmt->get_result();
     if ($result && $row = $result->fetch_assoc()) {
         $summary['total_queued'] = (int)$row['count'];
     }
 
-    $query = "SELECT COUNT(*) as count FROM tickets 
-              WHERE DATE(completed_at) = '$today' 
-              AND status = 'completed'";
-    $result = $db->query($query);
+    $stmt = $db->prepare("SELECT COUNT(*) as count FROM tickets
+              WHERE DATE(completed_at) = ?
+              AND status = 'completed'");
+    $stmt->bind_param('s', $today);
+    $stmt->execute();
+    $result = $stmt->get_result();
     if ($result && $row = $result->fetch_assoc()) {
         $summary['total_served'] = (int)$row['count'];
     }
 
-    $query = "SELECT COUNT(*) as count FROM tickets 
-              WHERE DATE(created_at) = '$today' 
-              AND status = 'skipped'";
-    $result = $db->query($query);
+    $stmt = $db->prepare("SELECT COUNT(*) as count FROM tickets
+              WHERE DATE(created_at) = ?
+              AND status = 'skipped'");
+    $stmt->bind_param('s', $today);
+    $stmt->execute();
+    $result = $stmt->get_result();
     if ($result && $row = $result->fetch_assoc()) {
         $summary['total_skipped'] = (int)$row['count'];
     }
@@ -41,15 +47,16 @@ function getQueueByOffice($db)
     $today = date('Y-m-d');
     $distribution = array();
 
-    $query = "SELECT o.id, o.name, COUNT(t.id) as count 
-              FROM offices o 
-              LEFT JOIN tickets t ON o.id = t.office_id 
-              AND DATE(t.created_at) = '$today'
+    $stmt = $db->prepare("SELECT o.id, o.name, COUNT(t.id) as count
+              FROM offices o
+              LEFT JOIN tickets t ON o.id = t.office_id
+              AND DATE(t.created_at) = ?
               AND t.status IN ('waiting', 'serving', 'completed')
-              GROUP BY o.id, o.name 
-              ORDER BY o.name";
-
-    $result = $db->query($query);
+              GROUP BY o.id, o.name
+              ORDER BY o.name");
+    $stmt->bind_param('s', $today);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
     if ($result && $result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
@@ -95,12 +102,13 @@ function getQueueTrendData($db)
         
         $hourLabel = sprintf('%02d:00', $hour);
 
-        $query = "SELECT COUNT(*) as count FROM tickets 
-                  WHERE DATE(created_at) = '$today' 
-                  AND TIME(created_at) BETWEEN '$hourStart' AND '$hourEnd'
-                  AND status IN ('waiting', 'serving', 'completed')";
-
-        $result = $db->query($query);
+        $stmt = $db->prepare("SELECT COUNT(*) as count FROM tickets
+              WHERE DATE(created_at) = ?
+              AND TIME(created_at) BETWEEN ? AND ?
+                  AND status IN ('waiting', 'serving', 'completed')");
+        $stmt->bind_param('sss', $today, $hourStart, $hourEnd);
+        $stmt->execute();
+        $result = $stmt->get_result();
         $count = 0;
 
         if ($result && $row = $result->fetch_assoc()) {
@@ -121,21 +129,22 @@ function getAccountingQueueByType($db)
     $today = date('Y-m-d');
     $distribution = array();
 
-    $query = "SELECT t.transaction_type, tt.category, COUNT(t.id) as count 
-              FROM tickets t 
+    $stmt = $db->prepare("SELECT t.transaction_type, tt.category, COUNT(t.id) as count
+              FROM tickets t
               LEFT JOIN transaction_types tt ON t.transaction_type = tt.name
               WHERE t.office_id = (SELECT id FROM offices WHERE code = 'ACC')
-              AND DATE(t.created_at) = '$today'
+              AND DATE(t.created_at) = ?
               AND t.status IN ('waiting', 'serving', 'completed')
-              GROUP BY t.transaction_type, tt.category 
-              ORDER BY CASE 
+              GROUP BY t.transaction_type, tt.category
+              ORDER BY CASE
                   WHEN tt.category = 'simple' THEN 1
                   WHEN tt.category = 'regular' THEN 2
                   WHEN tt.category = 'complicated' THEN 3
                   ELSE 4
-              END";
-
-    $result = $db->query($query);
+              END");
+    $stmt->bind_param('s', $today);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
     if ($result && $result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
@@ -153,8 +162,10 @@ function getAccountingQueueByType($db)
 function getOfficeInfo($db, $office_id)
 {
     $office_id = (int)$office_id;
-    $query = "SELECT id, name, code, window_count, queue_mode FROM offices WHERE id = $office_id LIMIT 1";
-    $result = $db->query($query);
+    $stmt = $db->prepare("SELECT id, name, code, window_count, queue_mode FROM offices WHERE id = ? LIMIT 1");
+    $stmt->bind_param('i', $office_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
     if ($result && $result->num_rows > 0) {
         return $result->fetch_assoc();
@@ -186,29 +197,35 @@ function getOfficeQueueSummary($db, $office_id)
         'skipped'  => 0,
     );
 
-    $query = "SELECT COUNT(*) as count FROM tickets
-              WHERE DATE(created_at) = '$today'
-              AND office_id = $office_id
-              AND status IN ('waiting', 'serving')";
-    $result = $db->query($query);
+    $stmt = $db->prepare("SELECT COUNT(*) as count FROM tickets
+              WHERE DATE(created_at) = ?
+              AND office_id = ?
+              AND status IN ('waiting', 'serving')");
+    $stmt->bind_param('si', $today, $office_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
     if ($result && $row = $result->fetch_assoc()) {
         $summary['waiting'] = (int)$row['count'];
     }
 
-    $query = "SELECT COUNT(*) as count FROM tickets
-              WHERE DATE(completed_at) = '$today'
-              AND office_id = $office_id
-              AND status = 'completed'";
-    $result = $db->query($query);
+    $stmt = $db->prepare("SELECT COUNT(*) as count FROM tickets
+              WHERE DATE(completed_at) = ?
+              AND office_id = ?
+              AND status = 'completed'");
+    $stmt->bind_param('si', $today, $office_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
     if ($result && $row = $result->fetch_assoc()) {
         $summary['served'] = (int)$row['count'];
     }
 
-    $query = "SELECT COUNT(*) as count FROM tickets
-              WHERE DATE(created_at) = '$today'
-              AND office_id = $office_id
-              AND status = 'skipped'";
-    $result = $db->query($query);
+    $stmt = $db->prepare("SELECT COUNT(*) as count FROM tickets
+              WHERE DATE(created_at) = ?
+              AND office_id = ?
+              AND status = 'skipped'");
+    $stmt->bind_param('si', $today, $office_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
     if ($result && $row = $result->fetch_assoc()) {
         $summary['skipped'] = (int)$row['count'];
     }
@@ -248,13 +265,14 @@ function getOfficeQueueTrend($db, $office_id)
         $suffix = $hour < 12 ? 'AM' : 'PM';
         $hourLabel = $h12 . ':00 ' . $suffix;
 
-        $query = "SELECT COUNT(*) as count FROM tickets
-                  WHERE DATE(created_at) = '$today'
-                  AND office_id = $office_id
-                  AND TIME(created_at) BETWEEN '$hourStart' AND '$hourEnd'
-                  AND status IN ('waiting', 'serving', 'completed')";
-
-        $result = $db->query($query);
+        $stmt = $db->prepare("SELECT COUNT(*) as count FROM tickets
+              WHERE DATE(created_at) = ?
+              AND office_id = ?
+              AND TIME(created_at) BETWEEN ? AND ?
+                  AND status IN ('waiting', 'serving', 'completed')");
+        $stmt->bind_param('siss', $today, $office_id, $hourStart, $hourEnd);
+        $stmt->execute();
+        $result = $stmt->get_result();
         $count  = 0;
 
         if ($result && $row = $result->fetch_assoc()) {

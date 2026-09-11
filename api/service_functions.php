@@ -103,12 +103,18 @@ function getAllServicesWithOffice(mysqli $conn, ?int $officeId = null): array
             WHERE tt.is_deleted = 0";
 
     if ($officeId !== null) {
-        $sql .= " AND tt.office_id = " . (int) $officeId;
+        $sql .= " AND tt.office_id = ?";
     }
 
     $sql .= " ORDER BY o.name ASC, tt.name ASC";
 
-    $res = $conn->query($sql);
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) return [];
+    if ($officeId !== null) {
+        $stmt->bind_param('i', $officeId);
+    }
+    $stmt->execute();
+    $res = $stmt->get_result();
     if (!$res) return [];
 
     $rows = [];
