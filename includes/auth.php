@@ -1,9 +1,14 @@
 <?php
 session_name(SESSION_NAME);
+$isLocalRequest = in_array(
+    strtolower((string) ($_SERVER['HTTP_HOST'] ?? '')),
+    ['localhost', '127.0.0.1'],
+    true
+) || preg_match('/^(localhost|127\.0\.0\.1):\d+$/i', (string) ($_SERVER['HTTP_HOST'] ?? ''));
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
-    'secure'   => true,
+    'secure'   => !$isLocalRequest,
     'httponly' => true,
     'samesite' => 'Strict',
 ]);
