@@ -3,7 +3,7 @@ ini_set('display_errors', 0);
 error_reporting(0);
 header('Content-Type: application/json');
 
-require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/staff_functions.php';

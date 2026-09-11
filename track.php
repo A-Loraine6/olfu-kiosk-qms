@@ -1,5 +1,5 @@
 <?php
-require_once 'config/config.php';
+require_once __DIR__ . '/includes/config_loader.php';
 date_default_timezone_set('Asia/Manila');
 
 $token = isset($_GET['token']) ? trim($_GET['token']) : '';

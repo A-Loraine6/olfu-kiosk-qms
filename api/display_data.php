@@ -5,7 +5,7 @@ error_reporting(E_ALL);
 header('Content-Type: application/json');
 header('Cache-Control: no-store, no-cache');
 
-require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 
 date_default_timezone_set('Asia/Manila');

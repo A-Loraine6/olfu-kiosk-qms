@@ -2,7 +2,7 @@
 header('Content-Type: application/json');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 
-require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/feedback_functions.php';
 
