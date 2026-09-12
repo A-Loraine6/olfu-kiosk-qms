@@ -663,14 +663,31 @@ function renderFeedbackRatingChips(summary = {}) {
   const container = document.getElementById("feedbackRatingFilters");
   if (!container) return;
 
-  const options = [
-    { value: null, label: "All" },
+  const starOptions = [
     { value: 5, label: "5 stars" },
     { value: 4, label: "4 stars" },
     { value: 3, label: "3 stars" },
     { value: 2, label: "2 stars" },
     { value: 1, label: "1 star" },
-  ];
+  ].filter(({ value }) => Number(summary[String(value)] ?? 0) > 0);
+
+  // No ratings at all: hide the filter bar entirely.
+  if (starOptions.length === 0) {
+    container.innerHTML = "";
+    container.style.display = "none";
+    feedbackRatingFilter = null;
+    return;
+  }
+
+  container.style.display = "";
+
+  // If the active filter points at a rating that's no longer available, reset to "All".
+  if (feedbackRatingFilter !== null && !starOptions.some((o) => o.value === feedbackRatingFilter)) {
+    feedbackRatingFilter = null;
+  }
+
+  // Only show "All" plus whichever star values this staff member actually has.
+  const options = [{ value: null, label: "All" }, ...starOptions];
 
   container.innerHTML = options
     .map(({ value, label }) => {
