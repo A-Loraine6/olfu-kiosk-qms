@@ -1,16 +1,11 @@
 <?php
 session_name(SESSION_NAME);
-$isLocalRequest = in_array(
-    strtolower((string) ($_SERVER['HTTP_HOST'] ?? '')),
-    ['localhost', '127.0.0.1'],
-    true
-) || preg_match('/^(localhost|127\.0\.0\.1):\d+$/i', (string) ($_SERVER['HTTP_HOST'] ?? ''));
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
-    'secure'   => !$isLocalRequest,
+    'secure'   => true,
     'httponly' => true,
-    'samesite' => 'Strict',
+    'samesite' => 'Lax',
 ]);
 session_start();
 
@@ -265,11 +260,14 @@ function logout(): void
         setcookie(
             session_name(),
             '',
-            time() - 42000,
-            $p['path'],
-            $p['domain'],
-            $p['secure'],
-            $p['httponly']
+            [
+                'expires'  => time() - 42000,
+                'path'     => $p['path'],
+                'domain'   => $p['domain'],
+                'secure'   => true,
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]
         );
     }
 
