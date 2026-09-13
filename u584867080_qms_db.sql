@@ -24,12 +24,26 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `login_attempts`
+--
+
+CREATE TABLE `login_attempts` (
+  `identifier` varchar(320) NOT NULL,
+  `attempt_count` int(11) NOT NULL DEFAULT 0,
+  `last_attempt_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`identifier`),
+  KEY `idx_login_attempts_last_attempt` (`last_attempt_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `activity_logs`
 --
 
 CREATE TABLE `activity_logs` (
   `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
   `activity_type` varchar(50) DEFAULT NULL,
   `entity_type` varchar(50) DEFAULT NULL,
   `entity_id` int(11) DEFAULT NULL,
