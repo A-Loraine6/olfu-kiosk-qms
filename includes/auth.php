@@ -58,7 +58,7 @@ function validateLoginInputs(string $csrf, string $email, string $password, $db)
 function getLoginAttemptIdentifiers(string $email): array
 {
     return [
-        'email:' . strtolower(trim($email)),
+        strtolower(trim($email)),
         'ip:' . trim((string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0')),
     ];
 }
