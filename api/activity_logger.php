@@ -12,9 +12,14 @@ function logActivity(
     ?int    $entity_id    = null,
     ?string $description  = null,
     ?array  $before_values = null,
-    ?array  $after_values  = null
+    ?array  $after_values  = null,
+    ?int    $actor_id      = null
 ): bool {
-    if (!$user = getCurrentUser()) return false;
+    if ($actor_id === null) {
+        $user = getCurrentUser();
+        $actor_id = $user['id'] ?? null;
+    }
+    if ($actor_id === null && $activity_type !== 'LOGIN_FAILED') return false;
 
     if ($before_values !== null && $after_values !== null) {
         $hasChanges = false;
@@ -30,7 +35,7 @@ function logActivity(
         }
     }
 
-    $user_id    = $user['id'];
+    $user_id    = $actor_id;
     $ip_address = $_SERVER['REMOTE_ADDR']      ?? '0.0.0.0';
     $user_agent = $_SERVER['HTTP_USER_AGENT']   ?? '';
     $timestamp  = (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s');
@@ -68,6 +73,11 @@ function logActivity(
     return $result;
 }
 
+function logFailedLogin($db, string $description, ?int $userId = null): void
+{
+    logActivity($db, 'LOGIN_FAILED', $userId ? 'user' : 'auth', $userId, $description, null, null, $userId);
+}
+
 function getActivityLogs(
     $db,
     ?int    $user_id       = null,
@@ -91,7 +101,7 @@ function getActivityLogs(
                 al.ip_address,
                 al.timestamp AS created_at
               FROM activity_logs al
-              JOIN users u ON al.user_id = u.id
+              LEFT JOIN users u ON al.user_id = u.id
               WHERE 1=1";
 
     $params = [];
@@ -238,6 +248,7 @@ function formatActivityLog(array $log): array
 {
     $activityLabels = [
         'LOGIN'                    => 'User Login',
+        'LOGIN_FAILED'             => 'Failed Login Attempt',
         'LOGOUT'                   => 'User Logout',
 
         'STAFF_ADD'                => 'Add Staff',
@@ -269,7 +280,7 @@ function formatActivityLog(array $log): array
 
     return [
         'id'             => $log['id'],
-        'user_name'      => $log['user_name'],
+        'user_name'      => $log['user_name'] ?? 'Anonymous',
         'activity_type'  => $log['activity_type'],
         'activity_label' => $activityLabels[$log['activity_type']] ?? $log['activity_type'],
         'entity_type'    => $log['entity_type'],

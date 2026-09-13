@@ -55,6 +55,81 @@ function validateLoginInputs(string $csrf, string $email, string $password, $db)
     return '';
 }
 
+function getLoginAttemptIdentifiers(string $email): array
+{
+    return [
+        strtolower(trim($email)),
+        'ip:' . trim((string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0')),
+    ];
+}
+
+function getLoginLockoutSeconds($db, array $identifiers): int
+{
+    $stmt = $db->prepare(
+        'SELECT attempt_count, last_attempt_at
+         FROM login_attempts
+         WHERE identifier = ? LIMIT 1'
+    );
+    if (!$stmt) return 0;
+
+    $remaining = 0;
+    foreach ($identifiers as $identifier) {
+        $stmt->bind_param('s', $identifier);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        if (!$row || (int) $row['attempt_count'] < MAX_LOGIN_ATTEMPTS) continue;
+
+        $elapsed = time() - strtotime($row['last_attempt_at']);
+        if ($elapsed < LOCKOUT_WINDOW) {
+            $remaining = max($remaining, LOCKOUT_WINDOW - $elapsed);
+        }
+    }
+    $stmt->close();
+    return $remaining;
+}
+
+function recordLoginFailure($db, array $identifiers): int
+{
+    $cutoff = date('Y-m-d H:i:s', time() - LOCKOUT_WINDOW);
+    $upsert = $db->prepare(
+        'INSERT INTO login_attempts (identifier, attempt_count, last_attempt_at)
+         VALUES (?, 1, NOW())
+         ON DUPLICATE KEY UPDATE
+            attempt_count = IF(last_attempt_at < ?, 1, attempt_count + 1),
+            last_attempt_at = NOW()'
+    );
+    $countStmt = $db->prepare('SELECT attempt_count FROM login_attempts WHERE identifier = ? LIMIT 1');
+    if (!$upsert || !$countStmt) {
+        if ($upsert) $upsert->close();
+        if ($countStmt) $countStmt->close();
+        return 0;
+    }
+
+    $highest = 0;
+    foreach ($identifiers as $identifier) {
+        $upsert->bind_param('ss', $identifier, $cutoff);
+        $upsert->execute();
+        $countStmt->bind_param('s', $identifier);
+        $countStmt->execute();
+        $row = $countStmt->get_result()->fetch_assoc();
+        $highest = max($highest, (int) ($row['attempt_count'] ?? 0));
+    }
+    $countStmt->close();
+    $upsert->close();
+    return $highest;
+}
+
+function resetLoginAttempts($db, array $identifiers): void
+{
+    $stmt = $db->prepare('DELETE FROM login_attempts WHERE identifier = ?');
+    if (!$stmt) return;
+    foreach ($identifiers as $identifier) {
+        $stmt->bind_param('s', $identifier);
+        $stmt->execute();
+    }
+    $stmt->close();
+}
+
 function login($db, string $email, string $password, string $csrf): array
 {
     $inputError = validateLoginInputs($csrf, $email, $password, $db);
@@ -62,16 +137,34 @@ function login($db, string $email, string $password, string $csrf): array
         return ['success' => false, 'message' => $inputError];
     }
 
+    $identifiers = getLoginAttemptIdentifiers($email);
+    $lockoutSeconds = getLoginLockoutSeconds($db, $identifiers);
+    if ($lockoutSeconds > 0) {
+        logFailedLogin($db, 'Login blocked by rate limit.');
+        return ['success' => false, 'message' => 'Too many failed attempts. Please try again in ' . (int) ceil($lockoutSeconds / 60) . ' minutes.'];
+    }
+
     $user = fetchUserByEmail($db, $email);
 
     if (!$user || !password_verify($password, $user['password'])) {
+        $attemptCount = recordLoginFailure($db, $identifiers);
+        logFailedLogin($db, 'Invalid credentials.');
+        if ($attemptCount >= MAX_LOGIN_ATTEMPTS) {
+            logFailedLogin($db, 'Repeated login failures triggered a lockout.');
+        }
         return ['success' => false, 'message' => 'Invalid email or password.'];
     }
 
     if (!$user['is_active']) {
+        $attemptCount = recordLoginFailure($db, $identifiers);
+        logFailedLogin($db, 'Login rejected: account is inactive.', (int) $user['id']);
+        if ($attemptCount >= MAX_LOGIN_ATTEMPTS) {
+            logFailedLogin($db, 'Repeated login failures triggered a lockout.', (int) $user['id']);
+        }
         return ['success' => false, 'message' => 'Your account has been deactivated. Please contact your administrator.'];
     }
 
+    resetLoginAttempts($db, $identifiers);
     rehashPasswordIfNeeded($db, $user, $password);
     establishSession($user);
 
