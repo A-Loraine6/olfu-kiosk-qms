@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/activity_logger.php';
+require_once __DIR__ . '/../includes/request_validation.php';
 
 function settingsResponse(bool $success, string $message): array
 {
@@ -30,7 +31,7 @@ function normaliseTime(string $t): string
 
 function isValidTime(string $t): bool
 {
-    return (bool) preg_match('/^\d{2}:\d{2}$/', $t);
+    return validTime($t) !== null;
 }
 
 function timeAfter(string $earlier, string $later): bool
@@ -187,7 +188,7 @@ function saveQueueConfig(
 
     $prefix = strtoupper(trim(strip_tags($prefix)));
 
-    if ($prefix !== '' && !preg_match('/^[A-Z0-9\-]{1,10}$/', $prefix))
+    if ($prefix !== '' && validQueuePrefix($prefix) === null)
         return settingsResponse(false, 'Prefix must be 1–10 uppercase letters, digits, or hyphens.');
     if ($startNum < 1 || $startNum > 9999)
         return settingsResponse(false, 'Starting number must be between 1 and 9999.');

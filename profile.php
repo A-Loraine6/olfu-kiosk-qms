@@ -2,6 +2,7 @@
 require_once __DIR__ . '/includes/config_loader.php';
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/request_validation.php';
 require_once __DIR__ . '/api/activity_logger.php';
 
 if (!isLoggedIn()) {
@@ -12,8 +13,7 @@ if (!isLoggedIn()) {
 $currentUser = getCurrentUser();
 $csrf_token  = getCsrfToken();
 
-$activeSection = in_array($_GET['section'] ?? '', ['profile', 'security', 'activity'])
-    ? $_GET['section'] : 'profile';
+$activeSection = requestEnum($_GET, 'section', ['profile', 'security', 'activity'], false) ?: 'profile';
 
 $activityLogs = getActivityLogs(
     $db->getConnection(),

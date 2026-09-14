@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/activity_logger.php';
+require_once __DIR__ . '/../includes/request_validation.php';
 
 function serviceResponse(bool $success, string $message, array $extra = []): array
 {
@@ -183,13 +184,12 @@ function serviceNameExistsForOffice(
 
 function addService(mysqli $conn, string $name, mixed $officeId, ?string $category, string $description, array $windowNumbers = []): array
 {
-    $name        = cleanStr($name);
+    $name        = validServiceName($name);
     $officeId    = (int) $officeId;
     $category    = validateCategory($category);
     $description = cleanStr($description);
 
-    if ($name === '')        return serviceResponse(false, 'Service name is required.');
-    if (strlen($name) > 100) return serviceResponse(false, 'Service name must not exceed 100 characters.');
+    if ($name === null)      return serviceResponse(false, 'Service name contains invalid characters or length.');
     if ($officeId <= 0)      return serviceResponse(false, 'Please select a valid office.');
 
     $office = getOfficeById($conn, $officeId);
@@ -229,14 +229,13 @@ function addService(mysqli $conn, string $name, mixed $officeId, ?string $catego
 
 function updateService(mysqli $conn, int $serviceId, string $name, mixed $officeId, ?string $category, string $description, array $windowNumbers = []): array
 {
-    $name        = cleanStr($name);
+    $name        = validServiceName($name);
     $officeId    = (int) $officeId;
     $category    = validateCategory($category);
     $description = cleanStr($description);
 
     if ($serviceId <= 0)     return serviceResponse(false, 'Invalid service.');
-    if ($name === '')        return serviceResponse(false, 'Service name is required.');
-    if (strlen($name) > 100) return serviceResponse(false, 'Service name must not exceed 100 characters.');
+    if ($name === null)      return serviceResponse(false, 'Service name contains invalid characters or length.');
     if ($officeId <= 0)      return serviceResponse(false, 'Please select a valid office.');
 
     $service = getServiceById($conn, $serviceId);

@@ -6,6 +6,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/request_validation.php';
 
 if (!isLoggedIn()) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
@@ -18,11 +19,11 @@ if (!hasPermission('view_staff') && !hasPermission('edit_staff')) {
 }
 
 $input   = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-$staffId = (int) ($input['staff_id'] ?? 0);
-$page    = max(1, (int) ($input['page']  ?? 1));
+$staffId = requestInt($input, 'staff_id');
+$page    = requestOptionalInt($input, 'page', 1) ?? 1;
 $limit   = 25;
 
-if (!$staffId) {
+if ($staffId === null) {
     echo json_encode(['success' => false, 'message' => 'Invalid staff ID.']);
     exit;
 }

@@ -3,6 +3,7 @@ require_once __DIR__ . '/includes/config_loader.php';
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/api/settings_functions.php';
+require_once __DIR__ . '/includes/request_validation.php';
 
 if (!isLoggedIn()) {
     header('Location: ' . BASE_URL . 'login.php');
@@ -21,10 +22,8 @@ $csrf_token = getCsrfToken();
 $offices      = getAllOffices($db->getConnection());
 $kioskSettings = getKioskSettings($db->getConnection());
 
-$activeOfficeId = isset($_GET['office']) ? (int) $_GET['office']
-    : ($offices[0]['id'] ?? 0);
-$activeTab      = in_array($_GET['tab'] ?? '', ['schedule', 'queue', 'kiosk'])
-    ? $_GET['tab'] : 'schedule';
+$activeOfficeId = requestOptionalInt($_GET, 'office') ?? ($offices[0]['id'] ?? 0);
+$activeTab      = requestEnum($_GET, 'tab', ['schedule', 'queue', 'kiosk'], false) ?: 'schedule';
 
 $activeOffice = null;
 foreach ($offices as $o) {

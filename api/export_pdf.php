@@ -2,12 +2,13 @@
 require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/request_validation.php';
 
 if (!isLoggedIn()) {
     header('Location: ../login.php');
     exit;
 }
-if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+if (!verifyCsrfToken(requestString($_POST, 'csrf_token', 255, true) ?? '')) {
     http_response_code(403);
     die('Invalid CSRF token.');
 }
@@ -22,13 +23,14 @@ $isStaff      = !$isFullView && !$isScopedView && hasPermission('view_own_metric
 $userId     = (int) $currentUser['id'];
 $userOffice = (int) ($currentUser['office_id'] ?? 0);
 
-$from = date('Y-m-d', strtotime($_POST['date_from'] ?? date('Y-m-d')));
-$to   = date('Y-m-d', strtotime($_POST['date_to']   ?? date('Y-m-d')));
+$from = requestDate($_POST, 'date_from', date('Y-m-d'));
+$to   = requestDate($_POST, 'date_to', date('Y-m-d'));
+if ($from === null || $to === null || $from > $to) { http_response_code(400); die('Invalid date range.'); }
 
 if ($isScopedView) {
     $officeId = $userOffice;
 } else {
-    $officeId = (int) ($_POST['office_id'] ?? 0);
+    $officeId = requestOptionalInt($_POST, 'office_id') ?? 0;
 }
 
 $conn = $db->getConnection();

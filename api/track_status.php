@@ -7,12 +7,13 @@ header('Cache-Control: no-cache, no-store');
 
 require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/request_validation.php';
 
 date_default_timezone_set('Asia/Manila');
 
-$token = isset($_GET['token']) ? trim($_GET['token']) : '';
+$token = requestToken($_GET, 'token');
 
-if (!$token || strlen($token) !== 64 || !ctype_xdigit($token)) {
+if ($token === null) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Invalid token']);
     exit;
@@ -29,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($payload['action'] ?? '') === 'cancel_ticket') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && requestEnum($payload, 'action', ['cancel_ticket']) === 'cancel_ticket') {
     $selectStmt = $db->prepare("SELECT t.id, t.ticket_number, t.status, t.completed_at, t.served_at, t.transaction_type, o.name AS office_name
         FROM tickets t
         JOIN offices o ON o.id = t.office_id

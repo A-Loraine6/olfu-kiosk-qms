@@ -6,6 +6,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/request_validation.php';
 
 if (!isLoggedIn()) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
@@ -18,10 +19,10 @@ if (($_SESSION['role_id'] ?? null) !== 1 && ($_SESSION['role'] ?? '') !== 'admin
 }
 
 $input  = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-$action = $input['action'] ?? '';
-$csrf   = $input['csrf_token'] ?? '';
+$action = requestEnum($input, 'action', ['add_role', 'edit_role', 'delete_role', 'toggle_permission']);
+$csrf   = requestString($input, 'csrf_token', 255, true);
 
-if (!verifyCsrfToken($csrf)) {
+if ($action === null || $csrf === null || !verifyCsrfToken($csrf)) {
     echo json_encode(['success' => false, 'message' => 'Invalid CSRF token.']);
     exit;
 }
@@ -31,8 +32,9 @@ $conn = $db->getConnection();
 switch ($action) {
 
     case 'add_role':
-        $name = trim($input['name'] ?? '');
-        if (mb_strlen($name) < 2) {
+        $nameInput = requestString($input, 'name', 50, true);
+        $name = $nameInput === null ? null : validName($nameInput, 2, 50);
+        if ($name === null) {
             echo json_encode(['success' => false, 'message' => 'Role name must be at least 2 characters.']);
         } else {
             $stmt = $conn->prepare("INSERT INTO roles (name) VALUES (?)");
@@ -47,9 +49,10 @@ switch ($action) {
         exit;
 
     case 'edit_role':
-        $id   = (int) ($input['id'] ?? 0);
-        $name = trim($input['name'] ?? '');
-        if (!$id || mb_strlen($name) < 2) {
+        $id   = requestInt($input, 'id');
+        $nameInput = requestString($input, 'name', 50, true);
+        $name = $nameInput === null ? null : validName($nameInput, 2, 50);
+        if ($id === null || $name === null) {
             echo json_encode(['success' => false, 'message' => 'Invalid data.']);
             exit;
         }
@@ -61,8 +64,8 @@ switch ($action) {
         exit;
 
     case 'delete_role':
-        $id = (int) ($input['id'] ?? 0);
-        if (!$id) {
+        $id = requestInt($input, 'id');
+        if ($id === null) {
             echo json_encode(['success' => false, 'message' => 'Invalid role.']);
             exit;
         }
@@ -78,11 +81,11 @@ switch ($action) {
         exit;
 
     case 'toggle_permission':
-        $roleId  = (int) ($input['role_id'] ?? 0);
-        $permKey = trim($input['perm_key'] ?? '');
-        $enable  = (bool) ($input['enable'] ?? false);
+        $roleId  = requestInt($input, 'role_id') ?? 0;
+        $permKey = requestString($input, 'perm_key', 100, true) ?? '';
+        $enable  = requestBool($input, 'enable');
 
-        if (!$roleId || !$permKey) {
+        if (!$roleId || !$permKey || $enable === null) {
             echo json_encode(['success' => false, 'message' => 'Invalid data.']);
             exit;
         }

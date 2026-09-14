@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/activity_logger.php';
+require_once __DIR__ . '/../includes/request_validation.php';
 
 function diffSnapshot(array $before, array $after): array
 {
@@ -96,8 +97,8 @@ function getStaffById($db, int $id): ?array
 
 function addStaff($db, string $full_name, string $email, string $password, string $office, ?int $window_number, ?int $role_id = null): array
 {
-    $full_name = trim($full_name);
-    $email     = strtolower(trim($email));
+    $full_name = validName($full_name);
+    $email     = validEmail($email);
     $office    = trim($office);
     $roleName = 'staff';
     if ($role_id !== null) {
@@ -106,16 +107,19 @@ function addStaff($db, string $full_name, string $email, string $password, strin
         $roleStmt->execute();
         $roleRow = $roleStmt->get_result()->fetch_assoc();
         $roleStmt->close();
-        if ($roleRow) $roleName = $roleRow['name'];
+        if (!$roleRow || strcasecmp($roleRow['name'], 'admin') === 0) {
+            return ['success' => false, 'message' => 'Invalid role selected.'];
+        }
+        $roleName = $roleRow['name'];
     }
     $role = $roleName;
 
-    if (mb_strlen($full_name) < 3 || mb_strlen($full_name) > 100)
-        return ['success' => false, 'message' => 'Full name must be between 3 and 100 characters.'];
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL))
+    if ($full_name === null)
+        return ['success' => false, 'message' => 'Name must contain letters and spaces only, and be 3 to 100 characters.'];
+    if ($email === null)
         return ['success' => false, 'message' => 'Invalid email address.'];
-    if (mb_strlen($password) < 8)
-        return ['success' => false, 'message' => 'Password must be at least 8 characters.'];
+    if (validPassword($password) === null)
+        return ['success' => false, 'message' => 'Password must be between 8 and 255 characters.'];
 
     $checkStmt = $db->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
     if (!$checkStmt) return ['success' => false, 'message' => 'Database error occurred.'];
@@ -182,8 +186,8 @@ function addStaff($db, string $full_name, string $email, string $password, strin
 
 function updateStaff($db, int $id, string $full_name, string $email, string $office, ?int $window_number, ?int $role_id = null): array
 {
-    $full_name = trim($full_name);
-    $email     = strtolower(trim($email));
+    $full_name = validName($full_name);
+    $email     = validEmail($email);
     $office    = trim($office);
     $roleName = 'staff';
     if ($role_id !== null) {
@@ -192,13 +196,16 @@ function updateStaff($db, int $id, string $full_name, string $email, string $off
         $roleStmt->execute();
         $roleRow = $roleStmt->get_result()->fetch_assoc();
         $roleStmt->close();
-        if ($roleRow) $roleName = $roleRow['name'];
+        if (!$roleRow || strcasecmp($roleRow['name'], 'admin') === 0) {
+            return ['success' => false, 'message' => 'Invalid role selected.'];
+        }
+        $roleName = $roleRow['name'];
     }
     $role = $roleName;
 
-    if (mb_strlen($full_name) < 3)
-        return ['success' => false, 'message' => 'Full name must be at least 3 characters.'];
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL))
+    if ($full_name === null)
+        return ['success' => false, 'message' => 'Name must contain letters and spaces only, and be 3 to 100 characters.'];
+    if ($email === null)
         return ['success' => false, 'message' => 'Invalid email address.'];
 
     $currentStaff = getStaffById($db, $id);
@@ -356,8 +363,8 @@ function resetStaffPassword($db, int $id, string $new_password): array
         return ['success' => false, 'message' => 'You can only reset passwords for employees in your office.'];
     }
 
-    if (mb_strlen($new_password) < 8)
-        return ['success' => false, 'message' => 'Password must be at least 8 characters.'];
+    if (validPassword($new_password) === null)
+        return ['success' => false, 'message' => 'Password must be between 8 and 255 characters.'];
 
     $hashed_password = hashPassword($new_password);
     $updateStmt      = $db->prepare("UPDATE users SET password = ?, must_change_password = 1 WHERE id = ?");

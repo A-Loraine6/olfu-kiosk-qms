@@ -45,6 +45,9 @@ class TicketGenerator
 
         $window_id = null;
         if ($transaction_type !== null) {
+            if ($this->resolveServiceId($office_id, $transaction_type) === null) {
+                return ['success' => false, 'message' => 'Selected service is not available for this office.'];
+            }
             $window_id = $this->getServiceWindowIdIfSingle($office_id, $transaction_type);
         }
 

@@ -3,6 +3,7 @@ require_once __DIR__ . '/includes/config_loader.php';
 require_once 'includes/db.php';
 require_once 'includes/auth.php';
 require_once __DIR__ . '/api/activity_logger.php';
+require_once __DIR__ . '/includes/request_validation.php';
 
 if (isLoggedIn()) {
     $destination = !empty($_SESSION['must_change_password'])
@@ -15,11 +16,11 @@ if (isLoggedIn()) {
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $csrf     = $_POST['csrf_token'] ?? '';
-    $email    = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
+    $csrf     = requestString($_POST, 'csrf_token', 255, true) ?? '';
+    $email    = validEmail((string) ($_POST['email'] ?? ''), 100);
+    $password = is_string($_POST['password'] ?? null) ? $_POST['password'] : '';
 
-    if (empty($email) || empty($password)) {
+    if ($email === null || $password === '' || strlen($password) > 255) {
         $error = 'Please enter both email and password.';
     } else {
         $result = login($db, $email, $password, $csrf);
