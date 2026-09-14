@@ -6,6 +6,7 @@ error_reporting(E_ALL);
 require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/request_validation.php';
 require_once __DIR__ . '/service_functions.php';
 
 if (!isLoggedIn()) {
@@ -23,10 +24,10 @@ $isOfficeScoped    = !$isAdmin && !empty($currentUser['office_id']);
 $staffOffice       = $isOfficeScoped ? (int) ($currentUser['office_id'] ?? 0) : null;
 
 $input  = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-$action = $input['action'] ?? '';
-$csrf   = $input['csrf_token'] ?? '';
+$action = requestEnum($input, 'action', ['add_service', 'edit_service', 'get_windows_for_service', 'get_windows_for_office', 'toggle_service', 'delete_service', 'toggle_queue_mode', 'get_services']);
+$csrf   = requestString($input, 'csrf_token', 255, true);
 
-if (!verifyCsrfToken($csrf)) {
+if ($action === null || $csrf === null || !verifyCsrfToken($csrf)) {
     echo json_encode(['success' => false, 'message' => 'Invalid CSRF token.']);
     exit;
 }
@@ -56,36 +57,46 @@ if ($action === 'toggle_queue_mode' && !hasPermission('manage_settings')) {
 switch ($action) {
 
     case 'add_service':
+        $windows = requestIntList($input, 'windows');
+        if ($windows === null) {
+            echo json_encode(['success' => false, 'message' => 'Invalid service window list.']);
+            exit;
+        }
         $result = addService(
             $conn,
-            $input['name']        ?? '',
-            $input['office_id']   ?? 0,
-            $input['category']    ?? null,
-            $input['description'] ?? '',
-            array_map('intval', $input['windows'] ?? [])
+            requestString($input, 'name', 100, true) ?? '',
+            requestInt($input, 'office_id') ?? 0,
+            requestEnum($input, 'category', ['simple', 'regular', 'complicated']),
+            requestString($input, 'description', 65535) ?? '',
+            $windows
         );
         break;
 
     case 'edit_service':
+        $windows = requestIntList($input, 'windows');
+        if ($windows === null) {
+            echo json_encode(['success' => false, 'message' => 'Invalid service window list.']);
+            exit;
+        }
         $result = updateService(
             $conn,
-            (int) ($input['service_id'] ?? 0),
-            $input['name']        ?? '',
-            $input['office_id']   ?? 0,
-            $input['category']    ?? null,
-            $input['description'] ?? '',
-            array_map('intval', $input['windows'] ?? [])
+            requestInt($input, 'service_id') ?? 0,
+            requestString($input, 'name', 100, true) ?? '',
+            requestInt($input, 'office_id') ?? 0,
+            requestEnum($input, 'category', ['simple', 'regular', 'complicated']),
+            requestString($input, 'description', 65535) ?? '',
+            $windows
         );
         break;
 
     case 'get_windows_for_service':
-        $serviceId = (int) ($input['service_id'] ?? 0);
+        $serviceId = requestInt($input, 'service_id') ?? 0;
         $windows   = $serviceId ? getWindowsForService($conn, $serviceId) : [];
         echo json_encode(['success' => true, 'windows' => $windows]);
         exit;
 
     case 'get_windows_for_office':
-        $officeId = (int) ($input['office_id'] ?? 0);
+        $officeId = requestInt($input, 'office_id') ?? 0;
         if (!$officeId) {
             echo json_encode(['success' => false, 'window_count' => 0]);
             exit;
@@ -102,26 +113,30 @@ switch ($action) {
         exit;
 
     case 'toggle_service':
-        $result = toggleServiceStatus($conn, (int) ($input['service_id'] ?? 0));
+        $result = toggleServiceStatus($conn, requestInt($input, 'service_id') ?? 0);
         break;
 
     case 'delete_service':
-        $result = deleteService($conn, (int) ($input['service_id'] ?? 0));
+        $result = deleteService($conn, requestInt($input, 'service_id') ?? 0);
         break;
 
     case 'toggle_queue_mode':
-        $result = toggleOfficeQueueMode($conn, (int) ($input['office_id'] ?? 0));
+        $result = toggleOfficeQueueMode($conn, requestInt($input, 'office_id') ?? 0);
         break;
 
     case 'get_services':
+        if (!requestOptionalIntIsValid($input, 'office') || !requestOptionalIntIsValid($input, 'page', 1) || !requestOptionalIntIsValid($input, 'limit', 1)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid service list filter.']);
+            exit;
+        }
         $services     = getAllServicesWithOffice($conn, $staffOffice);
-        $search       = strtolower(trim($input['search'] ?? ''));
-        $filterOffice = $isOfficeScoped ? $staffOffice : (int) ($input['office'] ?? 0);
-        $filterStatus = $input['status'] ?? '';
-        $filterCategory = trim($input['category'] ?? '');
+        $search       = strtolower(requestString($input, 'search', 100) ?? '');
+        $filterOffice = $isOfficeScoped ? $staffOffice : (requestOptionalInt($input, 'office') ?? 0);
+        $filterStatus = requestEnum($input, 'status', ['active', 'inactive'], false) ?? '';
+        $filterCategory = requestEnum($input, 'category', ['simple', 'regular', 'complicated', 'none'], false) ?? '';
 
-        $page  = max(1, (int) ($input['page']  ?? 1));
-        $limit = (int) ($input['limit'] ?? 10);
+        $page  = requestOptionalInt($input, 'page', 1) ?? 1;
+        $limit = requestOptionalInt($input, 'limit', 1) ?? 10;
         if (!in_array($limit, [10, 25, 50, 100])) $limit = 10;
 
         $filtered = array_filter($services, function ($s) use ($search, $filterOffice, $filterStatus, $filterCategory) {

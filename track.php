@@ -1,9 +1,10 @@
 <?php
 require_once __DIR__ . '/includes/config_loader.php';
+require_once __DIR__ . '/includes/request_validation.php';
 date_default_timezone_set('Asia/Manila');
 
-$token = isset($_GET['token']) ? trim($_GET['token']) : '';
-$tokenValid = (strlen($token) === 64 && ctype_xdigit($token));
+$token = requestToken($_GET, 'token') ?? '';
+$tokenValid = $token !== '';
 ?>
 <!DOCTYPE html>
 <html lang="en">

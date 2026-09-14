@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/request_validation.php';
 require_once __DIR__ . '/activity_logger.php';
 
 header('Content-Type: application/json');
@@ -12,10 +13,10 @@ if (!isLoggedIn()) {
 }
 
 $body   = json_decode(file_get_contents('php://input'), true) ?? [];
-$action = $body['action'] ?? '';
-$csrf   = $body['csrf_token'] ?? '';
+$action = requestEnum($body, 'action', ['update_profile', 'change_password', 'get_activity']);
+$csrf   = requestString($body, 'csrf_token', 255, true);
 
-if (!verifyCsrfToken($csrf)) {
+if ($action === null || $csrf === null || !verifyCsrfToken($csrf)) {
     echo json_encode(['success' => false, 'message' => 'Invalid request. Please refresh and try again.']);
     exit;
 }
@@ -26,19 +27,22 @@ $conn        = $db->getConnection();
 switch ($action) {
 
     case 'update_profile': {
-            $fullName        = trim(strip_tags($body['full_name'] ?? ''));
-            $email           = trim($body['email'] ?? '');
-            $confirmPassword = $body['confirm_password'] ?? '';
+            $fullNameInput   = requestString($body, 'full_name', 100, true);
+            $emailInput      = requestString($body, 'email', 100, true);
+            $fullName        = $fullNameInput === null ? null : validName($fullNameInput);
+            $email           = $emailInput === null ? null : validEmail($emailInput, 100);
+            $confirmPassword = is_string($body['confirm_password'] ?? null)
+                ? validPassword($body['confirm_password']) : null;
 
-            if ($fullName === '') {
+            if ($fullName === null) {
                 echo json_encode(['success' => false, 'message' => 'Full name is required.']);
                 exit;
             }
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            if ($email === null || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 echo json_encode(['success' => false, 'message' => 'A valid email address is required.']);
                 exit;
             }
-            if ($confirmPassword === '') {
+            if ($confirmPassword === null) {
                 echo json_encode(['success' => false, 'message' => 'Password confirmation is required.']);
                 exit;
             }
@@ -92,15 +96,16 @@ switch ($action) {
         }
 
     case 'change_password': {
-            $currentPw = $body['current_password'] ?? '';
-            $newPw     = $body['new_password']     ?? '';
-            $confirmPw = $body['confirm_password'] ?? '';
+            $currentPw = is_string($body['current_password'] ?? null)
+                ? validPassword($body['current_password']) : null;
+            $newPw     = is_string($body['new_password'] ?? null) ? validPassword($body['new_password']) : null;
+            $confirmPw = is_string($body['confirm_password'] ?? null) ? validPassword($body['confirm_password']) : null;
 
-            if ($currentPw === '' || $newPw === '') {
+            if ($currentPw === null || $newPw === null) {
                 echo json_encode(['success' => false, 'message' => 'All password fields are required.']);
                 exit;
             }
-            if ($confirmPw === '') {
+            if ($confirmPw === null) {
                 echo json_encode(['success' => false, 'message' => 'Please confirm your new password.']);
                 exit;
             }
@@ -155,9 +160,13 @@ switch ($action) {
             break;
         }
 
-    case 'get_activity': {
-            $offset = max(0, (int) ($body['offset'] ?? 0));
-            $limit  = min(50, max(1, (int) ($body['limit'] ?? 20)));
+        case 'get_activity': {
+            if (!requestOptionalIntIsValid($body, 'offset', 0) || !requestOptionalIntIsValid($body, 'limit', 1, 50)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid activity pagination.']);
+                exit;
+            }
+            $offset = requestOptionalInt($body, 'offset', 0) ?? 0;
+            $limit  = requestOptionalInt($body, 'limit', 1, 50) ?? 20;
 
             $logs = getActivityLogs(
                 $conn,

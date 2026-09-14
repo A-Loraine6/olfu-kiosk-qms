@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/config_loader.php';
 require_once '../includes/db.php';
 require_once '../includes/auth.php';
+require_once __DIR__ . '/../includes/request_validation.php';
 
 header('Content-Type: application/json');
 
@@ -20,13 +21,13 @@ if (($currentUser['role'] ?? '') !== 'staff') {
     exit;
 }
 
-if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+if (!verifyCsrfToken(requestString($_POST, 'csrf_token', 255, true) ?? '')) {
     echo json_encode(['success' => false, 'message' => 'Invalid CSRF token.']);
     exit;
 }
 
-$action    = $_POST['action']    ?? '';
-$officeId  = (int) ($_POST['office_id'] ?? 0);
+$action    = requestEnum($_POST, 'action', ['get_stats', 'get_active', 'get_queue', 'call_next', 'serve_ticket', 'complete_ticket', 'skip_ticket', 'recall_ticket', 'hold_ticket', 'resume_ticket', 'transfer_ticket', 'transfer_window', 'toggle_overflow', 'get_overflow_state', 'get_office_services']);
+$officeId  = requestInt($_POST, 'office_id') ?? 0;
 $staffId   = (int) $currentUser['id'];
 
 if ($action !== 'transfer_ticket' && $officeId !== (int) ($currentUser['office_id'] ?? 0)) {
@@ -101,8 +102,8 @@ if ($action === 'get_active') {
 }
 
 if ($action === 'get_queue') {
-    $tab        = $_POST['tab'] ?? 'waiting';
-    $typeFilter = (int) ($_POST['type_filter'] ?? 0);
+    $tab        = requestEnum($_POST, 'tab', ['waiting', 'on-hold', 'skipped', 'done', 'cancelled'], false) ?: 'waiting';
+    $typeFilter = requestOptionalInt($_POST, 'type_filter') ?? 0;
     $queueMode  = getOfficeQueueMode($db, $officeId);
 
     $stmt = $db->prepare("SELECT window_number, overflow_mode FROM users WHERE id = ? LIMIT 1");
@@ -287,7 +288,7 @@ if ($action === 'call_next') {
 }
 
 if ($action === 'serve_ticket') {
-    $ticketId = (int) ($_POST['ticket_id'] ?? 0);
+    $ticketId = requestInt($_POST, 'ticket_id') ?? 0;
 
     $stmt = $db->prepare("SELECT id FROM tickets WHERE office_id=? AND status='serving' AND served_by=? LIMIT 1");
     $stmt->bind_param('ii', $officeId, $staffId);
@@ -362,7 +363,7 @@ if ($action === 'serve_ticket') {
 }
 
 if ($action === 'complete_ticket') {
-    $ticketId = (int) ($_POST['ticket_id'] ?? 0);
+    $ticketId = requestInt($_POST, 'ticket_id') ?? 0;
 
     $stmt = $db->prepare("SELECT * FROM tickets WHERE id=? AND office_id=? AND status='serving'");
     $stmt->bind_param('ii', $ticketId, $officeId);
@@ -382,7 +383,7 @@ if ($action === 'complete_ticket') {
 }
 
 if ($action === 'skip_ticket') {
-    $ticketId = (int) ($_POST['ticket_id'] ?? 0);
+    $ticketId = requestInt($_POST, 'ticket_id') ?? 0;
 
     $stmt = $db->prepare("SELECT * FROM tickets WHERE id=? AND office_id=? AND status IN ('serving','waiting')");
     $stmt->bind_param('ii', $ticketId, $officeId);
@@ -401,7 +402,7 @@ if ($action === 'skip_ticket') {
 }
 
 if ($action === 'recall_ticket') {
-    $ticketId = (int) ($_POST['ticket_id'] ?? 0);
+    $ticketId = requestInt($_POST, 'ticket_id') ?? 0;
 
     $stmt = $db->prepare("SELECT id FROM tickets WHERE office_id=? AND status='serving' AND served_by=? LIMIT 1");
     $stmt->bind_param('ii', $officeId, $staffId);
@@ -462,7 +463,7 @@ if ($action === 'recall_ticket') {
 }
 
 if ($action === 'hold_ticket') {
-    $ticketId = (int) ($_POST['ticket_id'] ?? 0);
+    $ticketId = requestInt($_POST, 'ticket_id') ?? 0;
 
     $stmt = $db->prepare("SELECT * FROM tickets WHERE id=? AND office_id=? AND status='serving'");
     $stmt->bind_param('ii', $ticketId, $officeId);
@@ -487,7 +488,7 @@ if ($action === 'hold_ticket') {
 }
 
 if ($action === 'resume_ticket') {
-    $ticketId = (int) ($_POST['ticket_id'] ?? 0);
+    $ticketId = requestInt($_POST, 'ticket_id') ?? 0;
 
     $stmt = $db->prepare("SELECT id FROM tickets WHERE office_id=? AND status='serving' AND served_by=? LIMIT 1");
     $stmt->bind_param('ii', $officeId, $staffId);
@@ -522,10 +523,10 @@ if ($action === 'resume_ticket') {
 }
 
 if ($action === 'transfer_ticket') {
-    $ticketId       = (int) ($_POST['ticket_id'] ?? 0);
-    $targetOfficeId = (int) ($_POST['target_office_id'] ?? 0);
-    $targetServiceId = (int) ($_POST['target_service_id'] ?? 0);
-    $placement      = $_POST['placement'] ?? 'top';
+    $ticketId       = requestInt($_POST, 'ticket_id') ?? 0;
+    $targetOfficeId = requestInt($_POST, 'target_office_id') ?? 0;
+    $targetServiceId = requestOptionalInt($_POST, 'target_service_id') ?? 0;
+    $placement      = requestEnum($_POST, 'placement', ['top', 'bottom'], false) ?: 'top';
 
     if ($ticketId <= 0 || $targetOfficeId <= 0) {
         respond(['success' => false, 'message' => 'A valid ticket and department are required.']);
@@ -634,9 +635,9 @@ if ($action === 'transfer_ticket') {
 }
 
 if ($action === 'transfer_window') {
-    $ticketId = (int) ($_POST['ticket_id'] ?? 0);
-    $targetWindow = (int) ($_POST['target_window'] ?? 0);
-    $placement = $_POST['placement'] ?? 'top';
+    $ticketId = requestInt($_POST, 'ticket_id') ?? 0;
+    $targetWindow = requestInt($_POST, 'target_window') ?? 0;
+    $placement = requestEnum($_POST, 'placement', ['top', 'bottom'], false) ?: 'top';
 
     if ($ticketId <= 0 || $targetWindow <= 0) {
         respond(['success' => false, 'message' => 'A valid ticket and destination window are required.']);
@@ -727,7 +728,7 @@ if ($action === 'get_overflow_state') {
 }
 
 if ($action === 'get_office_services') {
-    $targetOfficeId = (int) ($_POST['target_office_id'] ?? 0);
+    $targetOfficeId = requestInt($_POST, 'target_office_id') ?? 0;
 
     if ($targetOfficeId <= 0) {
         respond(['success' => false, 'message' => 'Invalid target department.']);

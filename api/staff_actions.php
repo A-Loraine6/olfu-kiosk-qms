@@ -6,6 +6,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/request_validation.php';
 require_once __DIR__ . '/staff_functions.php';
 require_once __DIR__ . '/feedback_functions.php';
 
@@ -15,10 +16,10 @@ if (!isLoggedIn()) {
 }
 
 $input  = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-$action = $input['action'] ?? '';
-$csrf   = $input['csrf_token'] ?? '';
+$action = requestEnum($input, 'action', ['add_staff', 'edit_staff', 'get_windows_for_office', 'toggle_staff', 'delete_staff', 'reset_password', 'get_staff_feedback', 'get_staff_list']);
+$csrf   = requestString($input, 'csrf_token', 255, true);
 
-if (!verifyCsrfToken($csrf)) {
+if ($action === null || $csrf === null || !verifyCsrfToken($csrf)) {
     echo json_encode(['success' => false, 'message' => 'Invalid CSRF token.']);
     exit;
 }
@@ -56,39 +57,39 @@ $conn = $db->getConnection();
 switch ($action) {
 
     case 'add_staff':
+        if (!requestOptionalIntIsValid($input, 'window_number') || !requestOptionalIntIsValid($input, 'role_id')) {
+            echo json_encode(['success' => false, 'message' => 'Invalid staff assignment.']);
+            exit;
+        }
         $result = addStaff(
             $conn,
-            $input['full_name']     ?? '',
-            $input['email']         ?? '',
-            $input['password']      ?? '',
-            $input['office']        ?? '',
-            isset($input['window_number']) && $input['window_number'] !== ''
-                ? (int) $input['window_number']
-                : null,
-            isset($input['role_id']) && $input['role_id'] !== ''
-                ? (int) $input['role_id']
-                : null
+            requestString($input, 'full_name', 100, true) ?? '',
+            requestString($input, 'email', 100, true) ?? '',
+            requestString($input, 'password', 255, true) ?? '',
+            requestString($input, 'office', 100, true) ?? '',
+            requestOptionalInt($input, 'window_number'),
+            requestOptionalInt($input, 'role_id')
         );
         break;
 
     case 'edit_staff':
+        if (!requestOptionalIntIsValid($input, 'window_number') || !requestOptionalIntIsValid($input, 'role_id')) {
+            echo json_encode(['success' => false, 'message' => 'Invalid staff assignment.']);
+            exit;
+        }
         $result = updateStaff(
             $conn,
-            (int) ($input['staff_id'] ?? 0),
-            $input['full_name']     ?? '',
-            $input['email']         ?? '',
-            $input['office']        ?? '',
-            isset($input['window_number']) && $input['window_number'] !== ''
-                ? (int) $input['window_number']
-                : null,
-            isset($input['role_id']) && $input['role_id'] !== ''
-                ? (int) $input['role_id']
-                : null
+            requestInt($input, 'staff_id') ?? 0,
+            requestString($input, 'full_name', 100, true) ?? '',
+            requestString($input, 'email', 100, true) ?? '',
+            requestString($input, 'office', 100, true) ?? '',
+            requestOptionalInt($input, 'window_number'),
+            requestOptionalInt($input, 'role_id')
         );
         break;
 
     case 'get_windows_for_office':
-        $officeName = trim($input['office'] ?? '');
+        $officeName = requestString($input, 'office', 100, true);
         if (!$officeName) {
             echo json_encode(['success' => false, 'message' => 'No office specified.']);
             exit;
@@ -105,23 +106,26 @@ switch ($action) {
         exit;
 
     case 'toggle_staff':
-        $isActive = (bool) ($input['is_active'] ?? false);
+        $isActive = requestBool($input, 'is_active');
+        if ($isActive === null) { echo json_encode(['success' => false, 'message' => 'Invalid active status.']); exit; }
+        $staffId = requestInt($input, 'staff_id');
+        if ($staffId === null) { echo json_encode(['success' => false, 'message' => 'Invalid staff ID.']); exit; }
         if ($isActive) {
-            $result = deactivateStaff($conn, (int) ($input['staff_id'] ?? 0));
+            $result = deactivateStaff($conn, $staffId);
         } else {
-            $result = activateStaff($conn, (int) ($input['staff_id'] ?? 0));
+            $result = activateStaff($conn, $staffId);
         }
         break;
 
     case 'delete_staff':
-        $result = deleteStaff($conn, (int) ($input['staff_id'] ?? 0));
+        $result = deleteStaff($conn, requestInt($input, 'staff_id') ?? 0);
         break;
 
     case 'reset_password':
         $result = resetStaffPassword(
             $conn,
-            (int) ($input['staff_id']    ?? 0),
-            $input['new_password'] ?? ''
+            requestInt($input, 'staff_id') ?? 0,
+            requestString($input, 'new_password', 255, true) ?? ''
         );
         break;
 
@@ -131,8 +135,8 @@ switch ($action) {
             exit;
         }
 
-        $staffId = (int) ($input['staff_id'] ?? 0);
-        if ($staffId <= 0) {
+        $staffId = requestInt($input, 'staff_id');
+        if ($staffId === null) {
             echo json_encode(['success' => false, 'message' => 'Invalid staff member selected.']);
             exit;
         }
@@ -157,14 +161,15 @@ switch ($action) {
         $officeName->close();
         $staff['office_name'] = $officeRow['name'] ?? null;
 
-        $ratingFilter = isset($input['rating']) && $input['rating'] !== '' ? (int) $input['rating'] : null;
-        if ($ratingFilter !== null && ($ratingFilter < 1 || $ratingFilter > 5)) {
-            $ratingFilter = null;
+        if (!requestOptionalIntIsValid($input, 'rating', 1, 5) || !requestOptionalIntIsValid($input, 'page', 1) || !requestOptionalIntIsValid($input, 'limit', 1, 20)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid feedback filter.']);
+            exit;
         }
+        $ratingFilter = requestOptionalInt($input, 'rating', 1, 5);
 
         $allFeedback = getStaffFeedbackForStaff($conn, $staffId, $ratingFilter);
-        $page = max(1, (int) ($input['page'] ?? 1));
-        $limit = max(1, min(20, (int) ($input['limit'] ?? 5)));
+        $page = requestOptionalInt($input, 'page', 1) ?? 1;
+        $limit = requestOptionalInt($input, 'limit', 1, 20) ?? 5;
         $totalCount = count($allFeedback);
         $totalPages = max(1, (int) ceil($totalCount / $limit));
         $page = min($page, $totalPages);
@@ -190,14 +195,18 @@ switch ($action) {
         exit;
 
     case 'get_staff_list':
+        if (!requestOptionalIntIsValid($input, 'role') || !requestOptionalIntIsValid($input, 'page', 1) || !requestOptionalIntIsValid($input, 'limit', 1)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid staff list filter.']);
+            exit;
+        }
         $staff        = getAllStaff($conn);
-        $search       = strtolower(trim($input['search'] ?? ''));
-        $filterOffice = trim($input['office'] ?? '');
-        $filterStatus = $input['status'] ?? '';
-        $filterRole   = isset($input['role']) && $input['role'] !== '' ? (int)$input['role'] : null;
+        $search       = strtolower(requestString($input, 'search', 100) ?? '');
+        $filterOffice = requestString($input, 'office', 100) ?? '';
+        $filterStatus = requestEnum($input, 'status', ['active', 'inactive'], false) ?? '';
+        $filterRole   = requestOptionalInt($input, 'role');
 
-        $page  = max(1, (int) ($input['page']  ?? 1));
-        $limit = (int) ($input['limit'] ?? 10);
+        $page  = requestOptionalInt($input, 'page', 1) ?? 1;
+        $limit = requestOptionalInt($input, 'limit', 1) ?? 10;
         if (!in_array($limit, [10, 25, 50, 100])) $limit = 10;
 
         $filtered = array_filter($staff, function ($s) use ($search, $filterOffice, $filterStatus, $filterRole) {

@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/request_validation.php';
 require_once __DIR__ . '/../api/staff_functions.php';
 
 if (!isLoggedIn()) {
@@ -9,8 +10,8 @@ if (!isLoggedIn()) {
     exit;
 }
 
-$id = (int)($_POST['staff_id'] ?? 0);
-if (!$id) {
+$id = requestInt($_POST, 'staff_id');
+if ($id === null) {
     echo json_encode(['success' => false, 'message' => 'Invalid ID']);
     exit;
 }

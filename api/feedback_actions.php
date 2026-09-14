@@ -4,6 +4,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
 
 require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/request_validation.php';
 require_once __DIR__ . '/feedback_functions.php';
 
 $rawInput = file_get_contents('php://input');
@@ -20,36 +21,43 @@ if (empty($input) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = $_POST;
 }
 
-$action = trim((string) ($input['action'] ?? ''));
+$action = requestEnum($input, 'action', ['submit_feedback']);
 
 if ($action !== 'submit_feedback') {
     echo json_encode(['success' => false, 'message' => 'Invalid action.']);
     exit;
 }
 
-$trackingToken = trim((string) ($input['tracking_token'] ?? ''));
-$ticketId = (int) ($input['ticket_id'] ?? 0);
-$ticketNumber = trim((string) ($input['ticket_number'] ?? ''));
-$rating = (int) ($input['rating'] ?? 0);
-$comment = trim((string) ($input['comment'] ?? ''));
+$trackingToken = requestToken($input, 'tracking_token');
+$ticketId = requestOptionalInt($input, 'ticket_id') ?? 0;
+$ticketNumber = requestString($input, 'ticket_number', 50);
+$rating = requestInt($input, 'rating', 1, 5);
+$comment = requestString($input, 'comment', 1000);
 
-if ($rating < 1 || $rating > 5) {
-    echo json_encode(['success' => false, 'message' => 'Please select a rating between 1 and 5.']);
+if (
+    $action === null
+    || $rating === null
+    || validComment((string) ($input['comment'] ?? '')) === null
+    || (array_key_exists('tracking_token', $input) && $trackingToken === null)
+    || (array_key_exists('ticket_number', $input) && ($input['ticket_number'] !== '' && $ticketNumber === null))
+    || (array_key_exists('ticket_id', $input) && $input['ticket_id'] !== '' && requestOptionalInt($input, 'ticket_id') === null)
+) {
+    echo json_encode(['success' => false, 'message' => 'Please provide valid feedback details.']);
     exit;
 }
 
-if (mb_strlen($comment) > 1000) {
+if ($comment === null || validComment($comment) === null) {
     echo json_encode(['success' => false, 'message' => 'Feedback comment is too long.']);
     exit;
 }
 
-if ($trackingToken === '' && $ticketId <= 0 && $ticketNumber === '') {
+if ($trackingToken === null && $ticketId <= 0 && ($ticketNumber === null || $ticketNumber === '')) {
     echo json_encode(['success' => false, 'message' => 'Missing ticket reference.']);
     exit;
 }
 
 $ticket = null;
-if ($trackingToken !== '') {
+if ($trackingToken !== null) {
     $stmt = $db->prepare(
         'SELECT id, ticket_number, office_id, served_by, status FROM tickets WHERE tracking_token = ? LIMIT 1'
     );

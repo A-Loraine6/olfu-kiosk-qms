@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../includes/request_validation.php';
+
 function ensureStaffFeedbackTable($db): void
 {
     $sql = "
@@ -24,22 +26,22 @@ function ensureStaffFeedbackTable($db): void
 
 function saveStaffFeedback($db, array $data): array
 {
-    $staffId = (int) ($data['staff_id'] ?? 0);
-    $officeId = (int) ($data['office_id'] ?? 0);
-    $ticketId = (int) ($data['ticket_id'] ?? 0);
-    $ticketNumber = trim((string) ($data['ticket_number'] ?? ''));
-    $rating = (int) ($data['rating'] ?? 0);
-    $comment = trim((string) ($data['comment'] ?? ''));
+    $staffId = filter_var($data['staff_id'] ?? null, FILTER_VALIDATE_INT);
+    $officeId = filter_var($data['office_id'] ?? null, FILTER_VALIDATE_INT);
+    $ticketId = filter_var($data['ticket_id'] ?? null, FILTER_VALIDATE_INT);
+    $ticketNumber = validTicketNumber((string) ($data['ticket_number'] ?? ''));
+    $rating = filter_var($data['rating'] ?? null, FILTER_VALIDATE_INT);
+    $comment = validComment((string) ($data['comment'] ?? ''));
 
-    if ($staffId <= 0) {
+    if ($staffId === false || $staffId <= 0 || $officeId === false || $officeId <= 0 || $ticketId === false || $ticketId <= 0) {
         return ['success' => false, 'message' => 'Invalid staff member.'];
     }
 
-    if ($rating < 1 || $rating > 5) {
+    if ($rating === false || $rating < 1 || $rating > 5) {
         return ['success' => false, 'message' => 'Please select a rating between 1 and 5.'];
     }
 
-    if (mb_strlen($comment) > 1000) {
+    if ($comment === null) {
         return ['success' => false, 'message' => 'Feedback comment is too long.'];
     }
 

@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/request_validation.php';
 
 global $db;
 
@@ -11,9 +12,9 @@ if (!isLoggedIn()) {
 }
 
 $input  = json_decode(file_get_contents('php://input'), true) ?? [];
-$action = $input['action'] ?? '';
+$action = requestEnum($input, 'action', ['staff_metrics', 'daily_report', 'office_performance', 'peak_hours', 'department_demand', 'day_breakdown', 'day_of_week_volume', 'transaction_types']);
 
-if (!verifyCsrfToken($input['csrf_token'] ?? '')) {
+if ($action === null || !verifyCsrfToken(requestString($input, 'csrf_token', 255, true) ?? '')) {
     echo json_encode(['success' => false, 'message' => 'Invalid CSRF token.']);
     exit;
 }
@@ -38,8 +39,9 @@ if ($action === 'staff_metrics') {
 
     $userId   = (int) $currentUser['id'];
     $officeId = (int) ($currentUser['office_id'] ?? 0);
-    $from     = date('Y-m-d', strtotime($input['date_from'] ?? date('Y-m-d')));
-    $to       = date('Y-m-d', strtotime($input['date_to']   ?? date('Y-m-d')));
+    $from     = requestDate($input, 'date_from', date('Y-m-d'));
+    $to       = requestDate($input, 'date_to', date('Y-m-d'));
+    if ($from === null || $to === null || $from > $to) { echo json_encode(['success' => false, 'message' => 'Invalid date range.']); exit; }
 
     $stmt = $conn->prepare("
         SELECT
@@ -87,16 +89,13 @@ if ($action === 'daily_report') {
         exit;
     }
 
-    $from = $input['date_from'] ?? date('Y-m-d');
-    $to   = $input['date_to']   ?? date('Y-m-d');
-    $office_id = $input['office_id'] ?? null;
-
-    $from = date('Y-m-d', strtotime($from));
-    $to   = date('Y-m-d', strtotime($to));
+    $from = requestDate($input, 'date_from', date('Y-m-d'));
+    $to = requestDate($input, 'date_to', date('Y-m-d'));
+    $office_id = requestOptionalInt($input, 'office_id');
+    if ($from === null || $to === null || $from > $to) { echo json_encode(['success' => false, 'message' => 'Invalid date range.']); exit; }
 
     $where = "DATE(created_at) BETWEEN ? AND ?";
     if ($office_id) {
-        $office_id = (int) $office_id;
         $where .= " AND office_id = $office_id";
     }
 
@@ -165,16 +164,12 @@ if ($action === 'office_performance') {
         exit;
     }
 
-    $from = $input['date_from'] ?? date('Y-m-d');
-    $to   = $input['date_to']   ?? date('Y-m-d');
-    $office_id = $input['office_id'] ?? null;
+    $from = requestDate($input, 'date_from', date('Y-m-d'));
+    $to = requestDate($input, 'date_to', date('Y-m-d'));
+    $office_id = requestOptionalInt($input, 'office_id');
+    if ($from === null || $to === null || $from > $to) { echo json_encode(['success' => false, 'message' => 'Invalid date range.']); exit; }
 
-    $from = date('Y-m-d', strtotime($from));
-    $to   = date('Y-m-d', strtotime($to));
-
-    $office_id = $input['office_id'] ?? null;
     if ($office_id) {
-        $office_id = (int) $office_id;
         $stmt = $conn->prepare("
     SELECT
         o.id, o.name,
@@ -244,14 +239,14 @@ if ($action === 'peak_hours') {
         exit;
     }
 
-    $from = date('Y-m-d', strtotime($input['date_from'] ?? date('Y-m-d')));
-    $to   = date('Y-m-d', strtotime($input['date_to']   ?? date('Y-m-d')));
-    $office_id = $input['office_id'] ?? null;
+    $from = requestDate($input, 'date_from', date('Y-m-d'));
+    $to = requestDate($input, 'date_to', date('Y-m-d'));
+    $office_id = requestOptionalInt($input, 'office_id');
+    if ($from === null || $to === null || $from > $to) { echo json_encode(['success' => false, 'message' => 'Invalid date range.']); exit; }
 
     $openHour  = 0;
     $closeHour = 23;
     if ($office_id) {
-        $office_id = (int) $office_id;
         $ohStmt = $conn->prepare("SELECT open_time, close_time FROM offices WHERE id = ? LIMIT 1");
         $ohStmt->bind_param('i', $office_id);
         $ohStmt->execute();
@@ -308,12 +303,10 @@ if ($action === 'department_demand') {
         exit;
     }
 
-    $from = $input['date_from'] ?? date('Y-m-d');
-    $to   = $input['date_to']   ?? date('Y-m-d');
-    $office_id = $input['office_id'] ?? null;
-
-    $from = date('Y-m-d', strtotime($from));
-    $to   = date('Y-m-d', strtotime($to));
+    $from = requestDate($input, 'date_from', date('Y-m-d'));
+    $to = requestDate($input, 'date_to', date('Y-m-d'));
+    $office_id = requestOptionalInt($input, 'office_id');
+    if ($from === null || $to === null || $from > $to) { echo json_encode(['success' => false, 'message' => 'Invalid date range.']); exit; }
 
     $stmt = $conn->prepare("
     SELECT
@@ -349,16 +342,13 @@ if ($action === 'day_breakdown') {
         exit;
     }
 
-    $from = $input['date_from'] ?? date('Y-m-d');
-    $to   = $input['date_to']   ?? date('Y-m-d');
-    $office_id = $input['office_id'] ?? null;
-
-    $from = date('Y-m-d', strtotime($from));
-    $to   = date('Y-m-d', strtotime($to));
+    $from = requestDate($input, 'date_from', date('Y-m-d'));
+    $to = requestDate($input, 'date_to', date('Y-m-d'));
+    $office_id = requestOptionalInt($input, 'office_id');
+    if ($from === null || $to === null || $from > $to) { echo json_encode(['success' => false, 'message' => 'Invalid date range.']); exit; }
 
     $where = "DATE(created_at) BETWEEN ? AND ?";
     if ($office_id) {
-        $office_id = (int) $office_id;
         $where .= " AND office_id = $office_id";
     }
 
@@ -398,16 +388,13 @@ if ($action === 'day_of_week_volume') {
         exit;
     }
 
-    $from = $input['date_from'] ?? date('Y-m-d');
-    $to   = $input['date_to']   ?? date('Y-m-d');
-    $office_id = $input['office_id'] ?? null;
-
-    $from = date('Y-m-d', strtotime($from));
-    $to   = date('Y-m-d', strtotime($to));
+    $from = requestDate($input, 'date_from', date('Y-m-d'));
+    $to = requestDate($input, 'date_to', date('Y-m-d'));
+    $office_id = requestOptionalInt($input, 'office_id');
+    if ($from === null || $to === null || $from > $to) { echo json_encode(['success' => false, 'message' => 'Invalid date range.']); exit; }
 
     $where = "DATE(created_at) BETWEEN ? AND ?";
     if ($office_id) {
-        $office_id = (int) $office_id;
         $where .= " AND office_id = $office_id";
     }
 
@@ -446,16 +433,13 @@ if ($action === 'transaction_types') {
         exit;
     }
 
-    $from = $input['date_from'] ?? date('Y-m-d');
-    $to   = $input['date_to']   ?? date('Y-m-d');
-    $office_id = $input['office_id'] ?? null;
-
-    $from = date('Y-m-d', strtotime($from));
-    $to   = date('Y-m-d', strtotime($to));
+    $from = requestDate($input, 'date_from', date('Y-m-d'));
+    $to = requestDate($input, 'date_to', date('Y-m-d'));
+    $office_id = requestOptionalInt($input, 'office_id');
+    if ($from === null || $to === null || $from > $to) { echo json_encode(['success' => false, 'message' => 'Invalid date range.']); exit; }
 
     $where = "DATE(created_at) BETWEEN ? AND ?";
     if ($office_id) {
-        $office_id = (int) $office_id;
         $where .= " AND office_id = $office_id";
     }
 

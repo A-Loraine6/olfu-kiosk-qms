@@ -6,6 +6,7 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/request_validation.php';
 require_once __DIR__ . '/utils/TicketGenerator.php';
 
 date_default_timezone_set('Asia/Manila');
@@ -17,10 +18,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$office_id   = isset($_POST['office_id']) ? (int)$_POST['office_id'] : 0;
-$is_priority = isset($_POST['is_priority']) && $_POST['is_priority'] === '1';
+$office_id   = requestInt($_POST, 'office_id');
+$is_priority = requestBool($_POST, 'is_priority', false);
 
-if (!$office_id) {
+if ($office_id === null || $is_priority === null) {
     ob_end_clean();
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Office ID is required']);
