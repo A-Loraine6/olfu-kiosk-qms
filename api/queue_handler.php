@@ -553,7 +553,6 @@ if ($action === 'transfer_ticket') {
         respond(['success' => false, 'message' => 'Only active or waiting tickets can be transferred.']);
     }
 
-    // --- resolve destination service ---
     $targetQueueMode    = getOfficeQueueMode($db, $targetOfficeId);
     $newTransactionType = $ticket['transaction_type']; // default: carry over as-is for unified offices
 

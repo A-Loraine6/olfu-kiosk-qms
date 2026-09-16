@@ -28,8 +28,6 @@ function selectPriority(isPriority) {
       showScreen(1);
     })
     .catch(() => {
-      // Fail open: if the status check itself fails (network blip),
-      // don't block a legitimate user — let them proceed.
       state.isPriority = isPriority;
       updatePriorityPills();
       state.history = [0, 1];

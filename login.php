@@ -80,13 +80,6 @@ $csrf_token = getCsrfToken();
                 <p>Sign in to your account to continue.</p>
             </div>
 
-            <?php if ($error): ?>
-                <div class="alert alert-error">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <span><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></span>
-                </div>
-            <?php endif; ?>
-
             <form method="POST" novalidate>
                 <input type="hidden" name="csrf_token"
                     value="<?php echo htmlspecialchars($csrf_token, ENT_QUOTES, 'UTF-8'); ?>">
@@ -109,6 +102,9 @@ $csrf_token = getCsrfToken();
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
+                    <div class="forgot-password-row">
+                        <a href="forgot_password.php">Forgot password?</a>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn-submit">
@@ -118,6 +114,13 @@ $csrf_token = getCsrfToken();
 
         </div>
     </div>
+
+    <div id="toast-container"></div>
+    <?php if ($error): ?>
+        <script>
+            window.loginToast = <?php echo json_encode(['message' => $error, 'type' => 'error'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+        </script>
+    <?php endif; ?>
 
     <script src="scripts/login.js"></script>
 </body>

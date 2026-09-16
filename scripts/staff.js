@@ -535,7 +535,7 @@ const LOG_META = {
   STAFF_DELETE: { label: "Delete Staff", cls: "log-danger" },
   STAFF_ACTIVATE: { label: "Activate Staff", cls: "log-success" },
   STAFF_DEACTIVATE: { label: "Deactivate Staff", cls: "log-danger" },
-  PASSWORD_RESET: { label: "Staff Password Reset", cls: "log-warning" },
+  PASSWORD_RESET: { label: "Password Reset", cls: "log-warning" },
 
   ROLE_CHANGE: { label: "Role Change", cls: "log-warning" },
   OFFICE_ASSIGN: { label: "Office Assignment", cls: "log-info" },
@@ -671,7 +671,6 @@ function renderFeedbackRatingChips(summary = {}) {
     { value: 1, label: "1 star" },
   ].filter(({ value }) => Number(summary[String(value)] ?? 0) > 0);
 
-  // No ratings at all: hide the filter bar entirely.
   if (starOptions.length === 0) {
     container.innerHTML = "";
     container.style.display = "none";
@@ -681,12 +680,10 @@ function renderFeedbackRatingChips(summary = {}) {
 
   container.style.display = "";
 
-  // If the active filter points at a rating that's no longer available, reset to "All".
   if (feedbackRatingFilter !== null && !starOptions.some((o) => o.value === feedbackRatingFilter)) {
     feedbackRatingFilter = null;
   }
 
-  // Only show "All" plus whichever star values this staff member actually has.
   const options = [{ value: null, label: "All" }, ...starOptions];
 
   container.innerHTML = options

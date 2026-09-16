@@ -17,8 +17,6 @@
         ? savedState === 'collapsed'
         : window.matchMedia('(max-width: 860px)').matches;
 
-    // Give every nav link a title attribute so hovering an icon-only link
-    // (collapsed state) still shows its label as a native tooltip.
     document.querySelectorAll('.sidebar-nav a').forEach(function (link) {
         if (link.hasAttribute('title')) return;
         const label = link.querySelector('span')?.textContent?.trim();
@@ -50,8 +48,6 @@
         setState(!isCollapsed, true);
     });
 
-    // Keep default state sensible if the viewport crosses the mobile breakpoint
-    // and the user hasn't explicitly chosen a state yet.
     if (!savedState) {
         window.addEventListener('resize', function () {
             if (savedState) return;

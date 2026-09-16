@@ -183,7 +183,7 @@ switch ($action) {
                 'STAFF_DELETE'             => 'Delete Staff',
                 'STAFF_ACTIVATE'           => 'Activate Staff',
                 'STAFF_DEACTIVATE'         => 'Deactivate Staff',
-                'PASSWORD_RESET'           => 'Staff Password Reset',
+                'PASSWORD_RESET'           => 'Password Reset',
                 'PASSWORD_CHANGE'          => 'Password Changed',
                 'PROFILE_UPDATE'           => 'Profile Updated',
                 'SERVICE_ADD'              => 'Add Service',

@@ -210,6 +210,12 @@ body::after {
   border: 1px solid #fecaca;
 }
 
+.alert-info {
+  background: #eff8f2;
+  color: #176b3a;
+  border: 1px solid #b9e3c8;
+}
+
 .form-group {
   margin-bottom: 18px;
 }
@@ -282,6 +288,41 @@ input::placeholder {
 
 .pwd-toggle:hover {
   color: #008b43;
+}
+
+.forgot-password-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 5px;
+  margin-bottom: 4px;
+}
+
+.forgot-password-row a,
+.recovery-link {
+  color: #008b43;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.forgot-password-row a:hover,
+.recovery-link:hover {
+  text-decoration: underline;
+}
+
+.recovery-link {
+  display: block;
+  margin-top: 22px;
+  text-align: center;
+}
+
+.recovery-link i {
+  margin-right: 5px;
+}
+
+.recovery-button {
+  text-decoration: none;
+  text-align: center;
 }
 
 .btn-submit {

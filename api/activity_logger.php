@@ -256,7 +256,7 @@ function formatActivityLog(array $log): array
         'STAFF_DELETE'             => 'Delete Staff',
         'STAFF_ACTIVATE'           => 'Activate Staff',
         'STAFF_DEACTIVATE'         => 'Deactivate Staff',
-        'PASSWORD_RESET'           => 'Staff Password Reset',
+        'PASSWORD_RESET'           => 'Password Reset',
         'ROLE_CHANGE'              => 'Role Change',
         'OFFICE_ASSIGN'            => 'Office Assignment',
 
