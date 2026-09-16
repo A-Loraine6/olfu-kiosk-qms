@@ -6,12 +6,6 @@ if (isLoggedIn()) {
     exit;
 }
 
-if (($_GET['restart'] ?? '') === '1') {
-    unset($_SESSION['password_reset_email'], $_SESSION['password_reset_ticket'], $_SESSION['password_reset_expires']);
-    header('Location: forgot_password.php');
-    exit;
-}
-
 $message = '';
 $messageType = 'success';
 $csrfToken = getCsrfToken();
@@ -31,11 +25,15 @@ if (!empty($_SESSION['password_reset_email']) && !empty($_SESSION['password_rese
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $csrf = requestString($_POST, 'csrf_token', 255, true) ?? '';
-    $action = requestEnum($_POST, 'action', ['request_otp', 'resend_otp', 'verify_otp', 'reset_password'], false) ?: '';
+    $action = requestEnum($_POST, 'action', ['request_otp', 'resend_otp', 'verify_otp', 'reset_password', 'restart'], false) ?: '';
 
     if (!verifyCsrfToken($csrf)) {
         $message = 'Invalid request. Please refresh and try again.';
         $messageType = 'error';
+    } elseif ($action === 'restart') {
+        unset($_SESSION['password_reset_email'], $_SESSION['password_reset_ticket'], $_SESSION['password_reset_expires']);
+        header('Location: forgot_password.php');
+        exit;
     } elseif ($action === 'request_otp' || $action === 'resend_otp') {
         $email = validEmail((string) ($_POST['email'] ?? ($_SESSION['password_reset_email'] ?? '')), 100);
         if ($email === null) {
@@ -185,11 +183,15 @@ if (!empty($_SESSION['password_reset_email'])) {
                 </form>
                 <div class="fp-aux-row">
                     <button type="submit" form="fp-resend-form" class="fp-link-btn">Resend code</button>
-                    <a href="forgot_password.php?restart=1" class="fp-link-btn">Use a different email</a>
+                    <button type="submit" form="fp-restart-form" class="fp-link-btn">Use a different email</button>
                 </div>
                 <form id="fp-resend-form" method="POST" class="fp-hidden-form">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                     <input type="hidden" name="action" value="resend_otp">
+                </form>
+                <form id="fp-restart-form" method="POST" class="fp-hidden-form">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="action" value="restart">
                 </form>
 
             <?php elseif ($step === 'password'): ?>

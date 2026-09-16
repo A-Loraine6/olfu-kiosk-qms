@@ -5,6 +5,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
 require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/request_validation.php';
+require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/feedback_functions.php';
 
 $rawInput = file_get_contents('php://input');
@@ -22,6 +23,12 @@ if (empty($input) && $_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $action = requestEnum($input, 'action', ['submit_feedback']);
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verifyCsrfToken(requestString($input, 'csrf_token', 255, true) ?? '')) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Invalid request. Please refresh and try again.']);
+    exit;
+}
 
 if ($action !== 'submit_feedback') {
     echo json_encode(['success' => false, 'message' => 'Invalid action.']);

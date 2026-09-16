@@ -10,6 +10,11 @@ if (!isLoggedIn()) {
     exit;
 }
 
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !verifyCsrfToken(requestString($_POST, 'csrf_token', 255, true) ?? '')) {
+    echo json_encode(['success' => false, 'message' => 'Invalid request. Please refresh and try again.']);
+    exit;
+}
+
 $id = requestInt($_POST, 'staff_id');
 if ($id === null) {
     echo json_encode(['success' => false, 'message' => 'Invalid ID']);

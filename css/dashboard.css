@@ -255,7 +255,8 @@ body {
   gap: 2px;
 }
 
-.sidebar-nav a {
+.sidebar-nav a,
+.sidebar-nav button.nav-logout {
   color: rgba(255, 255, 255, 0.72);
   text-decoration: none;
   font-size: 13.5px;
@@ -269,9 +270,16 @@ body {
     background var(--t) var(--ease),
     color var(--t) var(--ease);
   letter-spacing: -0.01em;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.sidebar-nav a i {
+.sidebar-nav a i,
+.sidebar-nav button.nav-logout i {
   font-size: 14px;
   width: 18px;
   text-align: center;
@@ -279,7 +287,8 @@ body {
   opacity: 0.8;
 }
 
-.sidebar-nav a:hover {
+.sidebar-nav a:hover,
+.sidebar-nav button.nav-logout:hover {
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
 }
@@ -307,7 +316,8 @@ body {
 .sidebar-collapsed .sidebar-title,
 .sidebar-collapsed .nav-label,
 .sidebar-collapsed .sidebar-user-info,
-.sidebar-collapsed .sidebar-nav a span {
+.sidebar-collapsed .sidebar-nav a span,
+.sidebar-collapsed .sidebar-nav button.nav-logout span {
   opacity: 0;
   visibility: hidden;
   width: 0;
@@ -352,7 +362,8 @@ body {
   gap: 6px;
 }
 
-.sidebar-collapsed .sidebar-nav a {
+.sidebar-collapsed .sidebar-nav a,
+.sidebar-collapsed .sidebar-nav button.nav-logout {
   width: 44px;
   height: 44px;
   margin: 0 auto;
@@ -361,13 +372,15 @@ body {
   border-radius: 10px;
 }
 
-.sidebar-collapsed .sidebar-nav a i {
+.sidebar-collapsed .sidebar-nav a i,
+.sidebar-collapsed .sidebar-nav button.nav-logout i {
   margin: 0;
   font-size: 16px;
   opacity: 0.85;
 }
 
 .sidebar-collapsed .sidebar-nav a:hover i,
+.sidebar-collapsed .sidebar-nav button.nav-logout:hover i,
 .sidebar-collapsed .sidebar-nav a.active i {
   opacity: 1;
 }
