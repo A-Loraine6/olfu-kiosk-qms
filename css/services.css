@@ -324,8 +324,6 @@
   }
 }
 
-/* Scroll region for the table only, so overflow never pushes the whole
-   page (or gets silently clipped by html/body overflow-x: hidden). */
 .services-table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
