@@ -213,7 +213,7 @@
 .col-actions {
   display: flex;
   gap: 8px;
-  justify-content: center; /* was flex-end */
+  justify-content: center;
 }
 
 .btn-restore-item,

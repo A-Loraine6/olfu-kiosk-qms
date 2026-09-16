@@ -735,6 +735,79 @@
   transition: background 1.8s ease;
 }
 
+.otp-modal-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.otp-modal-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--primary-ghost);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.otp-modal-icon i {
+  margin: 0;
+}
+
+#otpVerificationModal .modal-header h2 {
+  gap: 0;
+}
+
+.otp-input-lg {
+  width: 100%;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--bg);
+  font-family: var(--font-mono), monospace;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 10px;
+  text-align: center;
+  color: var(--text-1);
+  outline: none;
+  transition:
+    border-color var(--t) var(--ease),
+    box-shadow var(--t) var(--ease),
+    background var(--t) var(--ease);
+}
+
+.otp-input-lg::placeholder {
+  letter-spacing: 2px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+.otp-input-lg:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-ghost);
+  background: var(--surface);
+}
+
+.otp-resend-link {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--primary);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.otp-resend-link:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 1024px) {
   .profile-grid {
     grid-template-columns: 1fr;

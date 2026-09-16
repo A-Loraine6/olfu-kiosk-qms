@@ -88,7 +88,6 @@ body {
   transition: width 0.28s var(--ease);
   z-index: 200;
 
-  /* Minimized, unobtrusive scrollbar - thin, and invisible until hovered */
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
 }
@@ -305,8 +304,6 @@ body {
   margin-top: 0;
 }
 
-/* ===== Collapsed sidebar state ===== */
-
 .sidebar-collapsed .sidebar-title,
 .sidebar-collapsed .nav-label,
 .sidebar-collapsed .sidebar-user-info,
@@ -329,10 +326,6 @@ body {
   padding: 20px 10px 16px;
 }
 
-/* Toggle button: take it out of absolute positioning when collapsed so it
-   can't overlap the logo. It's first in the DOM, so removing the absolute
-   positioning lets it stack naturally above the logo, centered by the
-   parent's flexbox. */
 .sidebar-collapsed .sidebar-toggle {
   position: static;
   top: auto;
@@ -359,7 +352,6 @@ body {
   gap: 6px;
 }
 
-/* Uniform rounded icon buttons instead of a bare centered icon */
 .sidebar-collapsed .sidebar-nav a {
   width: 44px;
   height: 44px;
@@ -380,8 +372,6 @@ body {
   opacity: 1;
 }
 
-/* Swap the left-edge active indicator (fine on a full-width row, odd on a
-   centered square icon) for a filled background instead */
 .sidebar-collapsed .sidebar-nav a.active {
   box-shadow: none;
   background: rgba(255, 255, 255, 0.18);

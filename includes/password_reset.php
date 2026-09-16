@@ -80,7 +80,7 @@ function createAndSendResetOtp($db, array $user): bool
     return $sent;
 }
 
-function sendPasswordResetOtpEmail(array $user, string $otp): bool
+function sendPasswordResetOtpEmail(array $user, string $otp, string $purpose = 'account recovery'): bool
 {
     if (MAIL_HOST === '' || MAIL_USERNAME === '' || MAIL_PASSWORD === '' || MAIL_FROM_ADDRESS === '') {
         error_log('Password reset email is not configured.');
@@ -103,32 +103,53 @@ function sendPasswordResetOtpEmail(array $user, string $otp): bool
         $mailer->setFrom(MAIL_FROM_ADDRESS, MAIL_FROM_NAME);
         $mailer->addAddress($user['email'], $user['full_name']);
         $mailer->isHTML(true);
-        $mailer->Subject = APP_NAME . ' — password recovery code';
+
+        $purposeTitle = ucwords($purpose);
+        $mailer->Subject = APP_NAME . ' verification code: ' . $otp;
 
         $safeName = htmlspecialchars($user['full_name'], ENT_QUOTES, 'UTF-8');
         $safeApp = htmlspecialchars(APP_NAME, ENT_QUOTES, 'UTF-8');
         $safeOtp = htmlspecialchars($otp, ENT_QUOTES, 'UTF-8');
+        $safePurpose = htmlspecialchars($purpose, ENT_QUOTES, 'UTF-8');
         $minutes = (int) (PASSWORD_RESET_OTP_TTL / 60);
+        $year = date('Y');
 
         $mailer->Body = <<<HTML
         <div style="background:#f0f4f1;padding:32px 16px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8e4;">
             <tr>
-              <td style="background:#12331f;padding:24px 32px;">
+              <td style="background:#12331f;padding:22px 32px;">
                 <span style="color:#ffffff;font-size:16px;font-weight:600;letter-spacing:.2px;">{$safeApp}</span>
               </td>
             </tr>
             <tr>
-              <td style="padding:32px;">
+              <td style="padding:32px 32px 28px;">
                 <p style="margin:0 0 4px;color:#0f2417;font-size:16px;">Hi {$safeName},</p>
-                <p style="margin:0 0 24px;color:#4b5f54;font-size:14px;line-height:1.6;">
-                  Use this code to finish recovering your account. It expires in {$minutes} minutes.
+                <p style="margin:0 0 26px;color:#4b5f54;font-size:14px;line-height:1.6;">
+                  Here's the verification code to confirm your {$safePurpose}. Enter it within {$minutes} minutes to continue.
                 </p>
-                <div style="background:#f0f6f2;border:1px solid #d8e6dc;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px;">
-                  <span style="font-size:32px;font-weight:700;letter-spacing:10px;color:#12331f;">{$safeOtp}</span>
-                </div>
+
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f0f6f2;border:1px solid #d8e6dc;border-radius:12px;margin-bottom:12px;">
+                  <tr>
+                    <td style="padding:20px;text-align:center;">
+                        <span style="font-size:32px;font-weight:700;letter-spacing:10px;color:#12331f;font-family:'DM Mono',Consolas,monospace;">{$safeOtp}</span>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:0 0 26px;color:#9aa8a0;font-size:12px;text-align:center;">
+                  Valid for {$minutes} minutes. For your security, don't share this code with anyone.
+                </p>
+
                 <p style="margin:0;color:#7c8d82;font-size:13px;line-height:1.6;">
-                  Didn't request this? You can safely ignore this email — your password will stay the same.
+                  If you didn't request this, you can safely ignore this email — no changes will be made to your account.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 32px 24px;border-top:1px solid #eef2ef;">
+                <p style="margin:0;color:#a3aea8;font-size:11px;line-height:1.6;text-align:center;">
+                  This is an automated message — please don't reply directly to this email.<br>
+                  &copy; {$year} {$safeApp}
                 </p>
               </td>
             </tr>
@@ -136,7 +157,12 @@ function sendPasswordResetOtpEmail(array $user, string $otp): bool
         </div>
         HTML;
 
-        $mailer->AltBody = "Your {$safeApp} password recovery code is: {$otp}\nThis code expires in {$minutes} minutes.\nIf you didn't request this, you can ignore this email.";
+        $mailer->AltBody = "Hi {$user['full_name']},\n\n"
+            . "Here's the verification code to confirm your {$purpose}: {$otp}\n\n"
+            . "This code is valid for {$minutes} minutes. For your security, don't share it with anyone.\n\n"
+            . "If you didn't request this, you can safely ignore this email — no changes will be made to your account.\n\n"
+            . "This is an automated message from " . APP_NAME . ".";
+
         $mailer->send();
         return true;
     } catch (Exception $exception) {
@@ -251,4 +277,30 @@ function clearPasswordResetToken($db, int $userId): void
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $stmt->close();
+}
+
+function createAndSendPasswordChangeOtp($db, array $user): bool
+{
+    if (MAIL_HOST === '' || MAIL_USERNAME === '' || MAIL_PASSWORD === '' || MAIL_FROM_ADDRESS === '') {
+        error_log('Password change verification email is not configured.');
+        return false;
+    }
+
+    $otp = (string) random_int(100000, 999999);
+    $tokenHash = hash('sha256', $otp);
+    $expiresAt = date('Y-m-d H:i:s', time() + PASSWORD_RESET_OTP_TTL);
+    $update = $db->prepare(
+        'UPDATE users SET password_reset_token = ?, password_reset_expires = ? WHERE id = ?'
+    );
+    if (!$update) {
+        return false;
+    }
+    $update->bind_param('ssi', $tokenHash, $expiresAt, $user['id']);
+    $saved = $update->execute();
+    $update->close();
+    $sent = $saved && sendPasswordResetOtpEmail($user, $otp, 'password change');
+    if (!$sent && $saved) {
+        clearPasswordResetToken($db, (int) $user['id']);
+    }
+    return $sent;
 }

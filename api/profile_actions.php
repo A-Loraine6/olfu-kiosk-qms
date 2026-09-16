@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/request_validation.php';
+require_once __DIR__ . '/../includes/password_reset.php';
 require_once __DIR__ . '/activity_logger.php';
 
 header('Content-Type: application/json');
@@ -13,7 +14,7 @@ if (!isLoggedIn()) {
 }
 
 $body   = json_decode(file_get_contents('php://input'), true) ?? [];
-$action = requestEnum($body, 'action', ['update_profile', 'change_password', 'get_activity']);
+$action = requestEnum($body, 'action', ['update_profile', 'request_password_change_otp', 'change_password', 'get_activity']);
 $csrf   = requestString($body, 'csrf_token', 255, true);
 
 if ($action === null || $csrf === null || !verifyCsrfToken($csrf)) {
@@ -25,6 +26,47 @@ $currentUser = getCurrentUser();
 $conn        = $db->getConnection();
 
 switch ($action) {
+
+    case 'request_password_change_otp': {
+            $currentPw = is_string($body['current_password'] ?? null)
+                ? validPassword($body['current_password']) : null;
+            $isPrivileged = ($currentUser['role_id'] ?? null) === 1
+                || strtolower(trim((string) ($currentUser['role'] ?? ''))) === 'admin'
+                || in_array(strtolower(trim((string) ($currentUser['role'] ?? ''))), ['department head', 'department_head', 'department-head'], true);
+
+            if (!$isPrivileged) {
+                echo json_encode(['success' => false, 'message' => 'Email verification is not required for this account.']);
+                exit;
+            }
+            if ($currentPw === null) {
+                echo json_encode(['success' => false, 'message' => 'Current password is required.']);
+                exit;
+            }
+
+            $stmt = $conn->prepare('SELECT id, full_name, email, password FROM users WHERE id = ? AND is_active = 1 AND is_deleted = 0 LIMIT 1');
+            $stmt->bind_param('i', $currentUser['id']);
+            $stmt->execute();
+            $user = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+
+            if (!$user || !password_verify($currentPw, $user['password'])) {
+                echo json_encode(['success' => false, 'message' => 'Current password is incorrect.']);
+                exit;
+            }
+            $otpIdentifiers = passwordOtpIdentifiers($user['email']);
+            if (getLoginLockoutSeconds($conn, $otpIdentifiers) > 0) {
+                echo json_encode(['success' => false, 'message' => 'Too many verification requests. Please wait and try again.']);
+                exit;
+            }
+            recordLoginFailure($conn, $otpIdentifiers);
+            if (!createAndSendPasswordChangeOtp($conn, $user)) {
+                echo json_encode(['success' => false, 'message' => 'Unable to send the verification code. Please try again later.']);
+                exit;
+            }
+
+            echo json_encode(['success' => true, 'message' => 'A verification code was sent to your email.']);
+            break;
+        }
 
     case 'update_profile': {
             $fullNameInput   = requestString($body, 'full_name', 100, true);
@@ -135,11 +177,32 @@ switch ($action) {
                 exit;
             }
 
+            $isPrivileged = ($currentUser['role_id'] ?? null) === 1
+                || strtolower(trim((string) ($currentUser['role'] ?? ''))) === 'admin'
+                || in_array(strtolower(trim((string) ($currentUser['role'] ?? ''))), ['department head', 'department_head', 'department-head'], true);
+            if ($isPrivileged) {
+                $otp = requestString($body, 'verification_otp', 6, true) ?? '';
+                $verificationTicket = preg_match('/^\d{6}$/', $otp)
+                    ? verifyResetOtp($conn, $currentUser['email'], $otp)
+                    : null;
+                $verifiedUser = $verificationTicket
+                    ? findUserByResetTicket($conn, $currentUser['email'], $verificationTicket)
+                    : null;
+                if (!$verifiedUser || (int) $verifiedUser['id'] !== (int) $currentUser['id']) {
+                    echo json_encode(['success' => false, 'message' => 'A valid email verification code is required.']);
+                    exit;
+                }
+            }
+
             $newHash = hashPassword($newPw);
             $stmt    = $conn->prepare("UPDATE users SET password = ?, must_change_password = 0 WHERE id = ?");
             $stmt->bind_param('si', $newHash, $currentUser['id']);
             $ok = $stmt->execute();
             $stmt->close();
+
+            if ($isPrivileged) {
+                clearPasswordResetToken($conn, (int) $currentUser['id']);
+            }
 
             if (!$ok) {
                 echo json_encode(['success' => false, 'message' => 'Failed to update password. Please try again.']);

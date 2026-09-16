@@ -320,8 +320,6 @@ function poll() {
     });
 }
 
-/* ============ Cancel ticket confirmation modal ============ */
-
 function initCancelModal() {
   const overlay = document.getElementById("cancelModalOverlay");
   const keepBtn = document.getElementById("modalKeepBtn");

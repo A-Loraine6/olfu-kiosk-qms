@@ -12,6 +12,9 @@ if (!isLoggedIn()) {
 
 $currentUser = getCurrentUser();
 $csrf_token  = getCsrfToken();
+$requiresPasswordOtp = ($currentUser['role_id'] ?? null) === 1
+    || strtolower(trim((string) ($currentUser['role'] ?? ''))) === 'admin'
+    || in_array(strtolower(trim((string) ($currentUser['role'] ?? ''))), ['department head', 'department_head', 'department-head'], true);
 
 $activeSection = requestEnum($_GET, 'section', ['profile', 'security', 'activity'], false) ?: 'profile';
 
@@ -422,12 +425,41 @@ function buildDiffHtml(array $before, array $after): string
         </div>
     </div>
 
+    <div class="modal" id="otpVerificationModal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <div class="otp-modal-head">
+                    <span class="otp-modal-icon"><i class="fas fa-shield-alt"></i></span>
+                    <h2>Verify Your Email</h2>
+                </div>
+                <button class="modal-close" onclick="closeOtpModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Enter the 6-digit code sent to <strong><?php echo htmlspecialchars($currentUser['email']); ?></strong> to confirm your password change.</p>
+                <div class="form-group" style="margin-top:18px; margin-bottom:0;">
+                    <label for="modal_password_otp">Verification Code <span class="required">*</span></label>
+                    <input type="text" id="modal_password_otp" inputmode="numeric"
+                        pattern="[0-9]{6}" maxlength="6" placeholder="000000"
+                        class="otp-input-lg" autocomplete="one-time-code">
+                </div>
+                <a href="#" id="resendOtpLink" class="otp-resend-link" onclick="resendPasswordOtp(event)">Didn't get it? Resend code</a>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeOtpModal()">Cancel</button>
+                <button class="btn btn-primary" id="otpModalSubmitBtn" onclick="confirmOtpAndChangePassword()">
+                    <i class="fas fa-check"></i> Verify & Update
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast-container"></div>
 
     <script>
         const CSRF_TOKEN = <?php echo json_encode($csrf_token); ?>;
         const TOTAL_LOGS = <?php echo (int) $totalLogs; ?>;
         const ACTIVITY_ICONS = <?php echo json_encode($activityIcons); ?>;
+        const REQUIRE_PASSWORD_OTP = <?php echo json_encode($requiresPasswordOtp); ?>;
     </script>
     <script src="scripts/profile.js"></script>
     <script src="scripts/modal-shortcuts.js"></script>
