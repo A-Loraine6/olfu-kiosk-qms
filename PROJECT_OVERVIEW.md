@@ -102,7 +102,19 @@ olfu-kiosk-qms/
 | File | Purpose |
 |---|---|
 | `login.php` | Staff/admin login page with split-panel layout. CSRF-protected. |
+| `forgot_password.php` | Requests a six-digit, time-limited password recovery OTP and sets a new password. |
+| `reset_password.php` | Legacy reset-link endpoint that redirects to the OTP recovery page. |
 | `logout.php` | Logs activity, destroys session, redirects to login. |
+
+### Password recovery email configuration
+
+Password recovery uses PHPMailer over SMTP to send a six-digit OTP. Configure these environment variables on the web server before enabling OTP recovery:
+
+`QMS_MAIL_HOST`, `QMS_MAIL_PORT`, `QMS_MAIL_USERNAME`, `QMS_MAIL_PASSWORD`, `QMS_MAIL_ENCRYPTION`, `QMS_MAIL_FROM_ADDRESS`, and `QMS_MAIL_FROM_NAME`.
+
+If environment variables are not available, edit the matching `MAIL_*` constants directly in the ignored `config/config.php` file. Use `config/mail.example.php` as a template. For Gmail, use a Google app password, not the normal account password. Never commit real SMTP credentials.
+
+The database dump already includes the `users.password_reset_token` and `users.password_reset_expires` columns used by the flow. OTPs are stored as SHA-256 hashes and expire after 10 minutes.
 
 ---
 

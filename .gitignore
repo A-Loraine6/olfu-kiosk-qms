@@ -1,3 +1,4 @@
 config/config.php
+config/mail.example.php
 backup-before-security/
 \!db/

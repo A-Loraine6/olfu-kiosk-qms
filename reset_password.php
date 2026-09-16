@@ -1,0 +1,4 @@
+<?php
+header('Location: forgot_password.php');
+exit;
+?>

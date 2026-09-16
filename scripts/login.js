@@ -6,6 +6,40 @@ function togglePwd(id, btn) {
   i.className = show ? "fas fa-eye-slash" : "fas fa-eye";
 }
 
+function showToast(message, type = "success") {
+  const container = document.getElementById("toast-container");
+  if (!container || !message) return;
+
+  const toast = document.createElement("div");
+  const icon = type === "success" ? "fa-check-circle" : "fa-exclamation-circle";
+  toast.className = `toast toast-${type}`;
+
+  const iconElement = document.createElement("i");
+  iconElement.className = `fas ${icon}`;
+  const messageElement = document.createElement("span");
+  messageElement.textContent = message;
+  const closeButton = document.createElement("button");
+  closeButton.className = "toast-close";
+  closeButton.type = "button";
+  closeButton.innerHTML = "&times;";
+  closeButton.addEventListener("click", () => toast.remove());
+
+  toast.append(iconElement, messageElement, closeButton);
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("show"));
+
+  setTimeout(() => {
+    toast.style.transition = "opacity 0.4s, transform 0.4s";
+    toast.style.opacity = "0";
+    toast.style.transform = "translateX(100%)";
+    setTimeout(() => toast.remove(), 400);
+  }, 4000);
+}
+
+if (window.loginToast) {
+  showToast(window.loginToast.message, window.loginToast.type);
+}
+
 (function () {
   const f = document.getElementById("password");
   const sw = document.getElementById("sw");

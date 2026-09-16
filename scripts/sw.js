@@ -1,5 +1,3 @@
-// OLFU Queue Management System — Service Worker
-// Handles push notifications + offline caching
 
 var CACHE_NAME = "olfu-qms-v2";
 var CACHE_URLS = [
@@ -20,23 +18,19 @@ var CACHE_URLS = [
   "/olfu-kiosk-qms/api/track_status.php",
 ];
 
-// Install: cache all static assets
 self.addEventListener("install", function (e) {
   e.waitUntil(
     caches.open(CACHE_NAME).then(function (cache) {
       return cache.addAll(CACHE_URLS).catch(function (err) {
-        // Don't block install on single file failures
         console.warn("SW cache install partial:", err);
       });
     }),
   );
 });
 
-// Fetch: cache-first for static assets, network-first for API calls
 self.addEventListener("fetch", function (e) {
   var url = new URL(e.request.url);
 
-  // API calls — network first, fallback to cache
   if (url.pathname.includes("/api/")) {
     e.respondWith(
       fetch(e.request)
@@ -54,7 +48,6 @@ self.addEventListener("fetch", function (e) {
     return;
   }
 
-  // Static assets — cache first, fallback to network
   e.respondWith(
     caches.match(e.request).then(function (cached) {
       return (
@@ -70,7 +63,6 @@ self.addEventListener("fetch", function (e) {
   );
 });
 
-// Activate: purge old caches
 self.addEventListener("activate", function (e) {
   e.waitUntil(
     caches.keys().then(function (keys) {
@@ -87,7 +79,6 @@ self.addEventListener("activate", function (e) {
   );
 });
 
-// Push notifications (unchanged)
 self.addEventListener("push", function (e) {
   var data = e.data ? e.data.json() : {};
   self.registration.showNotification(data.title || "Queue Update", {
