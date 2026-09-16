@@ -1,10 +1,12 @@
 <?php
 require_once __DIR__ . '/includes/config_loader.php';
+require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/request_validation.php';
 date_default_timezone_set('Asia/Manila');
 
 $token = requestToken($_GET, 'token') ?? '';
 $tokenValid = $token !== '';
+$csrf_token = getCsrfToken();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -202,6 +204,7 @@ $tokenValid = $token !== '';
 
         <script>
             const TOKEN = <?php echo json_encode($token); ?>;
+            const CSRF_TOKEN = <?php echo json_encode($csrf_token); ?>;
             const API_URL = <?php echo json_encode(BASE_URL . 'api/track_status.php'); ?> + '?token=' + encodeURIComponent(TOKEN);
         </script>
         <script src="scripts/campus_map.js"></script>

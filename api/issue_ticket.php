@@ -7,6 +7,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/request_validation.php';
+require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/utils/TicketGenerator.php';
 
 date_default_timezone_set('Asia/Manila');
@@ -44,4 +45,11 @@ try {
         'code'    => 'server_error',
         'message' => 'A server error occurred. Please try again or approach a staff member.',
     ]);
+}
+
+if (!verifyCsrfToken(requestString($_POST, 'csrf_token', 255, true) ?? '')) {
+    ob_end_clean();
+    http_response_code(403);
+    echo json_encode(['success' => false, 'code' => 'csrf_invalid', 'message' => 'Invalid request. Please refresh and try again.']);
+    exit;
 }

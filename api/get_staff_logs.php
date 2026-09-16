@@ -19,6 +19,11 @@ if (!hasPermission('view_staff') && !hasPermission('edit_staff')) {
 }
 
 $input   = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+$csrf = requestString($input, 'csrf_token', 255, true);
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || $csrf === null || !verifyCsrfToken($csrf)) {
+    echo json_encode(['success' => false, 'message' => 'Invalid request. Please refresh and try again.']);
+    exit;
+}
 $staffId = requestInt($input, 'staff_id');
 $page    = requestOptionalInt($input, 'page', 1) ?? 1;
 $limit   = 25;

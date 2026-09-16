@@ -1,20 +1,33 @@
 <?php
 session_name(SESSION_NAME);
+$isHttps = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
 session_set_cookie_params([
     'lifetime' => 0,
     'path'     => '/',
-    'secure'   => true,
+    'secure'   => $isHttps,
     'httponly' => true,
     'samesite' => 'Lax',
 ]);
 session_start();
+
+function rotateCsrfToken(): string
+{
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    $_SESSION['csrf_token_issued_at'] = time();
+    return $_SESSION['csrf_token'];
+}
+
+if (empty($_SESSION['csrf_session_initialized'])) {
+    $_SESSION['csrf_session_initialized'] = true;
+    rotateCsrfToken();
+}
 
 require_once __DIR__ . '/../api/activity_logger.php';
 
 function getCsrfToken(): string
 {
     if (empty($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        return rotateCsrfToken();
     }
     return $_SESSION['csrf_token'];
 }
@@ -234,8 +247,7 @@ function establishSession(array $user): void
     $_SESSION['permissions']   = fetchPermissionsForRole($user['role_id']);
 
     bindSessionFingerprint();
-    unset($_SESSION['csrf_token']);
-    getCsrfToken();
+    rotateCsrfToken();
 }
 
 function fetchPermissionsForRole(?int $roleId): array

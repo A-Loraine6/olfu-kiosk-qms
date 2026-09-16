@@ -412,7 +412,7 @@ function cancelTicket() {
   return fetch(API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "cancel_ticket" }),
+    body: JSON.stringify({ action: "cancel_ticket", csrf_token: CSRF_TOKEN }),
   }).then((r) => r.json());
 }
 
@@ -596,6 +596,7 @@ function showFeedbackModal(ticket) {
         comment: commentEl ? commentEl.value.trim() : "",
         ticket_number: ticket.ticket_number || "",
         ticket_id: ticket.ticket_id || null,
+        csrf_token: CSRF_TOKEN,
       };
 
       submit.disabled = true;

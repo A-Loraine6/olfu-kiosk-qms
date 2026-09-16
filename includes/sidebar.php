@@ -147,10 +147,13 @@ $currentPage = basename($_SERVER['PHP_SELF']);
             </div>
 
             <li>
-                <a href="logout.php" class="nav-logout">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
+                <form method="POST" action="logout.php">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(getCsrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
+                    <button type="submit" class="nav-logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </button>
+                </form>
             </li>
         </ul>
     </nav>

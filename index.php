@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/config_loader.php';
 require_once 'includes/db.php';
+require_once 'includes/auth.php';
 
 date_default_timezone_set('Asia/Manila');
 
@@ -11,6 +12,7 @@ $officesResult = $db->query("
     ORDER BY name ASC
 ");
 $offices = $officesResult->fetch_all(MYSQLI_ASSOC);
+$csrf_token = getCsrfToken();
 
 $today = date('Y-m-d');
 $waitingStmt = $db->prepare("
@@ -354,6 +356,7 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
 
     <script>
         const OFFICES = <?php echo $officesJson; ?>;
+        const CSRF_TOKEN = <?php echo json_encode($csrf_token); ?>;
         const KIOSK_ENABLED = <?php echo json_encode($kioskEnabled); ?>;
         const IDLE_TIMEOUT_MS = <?php echo $idleTimeout * 1000; ?>;
     </script>

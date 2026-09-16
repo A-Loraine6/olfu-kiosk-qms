@@ -20,7 +20,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email    = validEmail((string) ($_POST['email'] ?? ''), 100);
     $password = is_string($_POST['password'] ?? null) ? $_POST['password'] : '';
 
-    if ($email === null || $password === '' || strlen($password) > 255) {
+    if (!verifyCsrfToken($csrf)) {
+        $error = 'Invalid request. Please refresh and try again.';
+    } elseif ($email === null || $password === '' || strlen($password) > 255) {
         $error = 'Please enter both email and password.';
     } else {
         $result = login($db, $email, $password, $csrf);

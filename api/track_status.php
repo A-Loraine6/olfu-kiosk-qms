@@ -8,6 +8,7 @@ header('Cache-Control: no-cache, no-store');
 require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/request_validation.php';
+require_once __DIR__ . '/../includes/auth.php';
 
 date_default_timezone_set('Asia/Manila');
 
@@ -31,6 +32,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && requestEnum($payload, 'action', ['cancel_ticket']) === 'cancel_ticket') {
+    if (!verifyCsrfToken(requestString($payload, 'csrf_token', 255, true) ?? '')) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Invalid request. Please refresh and try again.']);
+        exit;
+    }
     $selectStmt = $db->prepare("SELECT t.id, t.ticket_number, t.status, t.completed_at, t.served_at, t.transaction_type, o.name AS office_name
         FROM tickets t
         JOIN offices o ON o.id = t.office_id

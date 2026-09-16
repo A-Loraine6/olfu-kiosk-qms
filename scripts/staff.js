@@ -306,7 +306,7 @@ async function openEditStaffModal(staffId) {
   const res = await fetch("api/get_staff.php", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: "staff_id=" + encodeURIComponent(staffId),
+    body: "staff_id=" + encodeURIComponent(staffId) + "&csrf_token=" + encodeURIComponent(CSRF_TOKEN),
   });
   const data = await res.json();
 

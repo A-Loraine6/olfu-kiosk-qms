@@ -374,7 +374,7 @@ function prepareConfirm() {
   fetch("api/preview_ticket.php", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `office_id=${o.id}&is_priority=${state.isPriority ? 1 : 0}`,
+    body: `office_id=${o.id}&is_priority=${state.isPriority ? 1 : 0}&csrf_token=${encodeURIComponent(CSRF_TOKEN)}`,
   })
     .then((r) => r.json())
     .then((data) => {
@@ -405,7 +405,7 @@ function confirmQueue() {
   fetch("api/issue_ticket.php", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `office_id=${o.id}&service_name=${encodeURIComponent(s ? s.name : "")}&is_priority=${state.isPriority ? 1 : 0}`,
+    body: `office_id=${o.id}&service_name=${encodeURIComponent(s ? s.name : "")}&is_priority=${state.isPriority ? 1 : 0}&csrf_token=${encodeURIComponent(CSRF_TOKEN)}`,
   })
     .then((r) => r.json())
     .then((data) => {
@@ -646,7 +646,7 @@ function checkAndPrepareConfirm() {
   fetch("api/preview_ticket.php", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `office_id=${o.id}&is_priority=${state.isPriority ? 1 : 0}`,
+    body: `office_id=${o.id}&is_priority=${state.isPriority ? 1 : 0}&csrf_token=${encodeURIComponent(CSRF_TOKEN)}`,
   })
     .then((r) => r.json())
     .then((data) => {
