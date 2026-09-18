@@ -208,12 +208,13 @@ if ($action === 'call_next') {
     $staffData    = $stmt->get_result()->fetch_assoc();
     $windowNumber = (int)  ($staffData['window_number']  ?? 0);
     $overflowMode = (bool) ($staffData['overflow_mode']  ?? false);
+    $queueMode    = getOfficeQueueMode($db, $officeId);
 
     $today  = date('Y-m-d');
     $params = [$officeId, $today];
     $types  = 'is';
 
-    if (!$overflowMode && $windowNumber > 0) {
+    if ($queueMode !== 'unified' && !$overflowMode && $windowNumber > 0) {
         $sql = "SELECT t.*
             FROM tickets t
             LEFT JOIN transaction_types tt
