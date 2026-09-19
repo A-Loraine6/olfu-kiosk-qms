@@ -54,7 +54,7 @@ if (!empty($officeIds)) {
             'name'          => $office['name'],
             'code'          => $office['code'],
             'now_serving'   => array_slice($serving,   0, 4),
-            'next_up'       => array_slice($waiting,   0, 5),
+            'next_up'       => $waiting,
             'recently_done' => array_slice($completed, 0, 3),
             'waiting_count' => count($waiting),
             'served_today'  => count($completed),
@@ -159,17 +159,23 @@ if (!empty($officeIds)) {
         }
 
         function buildNextUp(o) {
-            const nu = o.next_up || [];
+            const nu = Array.isArray(o.next_up) ? o.next_up : [];
             if (nu.length === 0) {
                 return `<div class="c-q-empty">Queue is clear</div>`;
             }
-            return `<div class="c-q-list">` +
-                nu.slice(0, 3).map((t, i) => `
-                    <div class="c-q-row${i === 0 ? ' first' : ''}">
-                        <span class="c-q-num">${esc(t.ticket_number)}</span>
-                        <span class="c-q-pos">#${i + 1}</span>
-                    </div>`).join('') +
-                `</div>`;
+
+            const visibleQueue = nu.length <= 11 ? nu : nu.slice(0, 11);
+
+            return `
+                <div class="c-q-list">
+                    ${visibleQueue.map((t, i) => `
+                        <div class="c-q-row${i === 0 ? ' first' : ''}">
+                            <span class="c-q-num">${esc(t.ticket_number)}</span>
+                            <span class="c-q-pos">#${i + 1}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
         }
 
         function buildCard(o) {
