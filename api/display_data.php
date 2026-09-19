@@ -81,7 +81,7 @@ try {
             'prefix'        => $office['queue_prefix'],
             'mode'          => $office['queue_mode'],
             'now_serving'   => array_slice($serving, 0, 4),
-            'next_up'       => array_slice($waiting, 0, 6),
+            'next_up'       => $waiting,
             'recently_done' => array_slice($completed, 0, 3),
             'waiting_count' => count($waiting),
             'served_today'  => count($completed),

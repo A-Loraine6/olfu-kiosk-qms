@@ -186,8 +186,10 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  height: 100%;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
   overflow: hidden;
+  flex: 1 1 auto;
 }
 
 .c-header {
@@ -346,8 +348,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: clamp(4px, 0.6vh, 7px);
-  overflow: hidden;
+  flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden;
+  max-height: 100%;
+  transition: none;
 }
 .c-q-row {
   display: flex;
