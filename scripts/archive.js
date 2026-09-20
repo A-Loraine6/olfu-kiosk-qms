@@ -5,6 +5,99 @@ let archiveState = {
   restoreItemType: null,
 };
 
+const archiveFilterDefaults = {
+  search: "",
+  sort: "date-desc",
+};
+
+function getArchiveTabElements(tabId) {
+  const tab = document.getElementById(tabId);
+  return {
+    tab,
+    search: tab?.querySelector(".archive-search-input"),
+    sort: tab?.querySelector(".archive-sort-select"),
+    list: tab?.querySelector(".archive-table-body"),
+    items: [...(tab?.querySelectorAll(".archive-table-body .list-item") || [])],
+  };
+}
+
+function renderArchiveFilters(tabId) {
+  const { tab, search, sort, list, items } = getArchiveTabElements(tabId);
+  if (!tab || !search || !sort || !list) return;
+
+  const query = search.value.trim().toLocaleLowerCase();
+  const matchingItems = items.filter((item) =>
+    (item.dataset.search || "").toLocaleLowerCase().includes(query),
+  );
+
+  items.forEach((item) => {
+    item.hidden = !matchingItems.includes(item);
+  });
+
+  const sortedItems = [...matchingItems].sort((first, second) => {
+    if (sort.value.startsWith("date")) {
+      const firstDate = Date.parse(first.dataset.archivedAt || "") || 0;
+      const secondDate = Date.parse(second.dataset.archivedAt || "") || 0;
+      return sort.value === "date-asc"
+        ? firstDate - secondDate
+        : secondDate - firstDate;
+    }
+
+    const nameCompare = (first.dataset.name || "").localeCompare(
+      second.dataset.name || "",
+      undefined,
+      { sensitivity: "base" },
+    );
+    return sort.value === "name-desc" ? -nameCompare : nameCompare;
+  });
+
+  sortedItems.forEach((item) => list.appendChild(item));
+
+  let emptyState = tab.querySelector(".archive-filter-empty");
+  if (matchingItems.length === 0 && items.length > 0) {
+    if (!emptyState) {
+      emptyState = document.createElement("div");
+      emptyState.className = "empty-state archive-filter-empty";
+      emptyState.innerHTML =
+        '<i class="fas fa-search"></i><h3>No matching archived records found</h3><p>Try adjusting your search or clearing the filters.</p>';
+      tab.querySelector(".archive-card")?.append(emptyState);
+    }
+    emptyState.hidden = false;
+  } else if (emptyState) {
+    emptyState.hidden = true;
+  }
+}
+
+function clearArchiveFilters(tabId) {
+  const { search, sort } = getArchiveTabElements(tabId);
+  if (!search || !sort) return;
+  search.value = archiveFilterDefaults.search;
+  sort.value = archiveFilterDefaults.sort;
+  renderArchiveFilters(tabId);
+}
+
+document.querySelectorAll(".archive-filter-bar").forEach((filterBar) => {
+  const tab = filterBar.closest(".tab-content");
+  const tabId = tab?.id;
+  if (!tabId) return;
+  filterBar
+    .querySelector(".archive-search-input")
+    ?.addEventListener("input", () => renderArchiveFilters(tabId));
+  filterBar
+    .querySelector(".archive-sort-select")
+    ?.addEventListener("change", () => renderArchiveFilters(tabId));
+});
+
+document.querySelectorAll("[data-clear-filters]").forEach((button) => {
+  button.addEventListener("click", () =>
+    clearArchiveFilters(button.dataset.clearFilters),
+  );
+});
+
+document.querySelectorAll(".tab-content").forEach((tab) => {
+  renderArchiveFilters(tab.id);
+});
+
 document.querySelectorAll(".tab-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     const tabId = btn.getAttribute("data-tab");

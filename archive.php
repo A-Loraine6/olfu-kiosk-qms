@@ -75,6 +75,25 @@ $deletedServices = $canDeleteService ? getDeletedServices($conn) : [];
                                 <?php endif; ?>
                             </div>
 
+                            <div class="archive-card">
+                            <div class="archive-filter-bar" role="search">
+                                <label class="archive-search-field" for="staffArchiveSearch">
+                                    <i class="fas fa-search" aria-hidden="true"></i>
+                                    <input type="search" id="staffArchiveSearch" class="archive-search-input" placeholder="Search by name, email, or office..." autocomplete="off">
+                                </label>
+                                <label class="archive-sort-field" for="staffArchiveSort">
+                                    <select id="staffArchiveSort" class="archive-sort-select" aria-label="Sort archived staff">
+                                        <option value="name-asc">Name (A-Z)</option>
+                                        <option value="name-desc">Name (Z-A)</option>
+                                        <option value="date-desc" selected>Newest First</option>
+                                        <option value="date-asc">Oldest First</option>
+                                    </select>
+                                </label>
+                                <button type="button" class="archive-clear-btn" data-clear-filters="staff-tab">
+                                    <i class="fas fa-rotate-left" aria-hidden="true"></i> Clear Filters
+                                </button>
+                            </div>
+
                             <?php if (count($deletedStaff) === 0): ?>
                                 <div class="empty-state">
                                     <i class="fas fa-users"></i>
@@ -83,37 +102,42 @@ $deletedServices = $canDeleteService ? getDeletedServices($conn) : [];
                                 </div>
                             <?php else: ?>
                                 <div class="archive-list">
-                                    <div class="list-header">
-                                        <div class="col-name">Name</div>
-                                        <div class="col-email">Email</div>
-                                        <div class="col-office">Office</div>
-                                        <div class="col-deleted">Date Archived</div>
-                                        <div class="col-actions">Actions</div>
-                                    </div>
+                                    <table class="archive-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Email</th>
+                                                <th>Office</th>
+                                                <th>Date Archived</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="archive-table-body">
                                     <?php foreach ($deletedStaff as $staff): ?>
-                                        <div class="list-item" data-id="<?php echo $staff['id']; ?>" data-type="staff">
-                                            <div class="col-name">
-                                                <div class="item-name"><?php echo htmlspecialchars($staff['full_name']); ?></div>
-                                            </div>
-                                            <div class="col-email"><?php echo htmlspecialchars($staff['email']); ?></div>
-                                            <div class="col-office"><?php echo htmlspecialchars($staff['office_name'] ?? 'N/A'); ?></div>
-                                            <div class="col-deleted">
+                                        <tr class="list-item" data-id="<?php echo $staff['id']; ?>" data-type="staff" data-search="<?php echo htmlspecialchars($staff['full_name'] . ' ' . $staff['email'] . ' ' . ($staff['office_name'] ?? '')); ?>" data-name="<?php echo htmlspecialchars($staff['full_name']); ?>" data-archived-at="<?php echo htmlspecialchars($staff['deleted_at'] ?? ''); ?>">
+                                            <td class="col-name"><div class="item-name"><?php echo htmlspecialchars($staff['full_name']); ?></div></td>
+                                            <td class="col-email"><?php echo htmlspecialchars($staff['email']); ?></td>
+                                            <td class="col-office"><?php echo htmlspecialchars($staff['office_name'] ?? 'N/A'); ?></td>
+                                            <td class="col-deleted">
                                                 <?php echo $staff['deleted_at']
                                                     ? date('M d, Y', strtotime($staff['deleted_at']))
                                                     : 'Unknown'; ?>
-                                            </div>
-                                            <div class="col-actions">
+                                            </td>
+                                            <td class="col-actions">
                                                 <button class="btn-restore-item" onclick="restoreStaff(<?php echo $staff['id']; ?>)" title="Restore Staff">
                                                     <i class="fas fa-undo"></i> Restore
                                                 </button>
                                                 <button class="btn-delete-item" onclick="openDeleteArchiveModal(<?php echo $staff['id']; ?>, 'staff')" title="Permanently Delete">
                                                     <i class="fas fa-trash"></i> Delete
                                                 </button>
-                                            </div>
-                                        </div>
+                                            </td>
+                                        </tr>
                                     <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
                                 </div>
                             <?php endif; ?>
+                            </div>
                         </div>
                     <?php endif; ?>
 
@@ -126,6 +150,25 @@ $deletedServices = $canDeleteService ? getDeletedServices($conn) : [];
                                 <?php endif; ?>
                             </div>
 
+                            <div class="archive-card">
+                            <div class="archive-filter-bar" role="search">
+                                <label class="archive-search-field" for="serviceArchiveSearch">
+                                    <i class="fas fa-search" aria-hidden="true"></i>
+                                    <input type="search" id="serviceArchiveSearch" class="archive-search-input" placeholder="Search by service, category, or office..." autocomplete="off">
+                                </label>
+                                <label class="archive-sort-field" for="serviceArchiveSort">
+                                    <select id="serviceArchiveSort" class="archive-sort-select" aria-label="Sort archived services">
+                                        <option value="name-asc">Name (A-Z)</option>
+                                        <option value="name-desc">Name (Z-A)</option>
+                                        <option value="date-desc" selected>Newest First</option>
+                                        <option value="date-asc">Oldest First</option>
+                                    </select>
+                                </label>
+                                <button type="button" class="archive-clear-btn" data-clear-filters="services-tab">
+                                    <i class="fas fa-rotate-left" aria-hidden="true"></i> Clear Filters
+                                </button>
+                            </div>
+
                             <?php if (count($deletedServices) === 0): ?>
                                 <div class="empty-state">
                                     <i class="fas fa-concierge-bell"></i>
@@ -134,39 +177,44 @@ $deletedServices = $canDeleteService ? getDeletedServices($conn) : [];
                                 </div>
                             <?php else: ?>
                                 <div class="archive-list">
-                                    <div class="list-header">
-                                        <div class="col-name">Service Name</div>
-                                        <div class="col-category">Category</div>
-                                        <div class="col-office">Office</div>
-                                        <div class="col-deleted">Date Archived</div>
-                                        <div class="col-actions">Actions</div>
-                                    </div>
+                                    <table class="archive-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Service Name</th>
+                                                <th>Category</th>
+                                                <th>Office</th>
+                                                <th>Date Archived</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="archive-table-body">
                                     <?php foreach ($deletedServices as $service): ?>
-                                        <div class="list-item" data-id="<?php echo $service['id']; ?>" data-type="service">
-                                            <div class="col-name">
-                                                <div class="item-name"><?php echo htmlspecialchars($service['name']); ?></div>
-                                            </div>
-                                            <div class="col-category">
+                                        <tr class="list-item" data-id="<?php echo $service['id']; ?>" data-type="service" data-search="<?php echo htmlspecialchars($service['name'] . ' ' . ($service['category'] ?? '') . ' ' . ($service['office_name'] ?? '')); ?>" data-name="<?php echo htmlspecialchars($service['name']); ?>" data-archived-at="<?php echo htmlspecialchars($service['deleted_at'] ?? ''); ?>">
+                                            <td class="col-name"><div class="item-name"><?php echo htmlspecialchars($service['name']); ?></div></td>
+                                            <td class="col-category">
                                                 <?php echo ucfirst(htmlspecialchars($service['category'] ?? 'N/A')); ?>
-                                            </div>
-                                            <div class="col-office"><?php echo htmlspecialchars($service['office_name'] ?? 'N/A'); ?></div>
-                                            <div class="col-deleted">
+                                            </td>
+                                            <td class="col-office"><?php echo htmlspecialchars($service['office_name'] ?? 'N/A'); ?></td>
+                                            <td class="col-deleted">
                                                 <?php echo $service['deleted_at']
                                                     ? date('M d, Y', strtotime($service['deleted_at']))
                                                     : 'Unknown'; ?>
-                                            </div>
-                                            <div class="col-actions">
+                                            </td>
+                                            <td class="col-actions">
                                                 <button class="btn-restore-item" onclick="restoreService(<?php echo $service['id']; ?>)" title="Restore Service">
                                                     <i class="fas fa-undo"></i> Restore
                                                 </button>
                                                 <button class="btn-delete-item" onclick="openDeleteArchiveModal(<?php echo $service['id']; ?>, 'service')" title="Permanently Delete">
                                                     <i class="fas fa-trash"></i> Delete
                                                 </button>
-                                            </div>
-                                        </div>
+                                            </td>
+                                        </tr>
                                     <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
                                 </div>
                             <?php endif; ?>
+                            </div>
                         </div>
                     <?php endif; ?>
                 </div>
