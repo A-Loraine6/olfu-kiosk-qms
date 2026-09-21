@@ -22,8 +22,6 @@ if (empty($_SESSION['csrf_session_initialized'])) {
     rotateCsrfToken();
 }
 
-require_once __DIR__ . '/../api/activity_logger.php';
-
 function getCsrfToken(): string
 {
     if (empty($_SESSION['csrf_token'])) {

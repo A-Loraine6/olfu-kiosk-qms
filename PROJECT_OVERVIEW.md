@@ -203,6 +203,63 @@ transaction_types ──1:N──> service_windows
 
 ---
 
+## Audit Logging Validation
+
+The system records the following event families in the `activity_logs` table:
+
+- `LOGIN_FAILED` — invalid credentials or throttled attempts
+- `AUTH_DENIED` — user not authenticated or invalid session
+- `PERMISSION_DENIED` — authenticated user attempted an action outside their role permissions
+- `API_SUSPICIOUS` — malformed, tampered, or blocked requests to protected APIs
+- `DATA_EXPORT` — report or PDF export actions
+- `ADMIN_ACTION` — admin-level CRUD and security-sensitive operations
+- `CONFIG_CHANGE` — schedule, kiosk, queue, and system settings updates
+
+### Quick verification checklist
+
+1. Failed login test
+   - Open the login page and enter a wrong password for a valid staff/admin account.
+   - Confirm a new `LOGIN_FAILED` row appears in `activity_logs` with the user ID, IP address, and timestamp.
+
+2. Permission-denied test
+   - Log in as a basic staff account and open an admin-only page or hit an admin API endpoint.
+   - Confirm a `PERMISSION_DENIED` event is recorded instead of silently failing.
+
+3. Auth-denied test
+   - Log out, then call a protected endpoint directly without a valid session.
+   - Confirm an `AUTH_DENIED` event is created with the request metadata.
+
+4. Suspicious API test
+   - Send a malformed POST request to an API such as `api/staff_actions.php`, `api/service_actions.php`, or `api/settings_actions.php` without the expected CSRF token or required fields.
+   - Confirm an `API_SUSPICIOUS` record is created.
+
+5. Export log test
+   - Generate a PDF report from the reports page.
+   - Confirm a `DATA_EXPORT` row appears and includes the report description and actor.
+
+6. Admin/config change test
+   - Change a role, staff status, service status, or system setting.
+   - Check that `ADMIN_ACTION` or `CONFIG_CHANGE` entries get written with the before/after values when applicable.
+
+7. UI verification
+   - Open `profile.php` and inspect the activity feed.
+   - Confirm that the new activity badges and labels match the event types listed above.
+
+### Database check
+
+Run this query in phpMyAdmin or MySQL to inspect the latest entries:
+
+```sql
+SELECT id, user_id, activity_type, entity_type, entity_id, description, ip_address, timestamp
+FROM activity_logs
+ORDER BY id DESC
+LIMIT 20;
+```
+
+Expected result: rows should appear in reverse chronological order, with the event type matching the action you just performed.
+
+---
+
 ## Security
 
 - CSRF protection on all state-changing requests

@@ -8,8 +8,10 @@ require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/request_validation.php';
 require_once __DIR__ . '/service_functions.php';
+require_once __DIR__ . '/activity_logger.php';
 
 if (!isLoggedIn()) {
+    logAuthDenied($db->getConnection(), 'Unauthenticated access to service API', null, 'service');
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit;
 }
@@ -28,6 +30,7 @@ $action = requestEnum($input, 'action', ['add_service', 'edit_service', 'get_win
 $csrf   = requestString($input, 'csrf_token', 255, true);
 
 if ($action === null || $csrf === null || !verifyCsrfToken($csrf)) {
+    logSuspiciousApiActivity($db->getConnection(), 'Invalid CSRF token or malformed service action request', (int) ($_SESSION['user_id'] ?? 0), 'service');
     echo json_encode(['success' => false, 'message' => 'Invalid CSRF token.']);
     exit;
 }
@@ -41,15 +44,18 @@ $actionPermMap = [
     'delete_service' => 'admin',
 ];
 if (isset($actionPermMap[$action]) && $actionPermMap[$action] !== 'admin' && !hasPermission($actionPermMap[$action])) {
+    logPermissionDenied($db->getConnection(), 'Attempted forbidden service action: ' . ($action ?? 'unknown'), (int) ($_SESSION['user_id'] ?? 0), 'service', requestInt($input, 'service_id') ?? null);
     echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
     exit;
 }
 if (isset($actionPermMap[$action]) && $actionPermMap[$action] === 'admin' && !$isAdmin) {
+    logPermissionDenied($db->getConnection(), 'Attempted admin-only service action: ' . ($action ?? 'unknown'), (int) ($_SESSION['user_id'] ?? 0), 'service', requestInt($input, 'service_id') ?? null);
     echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
     exit;
 }
 
 if ($action === 'toggle_queue_mode' && !hasPermission('manage_settings')) {
+    logPermissionDenied($db->getConnection(), 'Attempted queue mode toggle without manage_settings permission', (int) ($_SESSION['user_id'] ?? 0), 'service');
     echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
     exit;
 }
