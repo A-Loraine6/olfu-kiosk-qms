@@ -187,7 +187,7 @@ function buildDiffHtml(array $before, array $after): string
                                 <div class="profile-card-badges">
                                     <span class="profile-badge badge-role">
                                         <i class="fas fa-shield-alt"></i>
-                                        <?php echo ucfirst($currentUser['role'] ?? 'Staff'); ?>
+                                        <?php echo e(ucfirst((string) ($currentUser['role'] ?? 'Staff'))); ?>
                                     </span>
                                     <?php if (!empty($currentUser['office_name'])): ?>
                                         <span class="profile-badge badge-office">

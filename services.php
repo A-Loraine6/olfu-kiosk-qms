@@ -147,7 +147,7 @@ function getCategoryColor(?string $cat): string
                                         <div class="queue-mode-toggle-wrap">
                                             <span class="queue-mode-value <?php echo $office['queue_mode'] === 'service-based' ? 'mode-service' : 'mode-unified'; ?>"
                                                 id="office-mode-label-<?php echo $office['id']; ?>">
-                                                <?php echo $office['queue_mode'] === 'service-based' ? 'Service-Based' : 'Unified'; ?>
+                                                <?php echo e($office['queue_mode'] === 'service-based' ? 'Service-Based' : 'Unified'); ?>
                                             </span>
                                             <button type="button" class="btn-mode-toggle"
                                                 title="Switch queue mode"
@@ -177,7 +177,7 @@ function getCategoryColor(?string $cat): string
 
                     <h2 class="section-title">
                         <i class="fas fa-th-list"></i>
-                        <?php echo $isOfficeScoped ? htmlspecialchars($staffOfficeName) . ' — Services' : 'All Services'; ?>
+                        <?php echo e($isOfficeScoped ? ($staffOfficeName . ' — Services') : 'All Services'); ?>
                     </h2>
                     <div class="services-table-section">
                         <div class="services-table-toolbar">

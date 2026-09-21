@@ -439,6 +439,13 @@ function hasPermission(string $key): bool
     return in_array($key, $_SESSION['permissions'] ?? [], true);
 }
 
+if (!function_exists('e')) {
+    function e(mixed $value): string
+    {
+        return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+    }
+}
+
 function hashPassword(string $password): string
 {
     $algo    = defined('PASSWORD_HASH_ALGO')    ? (int) PASSWORD_HASH_ALGO    : PASSWORD_BCRYPT;
