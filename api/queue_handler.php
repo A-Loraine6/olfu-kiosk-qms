@@ -3,6 +3,7 @@ require_once __DIR__ . '/../includes/config_loader.php';
 require_once '../includes/db.php';
 require_once '../includes/auth.php';
 require_once __DIR__ . '/../includes/request_validation.php';
+require_once __DIR__ . '/activity_logger.php';
 
 header('Content-Type: application/json');
 
@@ -11,12 +12,15 @@ date_default_timezone_set('Asia/Manila');
 const DATETIME_FORMAT = 'Y-m-d H:i:s';
 
 if (!isLoggedIn()) {
+    logAuthDenied($db->getConnection(), 'Unauthenticated access to queue API', null, 'queue');
     echo json_encode(['success' => false, 'message' => 'Unauthenticated.']);
     exit;
 }
 
 $currentUser = getCurrentUser();
-if (($currentUser['role'] ?? '') !== 'staff') {
+$isAdmin = ($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin';
+if (!$isAdmin && !hasPermission('manage_queue') && !hasPermission('view_queue')) {
+    logPermissionDenied($db->getConnection(), 'User lacks queue permission for queue API', (int) ($_SESSION['user_id'] ?? 0), 'queue');
     echo json_encode(['success' => false, 'message' => 'Access denied.']);
     exit;
 }

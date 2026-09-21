@@ -9,6 +9,7 @@ require_once __DIR__ . '/activity_logger.php';
 header('Content-Type: application/json');
 
 if (!isLoggedIn()) {
+    logAuthDenied($db->getConnection(), 'Unauthenticated access to profile API', null, 'user');
     echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
     exit;
 }

@@ -3,11 +3,25 @@ require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/request_validation.php';
+require_once __DIR__ . '/activity_logger.php';
 
 global $db;
 
 if (!isLoggedIn()) {
+    logAuthDenied($db->getConnection(), 'Unauthenticated access to reports API', null, 'report');
     echo json_encode(['success' => false]);
+    exit;
+}
+
+$isAllowedReportAccess = ($_SESSION['role_id'] ?? null) === 1
+    || ($_SESSION['role'] ?? '') === 'admin'
+    || hasPermission('view_reports')
+    || hasPermission('view_reports_office')
+    || hasPermission('view_own_metrics');
+
+if (!$isAllowedReportAccess) {
+    logPermissionDenied($db->getConnection(), 'User lacks report viewing permission', (int) ($_SESSION['user_id'] ?? 0), 'report');
+    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit;
 }
 
