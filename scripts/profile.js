@@ -288,6 +288,9 @@ async function submitChangePassword() {
 		return showToast("Password must meet all strength requirements.", "error");
 	if (!confirm) return showToast("Please confirm your new password.", "error");
 	if (newPw !== confirm) return showToast("Passwords do not match.", "error");
+	if (newPw === current) {
+		return showToast("New password must be different from your current password.", "error");
+	}
 
 	if (REQUIRE_PASSWORD_OTP) {
 		setBtnLoading(
@@ -298,6 +301,7 @@ async function submitChangePassword() {
 		const otpRequest = await ajax({
 			action: "request_password_change_otp",
 			current_password: current,
+			new_password: newPw,
 		});
 		setBtnLoading(
 			"changePasswordBtn",
@@ -377,6 +381,7 @@ async function resendPasswordOtp(e) {
 	const otpRequest = await ajax({
 		action: "request_password_change_otp",
 		current_password: pendingPasswordChange.current,
+		new_password: pendingPasswordChange.newPw,
 	});
 
 	link.textContent = original;

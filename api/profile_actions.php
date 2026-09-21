@@ -31,6 +31,8 @@ switch ($action) {
     case 'request_password_change_otp': {
             $currentPw = is_string($body['current_password'] ?? null)
                 ? validPassword($body['current_password']) : null;
+            $newPw = is_string($body['new_password'] ?? null)
+                ? validPassword($body['new_password']) : null;
             $isPrivileged = ($currentUser['role_id'] ?? null) === 1
                 || strtolower(trim((string) ($currentUser['role'] ?? ''))) === 'admin'
                 || in_array(strtolower(trim((string) ($currentUser['role'] ?? ''))), ['department head', 'department_head', 'department-head'], true);
@@ -43,6 +45,10 @@ switch ($action) {
                 echo json_encode(['success' => false, 'message' => 'Current password is required.']);
                 exit;
             }
+            if ($newPw === null) {
+                echo json_encode(['success' => false, 'message' => 'New password is required.']);
+                exit;
+            }
 
             $stmt = $conn->prepare('SELECT id, full_name, email, password FROM users WHERE id = ? AND is_active = 1 AND is_deleted = 0 LIMIT 1');
             $stmt->bind_param('i', $currentUser['id']);
@@ -52,6 +58,10 @@ switch ($action) {
 
             if (!$user || !password_verify($currentPw, $user['password'])) {
                 echo json_encode(['success' => false, 'message' => 'Current password is incorrect.']);
+                exit;
+            }
+            if (password_verify($newPw, $user['password'])) {
+                echo json_encode(['success' => false, 'message' => 'New password must be different from your current password.']);
                 exit;
             }
             $otpIdentifiers = passwordOtpIdentifiers($user['email']);
@@ -175,6 +185,11 @@ switch ($action) {
 
             if (!$row || !password_verify($currentPw, $row['password'])) {
                 echo json_encode(['success' => false, 'message' => 'Current password is incorrect.']);
+                exit;
+            }
+
+            if (password_verify($newPw, $row['password'])) {
+                echo json_encode(['success' => false, 'message' => 'New password must be different from your current password.']);
                 exit;
             }
 
