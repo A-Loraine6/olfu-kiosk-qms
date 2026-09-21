@@ -7,13 +7,16 @@ require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/request_validation.php';
+require_once __DIR__ . '/activity_logger.php';
 
 if (!isLoggedIn()) {
+    logAuthDenied($db->getConnection(), 'Unauthenticated attempt to view staff activity history', null, 'staff');
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit;
 }
 
 if (!hasPermission('view_staff') && !hasPermission('edit_staff')) {
+    logPermissionDenied($db->getConnection(), 'User lacks view_staff/edit_staff permission for staff activity logs', (int) ($_SESSION['user_id'] ?? 0), 'staff');
     echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
     exit;
 }

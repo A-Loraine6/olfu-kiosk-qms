@@ -8,8 +8,10 @@ require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/request_validation.php';
 require_once __DIR__ . '/archive_functions.php';
+require_once __DIR__ . '/activity_logger.php';
 
 if (!isLoggedIn()) {
+    logAuthDenied($db->getConnection(), 'Unauthenticated access to archive API', null, 'archive');
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit;
 }
@@ -28,6 +30,7 @@ $canDeleteStaff = $isAdmin;
 $canDeleteService = $isAdmin;
 
 if (!($canDeleteStaff || $canDeleteService)) {
+    logPermissionDenied($db->getConnection(), 'User lacks admin permission for archive actions', (int) ($_SESSION['user_id'] ?? 0), 'archive');
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit;
 }
