@@ -4,10 +4,12 @@ require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/request_validation.php';
 require_once __DIR__ . '/settings_functions.php';
+require_once __DIR__ . '/activity_logger.php';
 
 header('Content-Type: application/json');
 
 if (!isLoggedIn()) {
+    logAuthDenied($db->getConnection(), 'Unauthenticated access to settings API', null, 'settings');
     echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
     exit;
 }
@@ -17,11 +19,13 @@ $action = requestEnum($body, 'action', ['save_schedule', 'save_queue', 'save_kio
 $csrf   = requestString($body, 'csrf_token', 255, true);
 
 if ($action === null || $csrf === null || !verifyCsrfToken($csrf)) {
+    logSuspiciousApiActivity($db->getConnection(), 'Invalid CSRF token or malformed settings request', (int) ($_SESSION['user_id'] ?? 0), 'settings');
     echo json_encode(['success' => false, 'message' => 'Invalid request. Please refresh and try again.']);
     exit;
 }
 
 if (!hasPermission('manage_settings')) {
+    logPermissionDenied($db->getConnection(), 'Attempted settings change without manage_settings permission', (int) ($_SESSION['user_id'] ?? 0), 'settings');
     echo json_encode(['success' => false, 'message' => 'You do not have permission to change system settings.']);
     exit;
 }

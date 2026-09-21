@@ -9,8 +9,10 @@ require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/request_validation.php';
 require_once __DIR__ . '/staff_functions.php';
 require_once __DIR__ . '/feedback_functions.php';
+require_once __DIR__ . '/activity_logger.php';
 
 if (!isLoggedIn()) {
+    logAuthDenied($db->getConnection(), 'Unauthenticated access to staff API', null, 'staff');
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit;
 }
@@ -20,6 +22,7 @@ $action = requestEnum($input, 'action', ['add_staff', 'edit_staff', 'get_windows
 $csrf   = requestString($input, 'csrf_token', 255, true);
 
 if ($action === null || $csrf === null || !verifyCsrfToken($csrf)) {
+    logSuspiciousApiActivity($db->getConnection(), 'Invalid CSRF token or malformed staff action request', (int) ($_SESSION['user_id'] ?? 0), 'staff');
     echo json_encode(['success' => false, 'message' => 'Invalid CSRF token.']);
     exit;
 }
@@ -32,6 +35,7 @@ $canManage = $canEdit || $canDelete || $canToggle;
 $canView   = $canManage || hasPermission('view_staff');
 
 if (!$canView) {
+    logPermissionDenied($db->getConnection(), 'Forbidden access to staff management API', (int) ($_SESSION['user_id'] ?? 0), 'staff', requestInt($input, 'staff_id') ?? null);
     echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
     exit;
 }
@@ -44,10 +48,12 @@ $actionPermMap = [
     'delete_staff'   => 'admin',
 ];
 if (isset($actionPermMap[$action]) && $actionPermMap[$action] !== 'admin' && !hasPermission($actionPermMap[$action])) {
+    logPermissionDenied($db->getConnection(), 'Attempted forbidden staff action: ' . ($action ?? 'unknown'), (int) ($_SESSION['user_id'] ?? 0), 'staff', requestInt($input, 'staff_id') ?? null);
     echo json_encode(['success' => false, 'message' => 'You do not have permission to perform this action.']);
     exit;
 }
 if (isset($actionPermMap[$action]) && $actionPermMap[$action] === 'admin' && !$isAdmin) {
+    logPermissionDenied($db->getConnection(), 'Attempted admin-only staff action: ' . ($action ?? 'unknown'), (int) ($_SESSION['user_id'] ?? 0), 'staff', requestInt($input, 'staff_id') ?? null);
     echo json_encode(['success' => false, 'message' => 'You do not have permission to perform this action.']);
     exit;
 }

@@ -19,7 +19,23 @@ function logActivity(
         $user = getCurrentUser();
         $actor_id = $user['id'] ?? null;
     }
-    if ($actor_id === null && $activity_type !== 'LOGIN_FAILED') return false;
+
+    $allowNullActor = in_array($activity_type, [
+        'LOGIN_FAILED',
+        'AUTH_DENIED',
+        'PERMISSION_DENIED',
+        'API_SUSPICIOUS',
+        'DATA_EXPORT',
+        'ROLE_CHANGE',
+        'ADMIN_ACTION',
+        'CONFIG_CHANGE',
+        'USER_DELETE',
+        'SERVICE_DELETE',
+    ], true);
+
+    if ($actor_id === null && !$allowNullActor) {
+        return false;
+    }
 
     if ($before_values !== null && $after_values !== null) {
         $hasChanges = false;
@@ -73,9 +89,53 @@ function logActivity(
     return $result;
 }
 
-function logFailedLogin($db, string $description, ?int $userId = null): void
-{
-    logActivity($db, 'LOGIN_FAILED', $userId ? 'user' : 'auth', $userId, $description, null, null, $userId);
+if (!function_exists('logFailedLogin')) {
+    function logFailedLogin($db, string $description, ?int $userId = null): void
+    {
+        logActivity($db, 'LOGIN_FAILED', $userId ? 'user' : 'auth', $userId, $description, null, null, $userId);
+    }
+}
+
+if (!function_exists('logAuthDenied')) {
+    function logAuthDenied($db, string $description, ?int $userId = null, ?string $entityType = 'auth', ?int $entityId = null): void
+    {
+        logActivity($db, 'AUTH_DENIED', $entityType ?? 'auth', $entityId, $description, null, null, $userId);
+    }
+}
+
+if (!function_exists('logPermissionDenied')) {
+    function logPermissionDenied($db, string $description, ?int $userId = null, ?string $entityType = 'auth', ?int $entityId = null): void
+    {
+        logActivity($db, 'PERMISSION_DENIED', $entityType ?? 'auth', $entityId, $description, null, null, $userId);
+    }
+}
+
+if (!function_exists('logSuspiciousApiActivity')) {
+    function logSuspiciousApiActivity($db, string $description, ?int $userId = null, ?string $entityType = 'api', ?int $entityId = null): void
+    {
+        logActivity($db, 'API_SUSPICIOUS', $entityType ?? 'api', $entityId, $description, null, null, $userId);
+    }
+}
+
+if (!function_exists('logDataExport')) {
+    function logDataExport($db, string $description, ?int $userId = null, ?string $entityType = 'report', ?int $entityId = null): void
+    {
+        logActivity($db, 'DATA_EXPORT', $entityType ?? 'report', $entityId, $description, null, null, $userId);
+    }
+}
+
+if (!function_exists('logAdminAction')) {
+    function logAdminAction($db, string $description, ?int $userId = null, ?string $entityType = 'admin', ?int $entityId = null, ?array $before = null, ?array $after = null): void
+    {
+        logActivity($db, 'ADMIN_ACTION', $entityType ?? 'admin', $entityId, $description, $before, $after, $userId);
+    }
+}
+
+if (!function_exists('logConfigChange')) {
+    function logConfigChange($db, string $entityType, ?int $entityId, string $description, ?array $before = null, ?array $after = null, ?int $userId = null): void
+    {
+        logActivity($db, 'CONFIG_CHANGE', $entityType, $entityId, $description, $before, $after, $userId);
+    }
 }
 
 function getActivityLogs(
@@ -250,6 +310,12 @@ function formatActivityLog(array $log): array
         'LOGIN'                    => 'User Login',
         'LOGIN_FAILED'             => 'Failed Login Attempt',
         'LOGOUT'                   => 'User Logout',
+        'AUTH_DENIED'              => 'Authentication Denied',
+        'PERMISSION_DENIED'        => 'Permission Denied',
+        'API_SUSPICIOUS'           => 'Suspicious API Activity',
+        'DATA_EXPORT'              => 'Data Export',
+        'ADMIN_ACTION'             => 'Admin Action',
+        'CONFIG_CHANGE'            => 'Configuration Change',
 
         'STAFF_ADD'                => 'Add Staff',
         'STAFF_EDIT'               => 'Edit Staff',
@@ -275,7 +341,6 @@ function formatActivityLog(array $log): array
 
         'STAFF_RESTORE'            => 'Restore Staff',
         'SERVICE_RESTORE'          => 'Restore Service',
-        
     ];
 
     return [

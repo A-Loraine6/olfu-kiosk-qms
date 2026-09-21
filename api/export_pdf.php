@@ -3,12 +3,15 @@ require_once __DIR__ . '/../includes/config_loader.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/request_validation.php';
+require_once __DIR__ . '/activity_logger.php';
 
 if (!isLoggedIn()) {
+    logAuthDenied($db->getConnection(), 'Unauthenticated report export attempt', null, 'report');
     header('Location: ../login.php');
     exit;
 }
 if (!verifyCsrfToken(requestString($_POST, 'csrf_token', 255, true) ?? '')) {
+    logSuspiciousApiActivity($db->getConnection(), 'Invalid CSRF token during PDF export', (int) ($_SESSION['user_id'] ?? 0), 'report');
     http_response_code(403);
     die('Invalid CSRF token.');
 }
@@ -223,6 +226,8 @@ class BaseReport extends FPDF
 $genAt     = (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('F j, Y \a\t g:i A');
 $dateLabel = $from === $to ? fmtDate($from) : fmtDate($from) . ' - ' . fmtDate($to);
 
+$reportType = $isStaff ? 'staff_report' : ($isScopedView ? 'office_report' : 'admin_report');
+
 if ($isStaff) {
     $stmt = $conn->prepare("
         SELECT COUNT(*) AS served,
@@ -339,6 +344,8 @@ if ($isStaff) {
     $fn = 'Staff_Report_' . ($staffInfo['full_name'] ?? 'Staff') . '_' . $from
         . ($from !== $to ? '_to_' . $to : '') . '.pdf';
     $fn = preg_replace('/[^A-Za-z0-9_\-.]/', '_', $fn);
+    logDataExport($conn, 'Exported PDF office report for ' . ($officeName ?? 'office'), $userId, 'report', $officeId);
+    logDataExport($conn, 'Exported PDF staff report for ' . ($staffInfo['full_name'] ?? 'Staff'), $userId, 'report', $userId);
     $pdf->Output('D', $fn);
     exit;
 }
