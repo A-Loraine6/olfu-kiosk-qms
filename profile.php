@@ -298,7 +298,8 @@ function buildDiffHtml(array $before, array $after): string
                                     <div class="form-group">
                                         <label for="current_password">Current Password <span class="required">*</span></label>
                                         <div class="input-pw-wrap">
-                                            <input type="password" id="current_password" placeholder="Enter your current password">
+                                            <input type="password" id="current_password" placeholder="Enter your current password"
+                                                >
                                             <button type="button" class="btn-pw-toggle" onclick="togglePw('current_password', this)">
                                                 <i class="fas fa-eye"></i>
                                             </button>
