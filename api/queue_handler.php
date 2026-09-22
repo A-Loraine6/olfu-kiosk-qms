@@ -257,26 +257,29 @@ if ($action === 'call_next') {
     }
 
     $assignedWindowId = $ticket['window_id'];
-    if ($assignedWindowId === null && $ticket['transaction_type'] !== null) {
-        $serviceStmt = $db->prepare("
-            SELECT sw.window_number
-            FROM service_windows sw
-            LEFT JOIN transaction_types tt ON tt.id = sw.service_id
-            WHERE tt.name = ? AND tt.office_id = ? AND sw.office_id = ?
-        ");
-        $serviceStmt->bind_param('sii', $ticket['transaction_type'], $officeId, $officeId);
-        $serviceStmt->execute();
-        $serviceWindows = $serviceStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $serviceStmt->close();
+    if ($assignedWindowId === null) {
+        if ($ticket['transaction_type'] !== null) {
+            $serviceStmt = $db->prepare("
+                SELECT sw.window_number
+                FROM service_windows sw
+                LEFT JOIN transaction_types tt ON tt.id = sw.service_id
+                WHERE tt.name = ? AND tt.office_id = ? AND sw.office_id = ?
+            ");
+            $serviceStmt->bind_param('sii', $ticket['transaction_type'], $officeId, $officeId);
+            $serviceStmt->execute();
+            $serviceWindows = $serviceStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $serviceStmt->close();
 
-        if (count($serviceWindows) > 0 && $windowNumber > 0) {
-            $validWindows = array_column($serviceWindows, 'window_number');
-            if (in_array($windowNumber, $validWindows)) {
+            if (count($serviceWindows) > 0 && $windowNumber > 0) {
+                $validWindows = array_column($serviceWindows, 'window_number');
+                $assignedWindowId = in_array($windowNumber, $validWindows)
+                    ? $windowNumber
+                    : (int) $serviceWindows[0]['window_number'];
+            } elseif ($windowNumber > 0) {
                 $assignedWindowId = $windowNumber;
-            } else {
-                $assignedWindowId = (int)$serviceWindows[0]['window_number'];
             }
         } elseif ($windowNumber > 0) {
+            // Unified queue mode: ticket has no transaction_type, so just use the staff's own window
             $assignedWindowId = $windowNumber;
         }
     }

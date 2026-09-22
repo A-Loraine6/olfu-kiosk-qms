@@ -73,7 +73,9 @@ if (!empty($officeIds)) {
     <link rel="shortcut icon" href="img/olfu-logo.png" type="image/x-icon">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="css/display.css">
 </head>
 
@@ -101,7 +103,148 @@ if (!empty($officeIds)) {
         const HARD_RELOAD_MS = 60 * 60 * 1000;
 
         let offices = DATA;
-        
+
+        let lastServing = {}; // officeId -> last announced ticket_number
+        let audioUnlocked = false;
+        let audioCtx = null;
+        let selectedVoice = null;
+        const speechQueue = [];
+        let speaking = false;
+
+        function unlockAudio() {
+            if (audioUnlocked) return;
+            const warm = new SpeechSynthesisUtterance('');
+            speechSynthesis.speak(warm);
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            audioUnlocked = true;
+            document.getElementById('audio-unlock')?.remove();
+        }
+
+        function attemptAutoUnlock() {
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const warm = new SpeechSynthesisUtterance('');
+                speechSynthesis.speak(warm);
+                audioUnlocked = true;
+            } catch (e) {
+                audioUnlocked = false;
+            }
+        }
+
+        // ---- Voice selection: pick a female-sounding voice if one is available ----
+        function pickFemaleVoice() {
+            const voices = speechSynthesis.getVoices();
+            if (!voices.length) return null;
+
+            const femaleNamePatterns = /female|zira|samantha|susan|karen|victoria|moira|tessa|fiona|serena|allison|ava|joanna|kimberly|salli|amy|emma|google uk english female|google us english/i;
+
+            let match = voices.find(v => /en/i.test(v.lang) && femaleNamePatterns.test(v.name));
+            if (match) return match;
+
+            match = voices.find(v => femaleNamePatterns.test(v.name));
+            if (match) return match;
+
+            return voices.find(v => /en/i.test(v.lang)) || voices[0] || null;
+        }
+
+        function initVoice() {
+            selectedVoice = pickFemaleVoice();
+        }
+
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = initVoice;
+        }
+        initVoice();
+
+        // --- Uncomment to inspect available voices on this TV/browser (shows in tab title) ---
+        // function debugListVoices() {
+        //     const voices = speechSynthesis.getVoices();
+        //     document.title = voices.map(v => `${v.name} (${v.lang})`).join(' | ') || 'No voices yet';
+        // }
+        // speechSynthesis.onvoiceschanged = debugListVoices;
+        // debugListVoices();
+
+        function playChime() {
+            return new Promise(resolve => {
+                if (!audioCtx) return resolve();
+
+                const now = audioCtx.currentTime;
+                const notes = [
+                    { freq: 880, start: 0,    dur: 0.18 },
+                    { freq: 1046.5, start: 0.18, dur: 0.22 }
+                ];
+
+                notes.forEach(n => {
+                    const osc  = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(n.freq, now + n.start);
+                    gain.gain.setValueAtTime(0, now + n.start);
+                    gain.gain.linearRampToValueAtTime(0.3, now + n.start + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + n.start + n.dur);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now + n.start);
+                    osc.stop(now + n.start + n.dur);
+                });
+
+                const totalDur = notes[notes.length - 1].start + notes[notes.length - 1].dur;
+                setTimeout(resolve, totalDur * 1000 + 150);
+            });
+        }
+
+        function speakText(text) {
+            speechQueue.push(text);
+            processSpeechQueue();
+        }
+
+        async function processSpeechQueue() {
+            if (speaking || speechQueue.length === 0 || !audioUnlocked) return;
+            speaking = true;
+
+            const text = speechQueue.shift();
+            await playChime();
+
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.rate = 0.95;
+            if (selectedVoice) {
+                utter.voice = selectedVoice;
+                utter.lang = selectedVoice.lang;
+            } else {
+                utter.lang = 'en-PH';
+            }
+            utter.onend = () => { speaking = false; processSpeechQueue(); };
+            utter.onerror = () => { speaking = false; processSpeechQueue(); };
+            speechSynthesis.speak(utter);
+        }
+
+        function spellTicketNumber(num) {
+            const match = String(num).match(/^([A-Za-z]*)(\d+)$/);
+            if (!match) return num;
+            const [, letters, digits] = match;
+            const digitStr = digits.split('').join(' ');
+            return letters ? `${letters}, ${digitStr}` : digitStr;
+        }
+
+        function announceNewCalls(newOffices) {
+            newOffices.forEach(o => {
+                const current = (o.now_serving || [])[0];
+                if (!current) return;
+
+                const key = o.id;
+                if (current.ticket_number === lastServing[key]) return;
+
+                lastServing[key] = current.ticket_number;
+
+                const spoken = spellTicketNumber(current.ticket_number);
+                const text = current.window_id
+                    ? `Now serving ${spoken}, window ${current.window_id}, ${o.name}`
+                    : `Now serving ${spoken}, ${o.name}`;
+
+                speakText(text);
+            });
+        }
+
         setTimeout(() => location.reload(), HARD_RELOAD_MS);
 
         (function tick() {
@@ -204,12 +347,11 @@ if (!empty($officeIds)) {
 
         async function refresh() {
             try {
-                const r = await fetch('api/display_data.php', {
-                    cache: 'no-store'
-                });
+                const r = await fetch('api/display_data.php', { cache: 'no-store' });
                 if (!r.ok) return;
                 const d = await r.json();
                 if (d && Array.isArray(d.offices)) {
+                    announceNewCalls(d.offices);
                     offices = d.offices;
                     render();
                 }
@@ -219,6 +361,7 @@ if (!empty($officeIds)) {
 
         render();
         setTimeout(refresh, REFRESH_MS);
+        attemptAutoUnlock();
     </script>
 
 </body>
