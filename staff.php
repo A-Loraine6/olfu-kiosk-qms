@@ -319,14 +319,21 @@ $pageLimit = 10;
 
                 <div class="form-group">
                     <label for="add_office">Office <span class="required">*</span></label>
-                    <select id="add_office" onchange="loadWindowOptions('add_office', 'add_window', 'add_window_group')">
-                        <option value="" disabled selected>Select office</option>
+                    <select id="add_office"
+                        <?php echo $isOfficeScoped ? 'disabled' : ''; ?>
+                        onchange="loadWindowOptions('add_office', 'add_window', 'add_window_group')">
+                        <?php if (!$isOfficeScoped): ?>
+                            <option value="" disabled selected>Select office</option>
+                        <?php endif; ?>
                         <?php foreach ($offices as $o): ?>
-                            <option value="<?php echo htmlspecialchars($o); ?>">
+                            <option value="<?php echo htmlspecialchars($o); ?>" <?php echo $isOfficeScoped ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars($o); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <?php if ($isOfficeScoped): ?>
+                        <span class="field-hint"><i class="fas fa-lock"></i> Locked to your office</span>
+                    <?php endif; ?>
                 </div>
 
                 <div class="form-group" id="add_window_group" style="display:none;">
@@ -374,12 +381,19 @@ $pageLimit = 10;
                 </div>
                 <div class="form-group">
                     <label for="edit_office">Office <span class="required">*</span></label>
-                    <select id="edit_office" onchange="loadWindowOptions('edit_office', 'edit_window', 'edit_window_group')">
-                        <option value="" disabled>Select Office</option>
+                    <select id="edit_office"
+                        <?php echo $isOfficeScoped ? 'disabled' : ''; ?>
+                        onchange="loadWindowOptions('edit_office', 'edit_window', 'edit_window_group')">
+                        <?php if (!$isOfficeScoped): ?>
+                            <option value="" disabled>Select Office</option>
+                        <?php endif; ?>
                         <?php foreach ($offices as $o): ?>
                             <option value="<?php echo htmlspecialchars($o); ?>"><?php echo htmlspecialchars($o); ?></option>
                         <?php endforeach; ?>
                     </select>
+                    <?php if ($isOfficeScoped): ?>
+                        <span class="field-hint"><i class="fas fa-lock"></i> Locked to your office</span>
+                    <?php endif; ?>
                 </div>
                 <div class="form-group" id="edit_window_group" style="display:none;">
                     <label for="edit_window">Window</label>
@@ -539,6 +553,7 @@ $pageLimit = 10;
         const CAN_EDIT = <?php echo json_encode($canEdit); ?>;
         const CAN_DELETE = <?php echo json_encode($canDelete); ?>;
         const CAN_TOGGLE = <?php echo json_encode($canToggle); ?>;
+        const IS_OFFICE_SCOPED = <?php echo json_encode($isOfficeScoped); ?>;
     </script>
 </body>
 

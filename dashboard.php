@@ -10,15 +10,24 @@ if (!isLoggedIn()) {
     exit;
 }
 
-$currentUser    = getCurrentUser();
+$currentUser = getCurrentUser();
 
 if (isset($currentUser['role']) && $currentUser['role'] === 'staff') {
     header('Location: ' . BASE_URL . 'staff_dashboard.php');
     exit;
 }
-$queueSummary   = getTodayQueueSummary($db);
-$queueByOffice  = getQueueByOffice($db);
-$queueTrendData = getQueueTrendData($db);
+
+$isAdminUser = (($_SESSION['role_id'] ?? null) === 1) || (($_SESSION['role'] ?? '') === 'admin');
+$scopeOfficeId = (!$isAdminUser && !empty($currentUser['office_id'])) ? (int) $currentUser['office_id'] : null;
+$scopeOfficeName = null;
+if ($scopeOfficeId) {
+    $officeInfo = getOfficeInfo($db, $scopeOfficeId);
+    $scopeOfficeName = $officeInfo['name'] ?? 'My Office';
+}
+
+$queueSummary   = getTodayQueueSummary($db, $scopeOfficeId);
+$queueByOffice  = getQueueByOffice($db, $scopeOfficeId);
+$queueTrendData = getQueueTrendData($db, $scopeOfficeId);
 
 $hasOfficeData = is_array($queueByOffice) && array_sum(array_column($queueByOffice, 'count')) > 0;
 $hasTrendData  = is_array($queueTrendData) && array_sum(array_column($queueTrendData, 'count')) > 0;
@@ -62,6 +71,12 @@ $currentTime = date('l, F j, Y \a\t g:i A');
                     <h2 class="header-page-title">
                         <i class="fas fa-chart-pie"></i> Dashboard
                     </h2>
+                    <?php if ($scopeOfficeName): ?>
+                        <span class="office-badge">
+                            <i class="fas fa-building"></i>
+                            <?php echo htmlspecialchars($scopeOfficeName); ?>
+                        </span>
+                    <?php endif; ?>
                 </div>
                 <div class="header-right">
                     <div class="header-timestamp" id="currentTime">
