@@ -124,11 +124,9 @@ class BaseReport extends FPDF
     function SecTitle(string $t): void
     {
         $y = $this->GetY();
-        $this->SetFillColor(...self::GRN);
-        $this->Rect(10, $y + 0.8, 2.5, 4, 'F');
         $this->SetFont('Helvetica', 'B', 7.5);
         $this->SetTextColor(...self::DRK);
-        $this->SetXY(14, $y);
+        $this->SetXY(10, $y);
         $this->Cell(0, 5.5, strtoupper($t), 0, 1);
         $this->SetX(10);
         $this->SetTextColor(...self::TXT);
@@ -267,6 +265,17 @@ if ($isStaff) {
     $stmt4->execute();
     $staffInfo = $stmt4->get_result()->fetch_assoc();
 
+    $stmtB = $conn->prepare("
+        SELECT transaction_type, COUNT(*) AS cnt
+        FROM tickets
+        WHERE served_by = ? AND status = 'completed'
+        AND DATE(created_at) BETWEEN ? AND ?
+        GROUP BY transaction_type
+        ORDER BY cnt DESC");
+    $stmtB->bind_param('iss', $userId, $from, $to);
+    $stmtB->execute();
+    $breakdownRows = $stmtB->get_result()->fetch_all(MYSQLI_ASSOC);
+
     $stmt5 = $conn->prepare("SELECT name FROM offices WHERE id = ?");
     $stmt5->bind_param('i', $userOffice);
     $stmt5->execute();
@@ -276,6 +285,7 @@ if ($isStaff) {
     $avgS   = $stats['avg_s'] !== null ? (float) $stats['avg_s'] : null;
     $total  = $served + $skippedCount;
     $rate   = $total > 0 ? round($served / $total * 100, 1) . '%' : 'N/A';
+    
 
     $pdf = new BaseReport('P', 'mm', 'A4');
     $pdf->AliasNbPages();
@@ -297,6 +307,27 @@ if ($isStaff) {
         ['lbl' => 'Completion Rate', 'val' => $rate,                   'sub' => 'Served / total called',  'clr' => BaseReport::PRP],
     ]);
 
+    $pdf->Ln(4);
+
+    // after the StatCards() call, before "Ticket Log" section
+    $pdf->SecTitle('Services Handled');
+    if (empty($breakdownRows)) {
+        $pdf->SetFont('Helvetica', 'I', 8);
+        $pdf->SetTextColor(...BaseReport::MUT);
+        $pdf->Cell(0, 8, 'No completed transactions for this period.', 0, 1, 'C');
+        $pdf->SetTextColor(...BaseReport::TXT);
+    } else {
+        $pdf->THead([
+            ['Service Type', 145, 'L'],
+            ['Completed',     45, 'C'],
+        ]);
+        foreach ($breakdownRows as $i => $row) {
+            $pdf->TRow([
+                [$row['transaction_type'] ?: 'General Queue', 145, 'L'],
+                [(int) $row['cnt'],                             45, 'C'],
+            ], $i % 2 === 1);
+        }
+    }
     $pdf->Ln(4);
 
     $pdf->SecTitle('Ticket Log');
@@ -426,7 +457,7 @@ if ($isScopedView) {
     $pdf->SetAutoPageBreak(true, 14);
     $pdf->SetMargins(10, 28, 10);
     $pdf->rTitle = 'Office Performance Report';
-    $pdf->rSub   = $officeName . ' - Supervisor View';
+    $pdf->rSub   = $officeName;
     $pdf->rRange = $dateLabel;
     $pdf->rGenAt = $genAt;
 

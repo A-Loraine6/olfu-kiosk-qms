@@ -138,13 +138,39 @@ if ($isPersonalView || $isScopedView) {
                                     <div class="report-block-icon"><i class="fas fa-receipt"></i></div>
                                     <span id="staffResultsLabel">Loading…</span>
                                 </div>
-                                <span class="pill pill-orange" id="staffResultsPill"></span>
                             </div>
                             <div class="report-block-body">
                                 <div class="report-block-loading" id="staffResultsLoading">
                                     <i class="fas fa-spinner fa-spin"></i> Loading your stats…
                                 </div>
                                 <div id="staffResultsCards" class="daily-summary-row" style="display:none;"></div>
+                            </div>
+                        </div>
+
+                        <div id="staffBreakdown" class="report-block">
+                            <div class="report-block-header">
+                                <div class="report-block-title">
+                                    <div class="report-block-icon"><i class="fas fa-list-check"></i></div>
+                                    Services You Handled
+                                </div>
+                            </div>
+                            <div class="report-block-body">
+                                <div class="empty-state" id="emptyStaffBreakdown" style="display:none;">
+                                    <div class="empty-state-icon"><i class="fas fa-list-check"></i></div>
+                                    <div class="empty-state-title">No transactions yet</div>
+                                    <div class="empty-state-message">Completed transactions for this period will show up here, broken down by service.</div>
+                                </div>
+                                <div class="perf-table-scroll">
+                                    <table class="perf-table" id="staffBreakdownTable" style="display:none;">
+                                        <thead>
+                                            <tr>
+                                                <th>Service</th>
+                                                <th>Completed</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
 
@@ -158,7 +184,6 @@ if ($isPersonalView || $isScopedView) {
                                     <div class="report-block-icon"><i class="fas fa-exchange-alt"></i></div>
                                     Weekly Comparison
                                 </div>
-                                <span class="pill pill-orange" id="wowPill">No Data</span>
                             </div>
                             <div class="report-block-body">
                                 <div class="report-block-loading" id="wowLoading">
@@ -218,7 +243,6 @@ if ($isPersonalView || $isScopedView) {
                                     <div class="report-block-icon"><i class="fas fa-receipt"></i></div>
                                     Queue Volume Summary
                                 </div>
-                                <span class="pill pill-orange">No Data</span>
                             </div>
                             <div class="report-block-body">
                                 <div class="daily-summary-row">
@@ -246,40 +270,46 @@ if ($isPersonalView || $isScopedView) {
                             </div>
                         </div>
 
-                        <h2 class="section-title" style="margin-top:28px;">
-                            <i class="fas fa-building"></i>
-                            <?php echo $isScopedView ? 'Your Department Performance' : 'Department Performance'; ?>
-                        </h2>
-                        
-                        <div class="report-block" id="block-office">
-                            <div class="report-block-header">
-                                <div class="report-block-title">
-                                    <div class="report-block-icon"><i class="fas fa-trophy"></i></div>
-                                    <?php echo $isScopedView ? 'How Your Department is Performing' : 'How Each Department is Performing'; ?>
+                        <?php if ($isScopedView): ?>
+
+                            <h2 class="section-title" style="margin-top:28px;">
+                                <i class="fas fa-list-check"></i>
+                                Your Department's Service Breakdown
+                            </h2>
+
+                            <div class="report-block" id="block-types">
+                                <div class="report-block-header">
+                                    <div class="report-block-title">
+                                        <div class="report-block-icon"><i class="fas fa-chart-pie"></i></div>
+                                        Transactions by Service Type
+                                    </div>
                                 </div>
-                                <span class="pill pill-orange">No Data</span>
-                            </div>
-                            <div class="report-block-body">
-                                <div class="empty-state" id="emptyOffice" style="display:none;">
-                                    <div class="empty-state-icon"><i class="fas fa-building"></i></div>
-                                    <div class="empty-state-title">No department data</div>
-                                    <div class="empty-state-message">Try a wider date range to see department performance.</div>
+                                <div class="report-block-body">
+                                    <div class="empty-state" id="emptyTypes" style="display:none;">
+                                        <div class="empty-state-icon"><i class="fas fa-chart-pie"></i></div>
+                                        <div class="empty-state-title">No Data</div>
+                                        <div class="empty-state-message">Service breakdown will appear here once there's activity in this range.</div>
+                                    </div>
+                                    <div id="typesContent" style="display:none;">
+                                        <div class="perf-table-scroll">
+                                            <table class="perf-table" id="typesTable">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Type</th>
+                                                        <th>Total</th>
+                                                        <th>Completed</th>
+                                                        <th>Skipped</th>
+                                                        <th>Waiting</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
-                                <table class="perf-table" style="display:none;" id="officeTable">
-                                    <thead>
-                                        <tr>
-                                            <th>Office</th>
-                                            <th>Served</th>
-                                            <th>Skipped</th>
-                                            <th>Avg. Service Time</th>
-                                            <th>Share of Volume</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
                             </div>
-                        </div>
+
+                        <?php endif; ?>
 
                         <h2 class="section-title" style="margin-top:28px;"><i class="fas fa-clock"></i> When Are We Busiest?</h2>
 
@@ -289,7 +319,6 @@ if ($isPersonalView || $isScopedView) {
                                     <div class="report-block-icon"><i class="fas fa-fire-alt"></i></div>
                                     Peak Hours &amp; Days
                                 </div>
-                                <span class="pill pill-orange">No Data</span>
                             </div>
                             <div class="report-block-body">
                                 <div class="charts-2col">

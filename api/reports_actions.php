@@ -85,6 +85,29 @@ if ($action === 'staff_metrics') {
     $stmt2->execute();
     $skipped = (int) ($stmt2->get_result()->fetch_assoc()['skipped'] ?? 0);
 
+    // NEW: breakdown of completed tickets by service, for this staff member only
+    $stmt3 = $conn->prepare("
+        SELECT
+            transaction_type,
+            COUNT(*) AS cnt
+        FROM tickets
+        WHERE served_by = ?
+          AND status = 'completed'
+          AND DATE(created_at) BETWEEN ? AND ?
+        GROUP BY transaction_type
+        ORDER BY cnt DESC
+    ");
+    $stmt3->bind_param('iss', $userId, $from, $to);
+    $stmt3->execute();
+    $breakdownResult = $stmt3->get_result();
+    $breakdown = [];
+    while ($r = $breakdownResult->fetch_assoc()) {
+        $breakdown[] = [
+            'type'  => $r['transaction_type'] ?: 'General Queue',
+            'count' => (int) $r['cnt'],
+        ];
+    }
+
     echo json_encode([
         'success' => true,
         'metrics' => [
@@ -92,6 +115,7 @@ if ($action === 'staff_metrics') {
             'skipped'     => $skipped,
             'avg_minutes' => $row['avg_seconds'] !== null
                 ? round($row['avg_seconds'] / 60, 1) : null,
+            'breakdown'   => $breakdown,
         ],
     ]);
     exit;
