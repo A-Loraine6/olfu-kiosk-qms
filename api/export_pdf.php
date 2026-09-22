@@ -309,7 +309,6 @@ if ($isStaff) {
 
     $pdf->Ln(4);
 
-    // after the StatCards() call, before "Ticket Log" section
     $pdf->SecTitle('Services Handled');
     if (empty($breakdownRows)) {
         $pdf->SetFont('Helvetica', 'I', 8);

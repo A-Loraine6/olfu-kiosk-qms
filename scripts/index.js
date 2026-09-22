@@ -416,46 +416,46 @@ function prepareConfirm() {
 	renderWaitEstimate(o, "s3WaitEstimate");
 }
 
-function renderWaitEstimate(o, targetElId) {
-  const avg = getAvgMinutes(o);
-  const breakInfo = getBreakInfo(o);
+function renderWaitEstimate(o, targetElId, apiData) {
   const target = document.getElementById(targetElId);
+  const onBreak = apiData ? apiData.on_break : getBreakInfo(o).onBreak;
+  const peopleAhead = apiData ? apiData.people_ahead : o.waiting;
+  const estWaitMins = apiData ? apiData.est_wait_mins : peopleAhead * getAvgMinutes(o);
 
-  if (breakInfo.onBreak) {
-	const resumeIn = minutesUntil(breakInfo.breakEnd);
-	const totalMins = resumeIn + o.waiting * avg;
-
-	target.innerHTML = `
-	  <div class="break-banner">
-		<div class="break-banner-icon"><i class="fas fa-mug-hot"></i></div>
-		<div class="break-banner-text">
-		  <div class="break-banner-title">Office is on break</div>
-		  <div class="break-banner-sub">Resumes at <strong>${formatTime12(breakInfo.breakEnd)}</strong></div>
-		</div>
-	  </div>
-	  <div class="wait-stat-row">
-		<div class="wait-stat">
-		  <div class="wait-stat-value">${formatMinutes(resumeIn)}</div>
-		  <div class="wait-stat-label">Until break ends</div>
-		</div>
-		<div class="wait-stat-divider"></div>
-		<div class="wait-stat">
-		  <div class="wait-stat-value">${o.waiting}</div>
-		  <div class="wait-stat-label">People ahead</div>
-		</div>
-		<div class="wait-stat-divider"></div>
-		<div class="wait-stat">
-		  <div class="wait-stat-value">~${formatMinutes(totalMins)}</div>
-		  <div class="wait-stat-label">Total est. wait</div>
-		</div>
-	  </div>`;
-	return;
+  if (onBreak) {
+    const breakEnd = o.break_end;
+    const resumeIn = minutesUntil(breakEnd);
+    target.innerHTML = `
+      <div class="break-banner">
+        <div class="break-banner-icon"><i class="fas fa-mug-hot"></i></div>
+        <div class="break-banner-text">
+          <div class="break-banner-title">Office is on break</div>
+          <div class="break-banner-sub">Resumes at <strong>${formatTime12(breakEnd)}</strong></div>
+        </div>
+      </div>
+      <div class="wait-stat-row">
+        <div class="wait-stat">
+          <div class="wait-stat-value">${formatMinutes(resumeIn)}</div>
+          <div class="wait-stat-label">Until break ends</div>
+        </div>
+        <div class="wait-stat-divider"></div>
+        <div class="wait-stat">
+          <div class="wait-stat-value">${peopleAhead}</div>
+          <div class="wait-stat-label">People ahead</div>
+        </div>
+        <div class="wait-stat-divider"></div>
+        <div class="wait-stat">
+          <div class="wait-stat-value">~${formatMinutes(estWaitMins)}</div>
+          <div class="wait-stat-label">Total est. wait</div>
+        </div>
+      </div>`;
+    return;
   }
 
   target.innerHTML =
-	o.waiting === 0
-	  ? `<div class="wait-next">You're next! No wait time.</div>`
-	  : `Estimated wait: <strong>~${formatMinutes(o.waiting * avg)}</strong>`;
+    peopleAhead === 0
+      ? `<div class="wait-next">You're next! No wait time.</div>`
+      : `Estimated wait: <strong>~${formatMinutes(estWaitMins)}</strong>`;
 }
 
 function confirmQueue() {
@@ -745,14 +745,11 @@ function checkAndPrepareConfirm() {
 			}
 			const s = state.service;
 			document.getElementById("s3OfficeName").textContent = o.name;
-			document.getElementById("s3ServiceName").textContent = s
-				? s.name
-				: "General Queue";
-			document.getElementById("s3QueuePreview").textContent =
-				data.preview_ticket;
+			document.getElementById("s3ServiceName").textContent = s ? s.name : "General Queue";
+			document.getElementById("s3QueuePreview").textContent = data.preview_ticket;
 			updatePriorityPills();
 
-			renderWaitEstimate(o, "s3WaitEstimate");
+			renderWaitEstimate(o, "s3WaitEstimate", data); 
 
 			state.history.push(3);
 			showScreen(3);

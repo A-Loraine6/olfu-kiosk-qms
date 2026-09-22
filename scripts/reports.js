@@ -60,8 +60,8 @@ function setRange(preset) {
 
 	let from, to;
 
-	const dayOfWeek = today.getDay(); // 0 = Sunday ... 6 = Saturday
-	const diffToSun = dayOfWeek; // days since the most recent Sunday
+	const dayOfWeek = today.getDay();
+	const diffToSun = dayOfWeek;
 
 	switch (preset) {
 		case "today":
@@ -550,7 +550,7 @@ function renderDayBreakdown(data) {
 
 function renderTransactionTypes(data) {
 	const block = document.getElementById("block-types");
-	if (!block) return; // not rendered on full (all-offices) view
+	if (!block) return;
 
 	const hasData = data.length > 0 && data.some((d) => d.total > 0);
 	const content = document.getElementById("typesContent");
@@ -1184,7 +1184,6 @@ if (IS_PERSONAL_VIEW) {
 
 	const officeId = SCOPED_OFFICE_ID ?? null;
 
-	// Keep the date filter inputs in sync with what's actually being shown
 	const fromEl = document.getElementById("dateFrom");
 	const toEl = document.getElementById("dateTo");
 	if (fromEl) fromEl.value = weekStartStr;
