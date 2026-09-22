@@ -19,6 +19,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+if (!verifyCsrfToken(requestString($_POST, 'csrf_token', 255, true) ?? '')) {
+    ob_end_clean();
+    http_response_code(403);
+    echo json_encode(['success' => false, 'code' => 'csrf_invalid', 'message' => 'Invalid request. Please refresh and try again.']);
+    exit;
+}
+
 $office_id    = requestInt($_POST, 'office_id');
 $serviceInput = requestString($_POST, 'service_name', 100);
 $service_name = $serviceInput === '' ? '' : ($serviceInput === null ? null : validServiceName($serviceInput, 100));
@@ -37,6 +44,7 @@ try {
 
     ob_end_clean();
     echo json_encode($result);
+    exit;
 } catch (Exception $e) {
     ob_end_clean();
     http_response_code(500);
@@ -45,11 +53,5 @@ try {
         'code'    => 'server_error',
         'message' => 'A server error occurred. Please try again or approach a staff member.',
     ]);
-}
-
-if (!verifyCsrfToken(requestString($_POST, 'csrf_token', 255, true) ?? '')) {
-    ob_end_clean();
-    http_response_code(403);
-    echo json_encode(['success' => false, 'code' => 'csrf_invalid', 'message' => 'Invalid request. Please refresh and try again.']);
     exit;
 }

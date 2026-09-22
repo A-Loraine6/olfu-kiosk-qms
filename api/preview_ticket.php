@@ -19,6 +19,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+if (!verifyCsrfToken(requestString($_POST, 'csrf_token', 255, true) ?? '')) {
+    ob_end_clean();
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Invalid request. Please refresh and try again.']);
+    exit;
+}
+
 $office_id   = requestInt($_POST, 'office_id');
 $is_priority = requestBool($_POST, 'is_priority', false);
 
@@ -30,40 +37,15 @@ if ($office_id === null || $is_priority === null) {
 }
 
 try {
-    $generator     = new TicketGenerator($db);
-    $previewTicket = $generator->previewNextTicketNumber($office_id, $is_priority);
+    $generator = new TicketGenerator($db);
+    $result    = $generator->previewNextTicketNumber($office_id, $is_priority);
 
     ob_end_clean();
-
-    if ($previewTicket === false) {
-        echo json_encode(['success' => false, 'message' => 'Office not found']);
-        exit;
-    }
-
-    $queueStatus = $generator->getQueueStatus($office_id);
-    if ($queueStatus['is_full']) {
-        echo json_encode([
-            'success' => false,
-            'code'    => 'queue_full',
-            'message' => 'Maximum tickets for today have already been issued. Please come back tomorrow.',
-        ]);
-        exit;
-    }
-
-    echo json_encode([
-        'success'        => true,
-        'preview_ticket' => $previewTicket,
-        'is_priority'    => $is_priority,
-    ]);
+    echo json_encode($result);
+    exit;
 } catch (Exception $e) {
     ob_end_clean();
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Could not load preview']);
-}
-
-if (!verifyCsrfToken(requestString($_POST, 'csrf_token', 255, true) ?? '')) {
-    ob_end_clean();
-    http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Invalid request. Please refresh and try again.']);
     exit;
 }
