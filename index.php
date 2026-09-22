@@ -37,7 +37,7 @@ $avgTimeStmt = $db->prepare("
     WHERE status = 'completed'
       AND served_at IS NOT NULL
       AND completed_at IS NOT NULL
-      AND DATE(created_at) = ?
+      AND DATE(completed_at) = ?
     GROUP BY office_id
 ");
 $today = date('Y-m-d');

@@ -11,11 +11,6 @@ class TicketGenerator
         $this->db = $db;
     }
 
-    /**
-     * Runs every gate a ticket must pass (closed, hard cutoff, queue full, soft cutoff-risk)
-     * without inserting anything. Used by both the preview screen and actual issuance so the
-     * person is blocked before they reach the confirm screen, not after they tap Confirm.
-     */
     private function checkAvailability(array $office, int $office_id): array
     {
         $todayDate = date('Y-m-d');
@@ -113,7 +108,6 @@ class TicketGenerator
         }
 
         try {
-            // Re-check inside the lock in case state changed between the outer check and acquiring it.
             $recheck = $this->checkAvailability($office, $office_id);
             if (!$recheck['ok']) {
                 return ['success' => false, 'code' => $recheck['code'], 'message' => $recheck['message']];
@@ -159,7 +153,6 @@ class TicketGenerator
         ];
     }
 
-    /** Preview screen now runs the same gate the real issuance does, so blocking happens before confirm. */
     public function previewNextTicketNumber(int $office_id, bool $is_priority = false): array
     {
         $office = $this->fetchOffice($office_id);

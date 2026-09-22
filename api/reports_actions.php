@@ -85,7 +85,6 @@ if ($action === 'staff_metrics') {
     $stmt2->execute();
     $skipped = (int) ($stmt2->get_result()->fetch_assoc()['skipped'] ?? 0);
 
-    // NEW: breakdown of completed tickets by service, for this staff member only
     $stmt3 = $conn->prepare("
         SELECT
             transaction_type,
