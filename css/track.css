@@ -1423,3 +1423,14 @@ body {
   cursor: not-allowed;
   transform: none;
 }
+
+.feedback-char-count {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--ink-4);
+  text-align: right;
+  font-weight: 600;
+}
+.feedback-char-count.limit-near {
+  color: #e07b1a;
+}
