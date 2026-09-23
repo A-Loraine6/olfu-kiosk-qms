@@ -122,6 +122,13 @@ switch ($action) {
             exit;
         }
 
+        $roleStmt = $conn->prepare("SELECT name FROM roles WHERE id = ? LIMIT 1");
+        $roleStmt->bind_param('i', $roleId);
+        $roleStmt->execute();
+        $roleRow = $roleStmt->get_result()->fetch_assoc();
+        $roleStmt->close();
+        $roleName = $roleRow['name'] ?? (string) $roleId;
+
         $implies = [
             'manage_queue'    => ['view_queue'],
             'edit_services'   => ['view_services'],
@@ -168,7 +175,7 @@ switch ($action) {
             $affected[] = $key;
         }
 
-        logActivity($conn, 'ADMIN_ACTION', 'ROLE', $roleId, "Updated permissions for role {$roleId}: " . implode(', ', $affected), null, ['permission_keys' => $affected, 'enabled' => $enable], $userId);
+        logActivity($conn, 'ROLE_PERMISSION_CHANGE', 'ROLE', $roleId, "Updated permissions for role \"{$roleName}\": " . implode(', ', $affected), null, ['permission_keys' => $affected, 'enabled' => $enable], $userId);
         echo json_encode([
             'success'  => true,
             'message'  => 'Permission updated.',

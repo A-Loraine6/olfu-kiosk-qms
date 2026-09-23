@@ -145,6 +145,7 @@ function getActivityLogs(
     ?string $entity_type   = null,
     ?string $start_date    = null,
     ?string $end_date      = null,
+    ?string $search        = null,
     int     $limit         = 100,
     int     $offset        = 0
 ): array {
@@ -192,6 +193,14 @@ function getActivityLogs(
         $params[] = $end_date;
         $types   .= 's';
     }
+    if ($search !== null && $search !== '') {
+        $query   .= " AND (al.description LIKE ? OR al.activity_type LIKE ? OR u.full_name LIKE ?)";
+        $like     = '%' . $search . '%';
+        $params[] = $like;
+        $params[] = $like;
+        $params[] = $like;
+        $types   .= 'sss';
+    }
 
     $query   .= " ORDER BY al.timestamp DESC LIMIT ? OFFSET ?";
     $params[] = $limit;
@@ -207,6 +216,7 @@ function getActivityLogs(
     $logs   = [];
 
     while ($row = $result->fetch_assoc()) {
+        $row['description'] = formatActivityDescription($row['activity_type'], $row['description']);
         $row['before_values'] = $row['old_value'] ? json_decode($row['old_value'], true) : [];
         $row['after_values']  = $row['new_value'] ? json_decode($row['new_value'],  true) : [];
         $logs[] = $row;
@@ -222,9 +232,10 @@ function getActivityLogsCount(
     ?string $activity_type = null,
     ?string $entity_type   = null,
     ?string $start_date    = null,
-    ?string $end_date      = null
+    ?string $end_date      = null,
+    ?string $search        = null
 ): int {
-    $query  = "SELECT COUNT(*) AS total FROM activity_logs al WHERE 1=1";
+    $query  = "SELECT COUNT(*) AS total FROM activity_logs al LEFT JOIN users u ON al.user_id = u.id WHERE 1=1";
     $params = [];
     $types  = '';
 
@@ -253,6 +264,14 @@ function getActivityLogsCount(
         $params[] = $end_date;
         $types   .= 's';
     }
+    if ($search !== null && $search !== '') {
+        $query   .= " AND (al.description LIKE ? OR al.activity_type LIKE ? OR u.full_name LIKE ?)";
+        $like     = '%' . $search . '%';
+        $params[] = $like;
+        $params[] = $like;
+        $params[] = $like;
+        $types   .= 'sss';
+    }
 
     $stmt = $db->prepare($query);
     if (!$stmt) return 0;
@@ -265,6 +284,58 @@ function getActivityLogsCount(
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
     return (int) ($row['total'] ?? 0);
+}
+
+function getActivityLabel(string $activityType, ?string $description = null): string
+{
+    if ($activityType === 'ADMIN_ACTION' && $description !== null
+        && strpos($description, 'Updated permissions for role') === 0) {
+        return 'Permission Change';
+    }
+
+    $labels = [
+        'LOGIN' => 'User Login',
+        'LOGIN_FAILED' => 'Failed Login Attempt',
+        'LOGOUT' => 'User Logout',
+        'AUTH_DENIED' => 'Authentication Denied',
+        'PERMISSION_DENIED' => 'Permission Denied',
+        'API_SUSPICIOUS' => 'Suspicious API Activity',
+        'DATA_EXPORT' => 'Data Export',
+        'ADMIN_ACTION' => 'Admin Action',
+        'CONFIG_CHANGE' => 'Configuration Change',
+        'ROLE_CHANGE' => 'Role Change',
+        'ROLE_PERMISSION_CHANGE' => 'Permission Change',
+        'STAFF_ADD' => 'Add Staff',
+        'STAFF_EDIT' => 'Edit Staff',
+        'STAFF_DELETE' => 'Delete Staff',
+        'STAFF_ACTIVATE' => 'Activate Staff',
+        'STAFF_DEACTIVATE' => 'Deactivate Staff',
+        'PASSWORD_RESET' => 'Password Reset',
+        'OFFICE_ASSIGN' => 'Office Assignment',
+        'SERVICE_ADD' => 'Add Service',
+        'SERVICE_EDIT' => 'Edit Service',
+        'SERVICE_DELETE' => 'Delete Service',
+        'SERVICE_TOGGLE_STATUS' => 'Toggle Service Status',
+        'OFFICE_QUEUE_MODE_TOGGLE' => 'Toggle Queue Mode',
+        'SETTINGS_SCHEDULE_UPDATE' => 'Update Office Schedule',
+        'SETTINGS_QUEUE_UPDATE' => 'Update Queue Configuration',
+        'SETTINGS_KIOSK_UPDATE' => 'Update Kiosk Settings',
+        'PASSWORD_CHANGE' => 'Password Changed',
+        'PROFILE_UPDATE' => 'Profile Updated',
+        'STAFF_RESTORE' => 'Restore Staff',
+        'SERVICE_RESTORE' => 'Restore Service',
+    ];
+
+    return $labels[$activityType] ?? ucwords(str_replace('_', ' ', strtolower($activityType)));
+}
+
+function formatActivityDescription(?string $activityType, ?string $description): ?string
+{
+    if ($description === null || !in_array($activityType, ['ADMIN_ACTION', 'ROLE_PERMISSION_CHANGE'], true)) {
+        return $description;
+    }
+
+    return str_replace('_', ' ', $description);
 }
 
 function getActivitySummary($db, ?string $start_date = null, ?string $end_date = null): array
@@ -306,48 +377,11 @@ function getActivitySummary($db, ?string $start_date = null, ?string $end_date =
 
 function formatActivityLog(array $log): array
 {
-    $activityLabels = [
-        'LOGIN'                    => 'User Login',
-        'LOGIN_FAILED'             => 'Failed Login Attempt',
-        'LOGOUT'                   => 'User Logout',
-        'AUTH_DENIED'              => 'Authentication Denied',
-        'PERMISSION_DENIED'        => 'Permission Denied',
-        'API_SUSPICIOUS'           => 'Suspicious API Activity',
-        'DATA_EXPORT'              => 'Data Export',
-        'ADMIN_ACTION'             => 'Admin Action',
-        'CONFIG_CHANGE'            => 'Configuration Change',
-
-        'STAFF_ADD'                => 'Add Staff',
-        'STAFF_EDIT'               => 'Edit Staff',
-        'STAFF_DELETE'             => 'Delete Staff',
-        'STAFF_ACTIVATE'           => 'Activate Staff',
-        'STAFF_DEACTIVATE'         => 'Deactivate Staff',
-        'PASSWORD_RESET'           => 'Password Reset',
-        'ROLE_CHANGE'              => 'Role Change',
-        'OFFICE_ASSIGN'            => 'Office Assignment',
-
-        'SERVICE_ADD'              => 'Add Service',
-        'SERVICE_EDIT'             => 'Edit Service',
-        'SERVICE_DELETE'           => 'Delete Service',
-        'SERVICE_TOGGLE_STATUS'    => 'Toggle Service Status',
-        'OFFICE_QUEUE_MODE_TOGGLE' => 'Toggle Queue Mode',
-
-        'SETTINGS_SCHEDULE_UPDATE' => 'Update Office Schedule',
-        'SETTINGS_QUEUE_UPDATE'    => 'Update Queue Configuration',
-        'SETTINGS_KIOSK_UPDATE'    => 'Update Kiosk Settings',
-
-        'PASSWORD_CHANGE'          => 'Password Changed',
-        'PROFILE_UPDATE'           => 'Profile Updated',
-
-        'STAFF_RESTORE'            => 'Restore Staff',
-        'SERVICE_RESTORE'          => 'Restore Service',
-    ];
-
     return [
         'id'             => $log['id'],
         'user_name'      => $log['user_name'] ?? 'Anonymous',
         'activity_type'  => $log['activity_type'],
-        'activity_label' => $activityLabels[$log['activity_type']] ?? $log['activity_type'],
+        'activity_label' => getActivityLabel($log['activity_type'], $log['description'] ?? null),
         'entity_type'    => $log['entity_type'],
         'entity_id'      => $log['entity_id'],
         'description'    => $log['description'],

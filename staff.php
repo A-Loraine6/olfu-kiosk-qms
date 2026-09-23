@@ -488,6 +488,27 @@ $pageLimit = 10;
                 <div class="logs-total-badge" id="logsTotalBadge"></div>
             </div>
 
+            <div class="logs-filter-bar">
+                <div class="search-wrap">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="logsSearchInput" class="filter-input search-input"
+                        placeholder="Search logs…" autocomplete="off">
+                    <button class="search-clear" id="logsSearchClear" onclick="clearLogsSearch()" title="Clear">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="filter-group">
+                    <div class="date-range-group">
+                        <input type="date" id="logsDateFrom" class="filter-input" onchange="applyLogsFilters()">
+                        <span class="date-sep">to</span>
+                        <input type="date" id="logsDateTo" class="filter-input" onchange="applyLogsFilters()">
+                    </div>
+                    <button class="btn-outline" id="logsClearFiltersBtn" onclick="clearLogsFilters()">
+                        <i class="fas fa-times-circle"></i> Clear
+                    </button>
+                </div>
+            </div>
+
             <div class="logs-body" id="logsBody">
                 <div class="logs-loading" id="logsLoading">
                     <div class="logs-spinner"></div>

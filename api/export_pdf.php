@@ -802,19 +802,15 @@ if (empty($peakRows)) {
     $pdf->SetTextColor(...BaseReport::TXT);
 } else {
     $pdf->THead([
-        ['Rank',         15, 'C'],
-        ['Hour',         50, 'C'],
-        ['Queue Volume', 50, 'C'],
-        ['% of Total',   75, 'C'],
+        ['Rank',         25, 'C'],
+        ['Hour',         80, 'C'],
+        ['Queue Volume', 85, 'C'],
     ]);
-    $totalPeak = array_sum(array_column($peakRows, 'cnt'));
     foreach ($peakRows as $i => $row) {
-        $pct = $totalPeak > 0 ? round($row['cnt'] / $totalPeak * 100, 1) . '%' : '-';
         $pdf->TRow([
-            ['#' . ($i + 1),                        15, 'C'],
-            [date('g:00 A', mktime($row['hr'], 0)), 50, 'C'],
-            [(string) $row['cnt'],                  50, 'C'],
-            [$pct,                                  75, 'C'],
+            ['#' . ($i + 1),                        25, 'C'],
+            [date('g:00 A', mktime($row['hr'], 0)), 80, 'C'],
+            [(string) $row['cnt'],                  85, 'C'],
         ], $i % 2 === 1);
     }
 }
