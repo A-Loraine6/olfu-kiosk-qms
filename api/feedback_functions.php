@@ -2,6 +2,140 @@
 
 require_once __DIR__ . '/../includes/request_validation.php';
 
+/**
+ * Basic profanity filter. Case-insensitive, word-boundary aware,
+ * masks the middle of each matched word with asterisks.
+ * Keep the list in one place so it's easy to extend later.
+ */
+function getProfanityWordList(): array
+    {
+    return [
+        'damn', 'dammit', 'hell', 'crap', 'shit', 'sh1t',
+        'fuck', 'fck', 'fuk', 'f*ck', 'f@ck', 'f4ck',
+        'fucking', 'fcking', 'fuckin',
+        'bitch', 'b1tch', 'b!tch', 'biatch',
+        'ass', 'a$$', 'arse', 'asshole', 'a$$hole',
+        'bastard', 'dick', 'd1ck', 'd!ck',
+        'piss', 'p1ss', 'slut', 'slutty', 'whore',
+        'w*ore', 'bullshit', 'bs',
+
+        'putangina', 'putang ina', 'putanginamo', 'putang ina mo',
+        'tangina', 'tang ina', 'tanginamo', 'tang ina mo',
+        'p*tangina', 'p4tangina', 'p*t4ngina',
+        'gago', 'g4go', 'g@go',
+        'gaga', 'g@g@',
+        'tarantado', 'tarantada', 't@rantado',
+        'ulol', 'ul0l', 'ul!l',
+        'bobo', 'b0bo', 'b0b0', 'b*bo',
+        'tanga', 't@nga', 't4nga',
+        'kupal', 'kup@l', 'kup4l',
+        'leche', 'letse', 'l3che', 'l3tse',
+        'leche ka', 'letse ka',
+        'hayop', 'hayup', 'h@yop',
+        'animal', 'an1mal',
+        'siraulo', 'sira ulo',
+        'siraulo ka',
+        'walanghiya', 'walang hiya',
+        'walanghiyang',
+        'hinayupak', 'hinayupak',
+        'punyeta', 'punyeta', 'p*nyeta',
+        'peste', 'p3ste',
+        'bwisit', 'bw1sit', 'bwis!t',
+        'yawa', 'y@wa', 'y4wa',
+        'pakyu', 'pakyow', 'pakyo',
+        'p@kyu', 'p4kyu',
+        'inutil', '1nutil',
+        'tonto', 't0nto',
+        'engot', '3ngot',
+
+        'g4g0', 'g4g@',
+        'b0b0', 'b0bo', 'b@bo',
+        't4ng4', 't@ng@',
+        'k*pal', 'kup4l',
+        'ul0l', 'uLOL',
+        'y4w4', 'y@w@',
+        'bw1s1t', 'bw!s!t',
+        'p4kyu', 'p@kyu',
+        'pnyeta', 'pny3ta',
+        'tarant4do', 't@rant4do',
+        'h@yup', 'h4yop',
+        'w4langhiya',
+
+        'fuck you', 'fck you', 'fuk u',
+        'fuck u', 'f*ck you',
+        'putang ina mo', 'tangina mo',
+        'tang ina mo', 'gago ka', 'gaga ka',
+        'bobo ka', 'tanga ka', 'ulol ka',
+        'kupal ka', 'tarantado ka',
+        'hayop ka', 'animal ka',
+        'walang hiya ka', 'yawa ka',
+    ];
+}
+
+function getLeetSubstitutionMap(): array
+{
+    return [
+        'a' => 'a4@∆',
+        'b' => 'b8',
+        'c' => 'c(<{',
+        'e' => 'e3€',
+        'g' => 'g69',
+        'i' => 'i1!|¡',
+        'l' => 'l1|!',
+        'o' => 'o0()',
+        's' => 's$5z',
+        't' => 't7+',
+        'u' => 'uv',
+    ];
+}
+
+function buildFlexiblePattern(string $word): string
+{
+    $subs = getLeetSubstitutionMap();
+    $letters = preg_split('//u', $word, -1, PREG_SPLIT_NO_EMPTY);
+
+    $parts = [];
+    foreach ($letters as $letter) {
+        $lower = mb_strtolower($letter);
+        $classChars = $lower;
+        if (isset($subs[$lower])) {
+            $classChars = $subs[$lower];
+        }
+        $classChars = preg_replace('/([\^\]\\\\\-])/', '\\\\$1', $classChars);
+        $parts[] = '[' . $classChars . ']+[\s\-_.*]{0,2}';
+    }
+
+    $body = rtrim(implode('', $parts), '[\s\-_.*]{0,2}');
+    $pattern = implode('', $parts);
+
+    return '/(?<![a-z0-9])' . $pattern . '(?![a-z0-9])/iu';
+}
+
+function censorProfanity(string $text): string
+{
+    $words = getProfanityWordList();
+    if (empty($words) || $text === '') {
+        return $text;
+    }
+
+    usort($words, fn($a, $b) => mb_strlen($b) <=> mb_strlen($a));
+
+    foreach ($words as $word) {
+        $pattern = buildFlexiblePattern($word);
+
+        $text = preg_replace_callback($pattern, function ($m) {
+            $matched = $m[0];
+            $len = mb_strlen($matched);
+            if ($len <= 2) {
+                return str_repeat('*', $len);
+            }
+            return mb_substr($matched, 0, 1) . str_repeat('*', $len - 1);
+        }, $text);
+    }
+
+    return $text;
+}
+
 function ensureStaffFeedbackTable($db): void
 {
     $sql = "
@@ -44,6 +178,8 @@ function saveStaffFeedback($db, array $data): array
     if ($comment === null) {
         return ['success' => false, 'message' => 'Feedback comment is too long.'];
     }
+
+    $comment = censorProfanity($comment);
 
     ensureStaffFeedbackTable($db);
 

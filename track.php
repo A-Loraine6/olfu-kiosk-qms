@@ -244,6 +244,7 @@ $csrf_token = getCsrfToken();
                 <div class="feedback-comment-block">
                     <label for="feedbackComment">Comments</label>
                     <textarea id="feedbackComment" rows="4" maxlength="1000" placeholder="Optional: share what went well or how we can improve."></textarea>
+                    <div class="feedback-char-count" id="feedbackCharCount">0 / 1000</div>
                 </div>
 
                 <div class="feedback-actions">
