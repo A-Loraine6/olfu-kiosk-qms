@@ -520,6 +520,168 @@
   flex-shrink: 0;
 }
 
+/* ---------- Activity filter bar ---------- */
+
+.activity-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.activity-filter-bar .search-wrap {
+  position: relative;
+  flex: 1 1 220px;
+  min-width: 160px;
+}
+
+.activity-filter-bar .search-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-3);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.activity-filter-bar .search-input {
+  width: 100%;
+  padding: 9px 32px 9px 36px !important;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--text-1);
+  background: var(--surface);
+  outline: none;
+  box-sizing: border-box;
+  transition:
+    border-color var(--t) var(--ease),
+    box-shadow var(--t) var(--ease);
+}
+
+.activity-filter-bar .search-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-ghost);
+}
+
+.activity-filter-bar .search-input::placeholder {
+  color: var(--text-3);
+}
+
+.activity-filter-bar .search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-3);
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  opacity: 0;
+  transition:
+    opacity var(--t),
+    color var(--t);
+  line-height: 1;
+}
+
+.activity-filter-bar .search-clear:hover {
+  color: var(--text-1);
+}
+
+.activity-filter-bar .filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 2 1 1;
+  flex-wrap: wrap;
+}
+
+.activity-filter-bar .date-range-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.activity-filter-bar .date-range-group .filter-input {
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--text-1);
+  background: var(--surface);
+  outline: none;
+  transition:
+    border-color var(--t) var(--ease),
+    box-shadow var(--t) var(--ease);
+}
+
+.activity-filter-bar .date-range-group .filter-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-ghost);
+}
+
+.activity-filter-bar .date-sep {
+  font-size: 12px;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+.activity-filter-bar .btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  font-family: var(--font);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    border-color var(--t) var(--ease),
+    color var(--t) var(--ease),
+    background var(--t) var(--ease);
+}
+
+.activity-filter-bar .btn-outline:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-ghost);
+}
+
+@media (max-width: 640px) {
+  .activity-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .activity-filter-bar .search-wrap,
+  .activity-filter-bar .filter-group {
+    width: 100%;
+  }
+
+  .activity-filter-bar .date-range-group {
+    flex: 1;
+  }
+
+  .activity-filter-bar .date-range-group .filter-input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* ---------- end activity filter bar ---------- */
+
 .activity-empty {
   text-align: center;
   padding: 60px 24px;

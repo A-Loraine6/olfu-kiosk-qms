@@ -1,5 +1,32 @@
 const AJAX_URL = "api/profile_actions.php";
 
+function restrictFutureDates() {
+	const today = new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
+	document.querySelectorAll('input[type="date"]').forEach((input) => {
+		input.max = today;
+	});
+}
+
+function linkDateRangeInputs(fromId, toId) {
+	const fromEl = document.getElementById(fromId);
+	const toEl = document.getElementById(toId);
+	if (!fromEl || !toEl) return;
+
+	const today = new Date().toISOString().split("T")[0];
+
+	fromEl.addEventListener("change", () => {
+		toEl.min = fromEl.value || "";
+	});
+	toEl.addEventListener("change", () => {
+		fromEl.max = toEl.value || today;
+	});
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+	restrictFutureDates();
+	linkDateRangeInputs("activityDateFrom", "activityDateTo");
+});
+
 async function ajax(payload) {
 	const res = await fetch(AJAX_URL, {
 		method: "POST",
@@ -460,8 +487,9 @@ function fieldLabel(key) {
 	);
 }
 
-function formatVal(val) {
+function formatVal(val, key = "") {
 	if (val === null || val === undefined || val === "") return "—";
+	if (Array.isArray(val)) return val.map((item) => key === "permission_keys" ? String(item).replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : String(item)).join(", ");
 	if (val === true || val === 1 || val === "1") return "Yes";
 	if (val === false || val === 0 || val === "0") return "No";
 	return String(val);
@@ -488,8 +516,8 @@ function buildDiffHtml(oldObj, newObj) {
 	const rows = [];
 
 	for (const key of allKeys) {
-		const bVal = formatVal(before[key]);
-		const aVal = formatVal(after[key]);
+		const bVal = formatVal(before[key], key);
+		const aVal = formatVal(after[key], key);
 		if (bVal === aVal) continue;
 
 		if (!(key in before)) {
@@ -523,37 +551,85 @@ function buildDiffHtml(oldObj, newObj) {
 
 let activityOffset = 20;
 let loadingMore = false;
+let activitySearchDebounce;
+let activityFilters = { search: "", date_from: "", date_to: "" };
 
-async function loadMoreActivity() {
+document.getElementById("activitySearchInput")?.addEventListener("input", function () {
+	document.getElementById("activitySearchClear").style.opacity = this.value ? "1" : "0";
+	clearTimeout(activitySearchDebounce);
+	activitySearchDebounce = setTimeout(applyActivityFilters, 280);
+});
+
+function applyActivityFilters() {
+	activityFilters.search = document.getElementById("activitySearchInput").value.trim();
+	activityFilters.date_from = document.getElementById("activityDateFrom").value;
+	activityFilters.date_to = document.getElementById("activityDateTo").value;
+	fetchActivity(true);
+}
+
+function clearActivitySearch() {
+	document.getElementById("activitySearchInput").value = "";
+	document.getElementById("activitySearchClear").style.opacity = "0";
+	applyActivityFilters();
+}
+
+function clearActivityFilters() {
+	document.getElementById("activitySearchInput").value = "";
+	document.getElementById("activityDateFrom").value = "";
+	document.getElementById("activityDateTo").value = "";
+	document.getElementById("activitySearchClear").style.opacity = "0";
+	activityFilters = { search: "", date_from: "", date_to: "" };
+	fetchActivity(true);
+}
+
+async function fetchActivity(reset = false) {
 	if (loadingMore) return;
+	if (reset) activityOffset = 0;
 	loadingMore = true;
 
-	const btn = document.getElementById("loadMoreBtn");
-	const orig = btn.innerHTML;
-	btn.disabled = true;
-	btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading…';
+	const container = document.getElementById("activityResultsContainer");
+	if (reset) {
+		container.innerHTML =
+			'<div class="table-loading" style="display:flex;position:static;padding:24px 0;"><div class="table-spinner"></div></div>';
+	}
 
 	const data = await ajax({
 		action: "get_activity",
 		offset: activityOffset,
 		limit: 20,
+		search: activityFilters.search,
+		date_from: activityFilters.date_from,
+		date_to: activityFilters.date_to,
 	});
 
-	btn.disabled = false;
-	btn.innerHTML = orig;
 	loadingMore = false;
 
-	if (!data.success || !data.items?.length) {
-		btn.closest(".activity-load-more").remove();
+	if (!data.success) {
+		if (reset) container.innerHTML = "";
 		return;
 	}
 
+	const badge = document.getElementById("activityCountBadge");
+	if (badge) badge.textContent = data.total_count.toLocaleString() + " total";
+
+	if (reset) {
+		if (!data.items.length) {
+			container.innerHTML = `
+				<div class="activity-empty" id="activityEmptyState">
+					<div class="activity-empty-icon"><i class="fas fa-history"></i></div>
+					<div class="activity-empty-title">No matching activity</div>
+					<div class="activity-empty-desc">Try adjusting your search or date filters.</div>
+				</div>`;
+			return;
+		}
+		container.innerHTML = `<div class="activity-list" id="activityList"></div>`;
+	}
+
 	const list = document.getElementById("activityList");
+	if (!list) return;
+
 	data.items.forEach((item) => {
-		const iconMeta = ACTIVITY_ICONS[item.activity_label] ?? {
-			icon: "fa-circle",
-			color: "#90a4ae",
-		};
+		const iconMeta = ACTIVITY_ICONS[item.activity_type] ?? { icon: "fa-circle", color: "#90a4ae" };
 		const diffHtml = buildDiffHtml(item.before_values, item.after_values);
 		const el = document.createElement("div");
 		el.className = "activity-item";
@@ -575,9 +651,28 @@ async function loadMoreActivity() {
 
 	activityOffset += data.items.length;
 
-	if (activityOffset >= TOTAL_LOGS) {
-		btn.closest(".activity-load-more").remove();
+	let loadMoreWrap = document.getElementById("activityLoadMoreWrap");
+	if (activityOffset < data.total_count) {
+		if (!loadMoreWrap) {
+			loadMoreWrap = document.createElement("div");
+			loadMoreWrap.className = "activity-load-more";
+			loadMoreWrap.id = "activityLoadMoreWrap";
+			loadMoreWrap.innerHTML = `<button class="btn-outline" id="loadMoreBtn" onclick="loadMoreActivity()"><i class="fas fa-chevron-down"></i> Load More</button>`;
+			container.appendChild(loadMoreWrap);
+		}
+	} else if (loadMoreWrap) {
+		loadMoreWrap.remove();
 	}
+}
+
+async function loadMoreActivity() {
+	if (loadingMore) return;
+	const btn = document.getElementById("loadMoreBtn");
+	if (btn) {
+		btn.disabled = true;
+		btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading…';
+	}
+	await fetchActivity(false);
 }
 
 function escHtml(str) {

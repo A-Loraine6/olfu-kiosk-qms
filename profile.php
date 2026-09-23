@@ -20,11 +20,9 @@ $activeSection = requestEnum($_GET, 'section', ['profile', 'security', 'activity
 
 $activityLogs = getActivityLogs(
     $db->getConnection(),
-    user_id: $currentUser['id'],
-    limit: 20,
-    offset: 0
+    $currentUser['id'], null, null, null, null, null, 20, 0
 );
-$totalLogs = getActivityLogsCount($db->getConnection(), user_id: $currentUser['id']);
+$totalLogs = getActivityLogsCount($db->getConnection(), $currentUser['id']);
 
 $activityIcons = [
     'LOGIN'                    => ['icon' => 'fa-sign-in-alt',  'color' => '#2196f3'],
@@ -43,6 +41,7 @@ $activityIcons = [
     'STAFF_DEACTIVATE'         => ['icon' => 'fa-toggle-off',   'color' => '#e07b1a'],
     'PASSWORD_RESET'           => ['icon' => 'fa-key',          'color' => '#7b1fa2'],
     'ROLE_CHANGE'              => ['icon' => 'fa-user-tag',     'color' => '#5e35b1'],
+    'ROLE_PERMISSION_CHANGE'   => ['icon' => 'fa-key',           'color' => '#5e35b1'],
     'OFFICE_ASSIGN'            => ['icon' => 'fa-building-user','color' => '#00695c'],
     'SERVICE_ADD'              => ['icon' => 'fa-plus-circle',  'color' => '#2a9d5c'],
     'SERVICE_EDIT'             => ['icon' => 'fa-pen',          'color' => '#e07b1a'],
@@ -88,7 +87,7 @@ function buildDiffHtml(array $before, array $after): string
 
     $fmt = function ($v): string {
         if ($v === null || $v === '')               return '—';
-        if (is_array($v))                           return implode(', ', array_map('strval', $v));
+        if (is_array($v))                           return implode(', ', array_map(fn($item) => ucwords(str_replace('_', ' ', (string) $item)), $v));
         if ($v === true  || $v === 1 || $v === '1') return 'Yes';
         if ($v === false || $v === 0 || $v === '0') return 'No';
         return (string) $v;
@@ -355,48 +354,70 @@ function buildDiffHtml(array $before, array $after): string
                                         <h3 class="section-title-sm">Account Activity</h3>
                                         <p class="section-subtitle">Your recent actions in the system</p>
                                     </div>
-                                    <span class="activity-count-badge"><?php echo number_format($totalLogs); ?> total</span>
+                                    <span class="activity-count-badge" id="activityCountBadge"><?php echo number_format($totalLogs); ?> total</span>
                                 </div>
 
-                                <?php if (empty($activityLogs)): ?>
-                                    <div class="activity-empty">
-                                        <div class="activity-empty-icon"><i class="fas fa-history"></i></div>
-                                        <div class="activity-empty-title">No activity yet</div>
-                                        <div class="activity-empty-desc">Your actions will appear here once you start using the system.</div>
+                                <div class="activity-filter-bar">
+                                    <div class="search-wrap">
+                                        <i class="fas fa-search search-icon"></i>
+                                        <input type="text" id="activitySearchInput" class="filter-input search-input"
+                                            placeholder="Search activity…" autocomplete="off">
+                                        <button class="search-clear" id="activitySearchClear" onclick="clearActivitySearch()" title="Clear">
+                                            <i class="fas fa-times"></i>
+                                        </button>
                                     </div>
-                                <?php else: ?>
-                                    <div class="activity-list" id="activityList">
-                                        <?php foreach ($activityLogs as $log):
-                                            $meta      = $activityIcons[$log['activity_type']] ?? ['icon' => 'fa-circle', 'color' => '#90a4ae'];
-                                            $formatted = formatActivityLog($log);
-                                            $diffHtml  = buildDiffHtml($log['before_values'] ?? [], $log['after_values'] ?? []);
-                                        ?>
-                                            <div class="activity-item">
-                                                <div class="activity-icon-wrap" style="background:<?php echo $meta['color']; ?>1a; color:<?php echo $meta['color']; ?>">
-                                                    <i class="fas <?php echo $meta['icon']; ?>"></i>
-                                                </div>
-                                                <div class="activity-info">
-                                                    <div class="activity-label"><?php echo htmlspecialchars($formatted['activity_label']); ?></div>
-                                                    <?php if ($log['description']): ?>
-                                                        <div class="activity-desc"><?php echo htmlspecialchars($log['description']); ?></div>
-                                                    <?php endif; ?>
-                                                    <?php echo $diffHtml; ?>
-                                                    <div class="activity-meta">
-                                                        <span><i class="fas fa-clock"></i> <?php echo $formatted['formatted_time']; ?></span>
+                                    <div class="filter-group">
+                                        <div class="date-range-group">
+                                            <input type="date" id="activityDateFrom" class="filter-input" onchange="applyActivityFilters()">
+                                            <span class="date-sep">to</span>
+                                            <input type="date" id="activityDateTo" class="filter-input" onchange="applyActivityFilters()">
+                                        </div>
+                                        <button class="btn btn-outline" id="activityClearFiltersBtn" onclick="clearActivityFilters()">
+                                            <i class="fas fa-times-circle"></i> Clear
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="activityResultsContainer">
+                                    <?php if (empty($activityLogs)): ?>
+                                        <div class="activity-empty" id="activityEmptyState">
+                                            <div class="activity-empty-icon"><i class="fas fa-history"></i></div>
+                                            <div class="activity-empty-title">No activity yet</div>
+                                            <div class="activity-empty-desc">Your actions will appear here once you start using the system.</div>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="activity-list" id="activityList">
+                                            <?php foreach ($activityLogs as $log):
+                                                $meta      = $activityIcons[$log['activity_type']] ?? ['icon' => 'fa-circle', 'color' => '#90a4ae'];
+                                                $formatted = formatActivityLog($log);
+                                                $diffHtml  = buildDiffHtml($log['before_values'] ?? [], $log['after_values'] ?? []);
+                                            ?>
+                                                <div class="activity-item">
+                                                    <div class="activity-icon-wrap" style="background:<?php echo $meta['color']; ?>1a; color:<?php echo $meta['color']; ?>">
+                                                        <i class="fas <?php echo $meta['icon']; ?>"></i>
+                                                    </div>
+                                                    <div class="activity-info">
+                                                        <div class="activity-label"><?php echo htmlspecialchars($formatted['activity_label']); ?></div>
+                                                        <?php if ($log['description']): ?>
+                                                            <div class="activity-desc"><?php echo htmlspecialchars($log['description']); ?></div>
+                                                        <?php endif; ?>
+                                                        <?php echo $diffHtml; ?>
+                                                        <div class="activity-meta">
+                                                            <span><i class="fas fa-clock"></i> <?php echo $formatted['formatted_time']; ?></span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        <?php endforeach; ?>
-                                    </div>
-                                    <?php if ($totalLogs > 20): ?>
-                                        <div class="activity-load-more">
-                                            <button class="btn-outline" id="loadMoreBtn" onclick="loadMoreActivity()"
-                                                data-offset="20">
-                                                <i class="fas fa-chevron-down"></i> Load More
-                                            </button>
+                                            <?php endforeach; ?>
                                         </div>
+                                        <?php if ($totalLogs > 20): ?>
+                                            <div class="activity-load-more" id="activityLoadMoreWrap">
+                                                <button class="btn-outline" id="loadMoreBtn" onclick="loadMoreActivity()">
+                                                    <i class="fas fa-chevron-down"></i> Load More
+                                                </button>
+                                            </div>
+                                        <?php endif; ?>
                                     <?php endif; ?>
-                                <?php endif; ?>
+                                </div>
                             </div>
 
                         </div>

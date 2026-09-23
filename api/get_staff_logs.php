@@ -21,12 +21,18 @@ if (!hasPermission('view_staff') && !hasPermission('edit_staff')) {
     exit;
 }
 
-$input   = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-$csrf = requestString($input, 'csrf_token', 255, true);
+$input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+$csrf  = requestString($input, 'csrf_token', 255, true);
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || $csrf === null || !verifyCsrfToken($csrf)) {
     echo json_encode(['success' => false, 'message' => 'Invalid request. Please refresh and try again.']);
     exit;
 }
+
+if (!requestOptionalIntIsValid($input, 'page', 1)) {
+    echo json_encode(['success' => false, 'message' => 'Invalid page number.']);
+    exit;
+}
+
 $staffId = requestInt($input, 'staff_id');
 $page    = requestOptionalInt($input, 'page', 1) ?? 1;
 $limit   = 25;
@@ -35,6 +41,13 @@ if ($staffId === null) {
     echo json_encode(['success' => false, 'message' => 'Invalid staff ID.']);
     exit;
 }
+
+$search   = requestString($input, 'search', 100) ?? '';
+$dateFrom = requestString($input, 'date_from', 10) ?? '';
+$dateTo   = requestString($input, 'date_to', 10) ?? '';
+
+if ($dateFrom !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) $dateFrom = '';
+if ($dateTo   !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo))   $dateTo   = '';
 
 $conn = $db->getConnection();
 
@@ -56,10 +69,32 @@ if (!$staffInfo) {
     exit;
 }
 
-$countStmt = $conn->prepare(
-    "SELECT COUNT(*) AS total FROM activity_logs WHERE user_id = ?"
-);
-$countStmt->bind_param('i', $staffId);
+// Build the shared WHERE clause once so the count query and the page query
+// always stay in sync with each other.
+$where  = "WHERE user_id = ?";
+$params = [$staffId];
+$types  = 'i';
+
+if ($search !== '') {
+    $where   .= " AND (description LIKE ? OR activity_type LIKE ?)";
+    $like     = '%' . $search . '%';
+    $params[] = $like;
+    $params[] = $like;
+    $types   .= 'ss';
+}
+if ($dateFrom !== '') {
+    $where   .= " AND DATE(timestamp) >= ?";
+    $params[] = $dateFrom;
+    $types   .= 's';
+}
+if ($dateTo !== '') {
+    $where   .= " AND DATE(timestamp) <= ?";
+    $params[] = $dateTo;
+    $types   .= 's';
+}
+
+$countStmt = $conn->prepare("SELECT COUNT(*) AS total FROM activity_logs $where");
+$countStmt->bind_param($types, ...$params);
 $countStmt->execute();
 $countRow   = $countStmt->get_result()->fetch_assoc();
 $countStmt->close();
@@ -72,11 +107,15 @@ $logsStmt = $conn->prepare(
     "SELECT id, activity_type, entity_type, entity_id,
             old_value, new_value, description, ip_address, timestamp
      FROM activity_logs
-     WHERE user_id = ?
+     $where
      ORDER BY timestamp DESC
      LIMIT ? OFFSET ?"
 );
-$logsStmt->bind_param('iii', $staffId, $limit, $offset);
+$logsParams = $params;
+$logsParams[] = $limit;
+$logsParams[] = $offset;
+$logsTypes    = $types . 'ii';
+$logsStmt->bind_param($logsTypes, ...$logsParams);
 $logsStmt->execute();
 $logsResult = $logsStmt->get_result();
 $logs = [];

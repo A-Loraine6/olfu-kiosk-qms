@@ -244,40 +244,33 @@ switch ($action) {
                 echo json_encode(['success' => false, 'message' => 'Invalid activity pagination.']);
                 exit;
             }
-            $offset = requestOptionalInt($body, 'offset', 0) ?? 0;
-            $limit  = requestOptionalInt($body, 'limit', 1, 50) ?? 20;
+            $offset    = requestOptionalInt($body, 'offset', 0) ?? 0;
+            $limit     = requestOptionalInt($body, 'limit', 1, 50) ?? 20;
+            $search    = requestString($body, 'search', 100) ?? '';
+            $dateFrom  = requestString($body, 'date_from', 10) ?? '';
+            $dateTo    = requestString($body, 'date_to', 10) ?? '';
+
+            if ($dateFrom !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) $dateFrom = '';
+            if ($dateTo   !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo))   $dateTo   = '';
 
             $logs = getActivityLogs(
                 $conn,
-                user_id: $currentUser['id'],
-                limit: $limit,
-                offset: $offset
+                $currentUser['id'], null, null,
+                $dateFrom !== '' ? $dateFrom : null,
+                $dateTo !== '' ? $dateTo : null,
+                $search !== '' ? $search : null, $limit, $offset
             );
-
-            $activityLabels = [
-                'LOGIN'                    => 'User Login',
-                'LOGOUT'                   => 'User Logout',
-                'STAFF_ADD'                => 'Add Staff',
-                'STAFF_EDIT'               => 'Edit Staff',
-                'STAFF_DELETE'             => 'Delete Staff',
-                'STAFF_ACTIVATE'           => 'Activate Staff',
-                'STAFF_DEACTIVATE'         => 'Deactivate Staff',
-                'PASSWORD_RESET'           => 'Password Reset',
-                'PASSWORD_CHANGE'          => 'Password Changed',
-                'PROFILE_UPDATE'           => 'Profile Updated',
-                'SERVICE_ADD'              => 'Add Service',
-                'SERVICE_EDIT'             => 'Edit Service',
-                'SERVICE_DELETE'           => 'Delete Service',
-                'SERVICE_TOGGLE_STATUS'    => 'Toggle Service Status',
-                'OFFICE_QUEUE_MODE_TOGGLE' => 'Toggle Queue Mode',
-                'SETTINGS_SCHEDULE_UPDATE' => 'Update Schedule',
-                'SETTINGS_QUEUE_UPDATE'    => 'Update Queue Config',
-                'SETTINGS_KIOSK_UPDATE'    => 'Update Kiosk Settings',
-            ];
+            $totalCount = getActivityLogsCount(
+                $conn,
+                $currentUser['id'], null, null,
+                $dateFrom !== '' ? $dateFrom : null,
+                $dateTo !== '' ? $dateTo : null,
+                $search !== '' ? $search : null
+            );
 
             $items = array_map(fn($log) => [
                 'activity_type'  => $log['activity_type'],
-                'activity_label' => $activityLabels[$log['activity_type']] ?? $log['activity_type'],
+                'activity_label' => getActivityLabel($log['activity_type'], $log['description'] ?? null),
                 'description'    => $log['description'],
                 'ip_address'     => $log['ip_address'],
                 'formatted_time' => date('M d, Y H:i:s', strtotime($log['created_at'])),
@@ -285,7 +278,7 @@ switch ($action) {
                 'after_values'   => $log['after_values']  ?? [],
             ], $logs);
 
-            echo json_encode(['success' => true, 'items' => $items]);
+            echo json_encode(['success' => true, 'items' => $items, 'total_count' => $totalCount]);
             break;
         }
 

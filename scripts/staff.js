@@ -7,10 +7,35 @@ let currentLimit =
   typeof PAGINATION_LIMIT !== "undefined" ? PAGINATION_LIMIT : 10;
 let currentTotal = typeof TOTAL_STAFF !== "undefined" ? TOTAL_STAFF : 0;
 let currentTotalPages = Math.ceil(currentTotal / currentLimit) || 1;
+let logsFilters = { search: "", date_from: "", date_to: "" };
+let logsSearchDebounce;
 
 document.addEventListener("DOMContentLoaded", () => {
   fetchFilteredRows();
+  restrictFutureDates();
 });
+
+function restrictFutureDates() {
+  const today = new Date().toISOString().split("T")[0]; // "YYYY-MM-DD"
+  document.querySelectorAll('input[type="date"]').forEach((input) => {
+    input.max = today;
+  });
+}
+
+function linkDateRangeInputs(fromId, toId) {
+  const fromEl = document.getElementById(fromId);
+  const toEl = document.getElementById(toId);
+  if (!fromEl || !toEl) return;
+
+  const today = new Date().toISOString().split("T")[0];
+
+  fromEl.addEventListener("change", () => {
+    toEl.min = fromEl.value || "";
+  });
+  toEl.addEventListener("change", () => {
+    fromEl.max = toEl.value || today;
+  });
+}
 
 async function ajax(payload) {
   const res = await fetch(AJAX_URL, {
@@ -714,8 +739,45 @@ function renderFeedbackRatingChips(summary = {}) {
 async function openStaffLogsModal(staffId) {
   logsStaffId = staffId;
   logsCurrentPage = 1;
+  logsFilters = { search: "", date_from: "", date_to: "" };
+  document.getElementById("logsSearchInput").value = "";
+  document.getElementById("logsDateFrom").value = "";
+  document.getElementById("logsDateTo").value = "";
+  document.getElementById("logsSearchClear").style.opacity = "0";
+  restrictFutureDates();
+  linkDateRangeInputs("logsDateFrom", "logsDateTo");
   openModal("staffLogsModal");
   await fetchStaffLogs();
+}
+
+document.getElementById("logsSearchInput")?.addEventListener("input", function () {
+  document.getElementById("logsSearchClear").style.opacity = this.value ? "1" : "0";
+  clearTimeout(logsSearchDebounce);
+  logsSearchDebounce = setTimeout(applyLogsFilters, 280);
+});
+
+function applyLogsFilters() {
+  logsFilters.search = document.getElementById("logsSearchInput").value.trim();
+  logsFilters.date_from = document.getElementById("logsDateFrom").value;
+  logsFilters.date_to = document.getElementById("logsDateTo").value;
+  logsCurrentPage = 1;
+  fetchStaffLogs();
+}
+
+function clearLogsSearch() {
+  document.getElementById("logsSearchInput").value = "";
+  document.getElementById("logsSearchClear").style.opacity = "0";
+  applyLogsFilters();
+}
+
+function clearLogsFilters() {
+  document.getElementById("logsSearchInput").value = "";
+  document.getElementById("logsDateFrom").value = "";
+  document.getElementById("logsDateTo").value = "";
+  document.getElementById("logsSearchClear").style.opacity = "0";
+  logsFilters = { search: "", date_from: "", date_to: "" };
+  logsCurrentPage = 1;
+  fetchStaffLogs();
 }
 
 async function openStaffFeedbackModal(staffId) {
@@ -912,6 +974,9 @@ async function fetchStaffLogs() {
     body: JSON.stringify({
       staff_id: logsStaffId,
       page: logsCurrentPage,
+      search: logsFilters.search,
+      date_from: logsFilters.date_from,
+      date_to: logsFilters.date_to,
       csrf_token: CSRF_TOKEN,
     }),
   });
