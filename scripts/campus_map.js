@@ -500,7 +500,7 @@
 
     const nearestGate = nearestCampusGate(lat, lng);
     const gateThreshold = accuracyMeters
-      ? Math.max(250, accuracyMeters * 6.5)
+      ? Math.min(400, Math.max(250, accuracyMeters * 6.5))
       : 350;
 
     if (!nearestGate || nearestGate.distance > gateThreshold) {
@@ -1067,6 +1067,7 @@
     userDot.setAttribute("opacity", "0");
     userDot.style.cursor = "pointer";
     userDot.innerHTML = `
+      <circle class="acc-ring" r="0" fill="#1a73e8" fill-opacity="0.12" stroke="#1a73e8" stroke-opacity="0.35" stroke-width="2"/>
       <circle class="dot-halo" r="42" fill="#1a73e8" opacity="0.13"/>
       <g class="dot-heading" opacity="0">
         <path d="M0,-8 L-16,-46 A18,18 0 0 1 16,-46 Z" fill="url(#dotConeGrad)"/>
@@ -1302,7 +1303,6 @@
     buildLocateButton();
     buildResetViewButton();
     buildSearchBar();
-    ensureGPSStatus();
     buildLocatingToast();
     injectPullStyles();
     buildPullToRefresh();
@@ -2490,13 +2490,7 @@
     return wrapper;
   }
 
-  function updateGPSStatus(label, tone = "neutral") {
-    const el = ensureGPSStatus();
-    if (!el) return;
-    const value = el.querySelector(".map-gps-value");
-    if (value) value.textContent = label;
-    el.setAttribute("data-tone", tone);
-  }
+  function updateGPSStatus() {}
 
   function saveRouteState() {
     if (!destBuildingId && !currentUserNode) return;
@@ -2579,54 +2573,34 @@
 
     const accuracy = pos.coords.accuracy ?? GPS_ACCEPTABLE_ACCURACY;
     gpsAccuracyMeters = accuracy;
-    const maxAccuracy = Math.min(
-      GPS_MAX_ACCEPTABLE_ACCURACY,
-      Math.max(GPS_ACCEPTABLE_ACCURACY, accuracy),
-    );
 
     const { latitude: lat, longitude: lng } = pos.coords;
     const nearestGate = nearestCampusGate(lat, lng);
-    const gateAnchor = resolveNearestCampusAnchor(lat, lng, accuracy);
-    const insideCampus = isInsideCampus(lat, lng);
 
-    if (accuracy > 30) {
-      updateGPSStatus(`${Math.round(accuracy)}m accuracy`, "weak");
-      if (nearestGate || currentUserNode) {
-        const fallbackNode = nearestGate ? nearestGate.id : currentUserNode;
-        if (fallbackNode && NODE_MAP[fallbackNode]) {
-          currentUserNode = fallbackNode;
-          const nodePos = NODE_MAP[fallbackNode];
-          moveUserDot(nodePos.x, nodePos.y);
-          addBreadcrumb(nodePos.x, nodePos.y);
-          if (destBuildingId) drawRoute();
-        }
+    // Too rough to trust: keep the last good position instead of teleporting.
+    if (accuracy > 50) {
+      if (!currentUserNode && nearestGate && NODE_MAP[nearestGate.id]) {
+        currentUserNode = nearestGate.id;
       }
-      const msg = "Location is weak. You may be off by a few meters.";
+      if (currentUserNode && NODE_MAP[currentUserNode] && userSvgX === null) {
+        const n = NODE_MAP[currentUserNode];
+        moveUserDot(n.x, n.y);
+        if (destBuildingId) drawRoute();
+      }
       const bar = document.getElementById("mapDirectionsBar");
       const txt = document.getElementById("mapDirectionsText");
-      if (bar && txt) {
-        txt.textContent = msg;
+      if (bar && txt && !destBuildingId) {
+        txt.textContent = "Location is weak. You may be off by a few meters.";
         bar.style.display = "flex";
       }
-    } else {
-      updateGPSStatus(`${Math.round(accuracy)}m accuracy`, "good");
-    }
-
-    if (
-      accuracy > maxAccuracy &&
-      (!nearestGate || nearestGate.distance > 350)
-    ) {
-      if (currentUserNode) {
-        const prev = NODE_MAP[currentUserNode];
-        if (prev) {
-          moveUserDot(prev.x, prev.y);
-        }
-      }
-      saveRouteState();
       return;
     }
 
-    const weighting = Math.min(1, 30 / Math.max(accuracy, 10));
+    const gateAnchor = resolveNearestCampusAnchor(lat, lng, accuracy);
+    const insideCampus = isInsideCampus(lat, lng);
+    updateAccuracyRing(accuracy);
+
+    const weighting = Math.max(0.15, Math.min(0.6, 10 / accuracy));
 
     if (smoothedLat === null) {
       smoothedLat = lat;
@@ -2653,16 +2627,12 @@
         else updatePathProgress();
       }
 
-      const isFirstFix = firstFix;
-
-      if (isFirstFix) {
+      if (firstFix) {
         firstFix = false;
         autoCenterOnLocation = false;
         snapToUser(edgeSnap.x, edgeSnap.y);
         drawRoute();
-        if (locatingToastEl) {
-          locatingToastEl.classList.remove("show");
-        }
+        if (locatingToastEl) locatingToastEl.classList.remove("show");
       } else if (autoCenterOnLocation) {
         centerOnUser(edgeSnap.x, edgeSnap.y);
       }
@@ -2671,12 +2641,7 @@
     }
 
     if (insideCampus) {
-      const campusSnap = nearestNode(
-        svgPos.x,
-        svgPos.y,
-        currentUserNode,
-        accuracy,
-      );
+      const campusSnap = nearestNode(svgPos.x, svgPos.y, currentUserNode, accuracy);
       if (campusSnap) {
         currentUserNode = campusSnap.id;
         moveUserDot(edgeSnap.x, edgeSnap.y);
@@ -2691,9 +2656,7 @@
           autoCenterOnLocation = false;
           snapToUser(edgeSnap.x, edgeSnap.y);
           drawRoute();
-          if (locatingToastEl) {
-            locatingToastEl.classList.remove("show");
-          }
+          if (locatingToastEl) locatingToastEl.classList.remove("show");
         } else if (autoCenterOnLocation) {
           centerOnUser(edgeSnap.x, edgeSnap.y);
         }
@@ -2728,9 +2691,7 @@
     if (firstFix) {
       firstFix = false;
       autoCenterOnLocation = false;
-      if (locatingToastEl) {
-        locatingToastEl.classList.remove("show");
-      }
+      if (locatingToastEl) locatingToastEl.classList.remove("show");
     }
   }
 
@@ -2742,6 +2703,15 @@
     var bInfo = BUILDING_INFO[destBuildingId];
     txt.textContent = "Head towards " + (bInfo ? bInfo.name : "your destination");
     bar.style.display = "flex";
+  }
+
+  const PX_PER_METER = 11;
+
+  function updateAccuracyRing(acc) {
+    if (!userDot) return;
+    const ring = userDot.querySelector(".acc-ring");
+    if (!ring) return;
+    ring.setAttribute("r", Math.min(300, Math.max(30, acc * PX_PER_METER)));
   }
 
   function moveUserDot(svgX, svgY) {
