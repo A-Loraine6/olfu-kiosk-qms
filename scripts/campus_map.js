@@ -177,7 +177,7 @@
     { id: "j_20", x: 1745, y: 655 },
     { id: "j_42", x: 1923, y: 669 },
     { id: "j_21", x: 2101, y: 683 },
-    { id: "j_22", x: 2063, y: 760 },
+    { id: "j_22", x: 2063, y: 770 },
     { id: "j_24", x: 2263, y: 745 },
     { id: "j_25", x: 2456, y: 772 },
     { id: "j_26", x: 2929, y: 782 },
@@ -215,6 +215,7 @@
     ["j_5", "j_6"],
     ["j_6", "j_38"],
     ["j_38", "j_7"],
+    ["j_38", "b_lounge"],
     ["j_7", "j_8"],
     ["j_8", "b_jsb"],
     ["b_jsb", "2a"],
@@ -253,11 +254,6 @@
     ["j_28", "j_27"],
     ["j_27", "j_29"],
     ["j_27", "b_spcb"],
-    ["j_29", "b_spcb"],
-    ["j_29", "gate5"],
-    ["j_28", "j_27"],
-    ["j_28", "j_26"],
-    ["j_29", "j_27"],
     ["j_29", "b_spcb"],
     ["j_29", "gate5"],
   ];
@@ -343,10 +339,6 @@
   const GRAPH = buildGraph();
   var PATH_CACHE = {};
 
-  function clearPathCache() {
-    PATH_CACHE = {};
-  }
-
   function aStar(startId, goalId) {
     if (startId === goalId) return [startId];
     var key = startId + "|" + goalId;
@@ -403,79 +395,282 @@
     return null;
   }
 
-  const NODE_SNAP_HYSTERESIS = 60;
-  const GPS_ACCEPTABLE_ACCURACY = 15;
-  const GPS_MAX_ACCEPTABLE_ACCURACY = 60;
+  const PX_PER_METER = 11; 
+  const MAX_WALK_MPS = 2.5; 
+  const CONTINUITY_WEIGHT = 0.35; 
+  const ARRIVE_PX = 90;
 
-  function nearestNode(svgX, svgY, preferId, accuracyMeters = null) {
-    let best = null,
-      bestD = Infinity;
-    NODES.forEach((n) => {
-      const d = dist({ x: svgX, y: svgY }, n);
-      if (d < bestD) {
-        bestD = d;
-        best = n;
+  const isWalkNode = (id) => id.startsWith("j_") || id.startsWith("gate");
+  const WALK_EDGES = EDGES.filter(([a, b]) => isWalkNode(a) && isWalkNode(b));
+
+  function buildDist(edgeList) {
+    const D = {};
+    NODES.forEach((a) => {
+      D[a.id] = {};
+      NODES.forEach((b) => {
+        D[a.id][b.id] = a.id === b.id ? 0 : Infinity;
+      });
+    });
+    edgeList.forEach(([a, b]) => {
+      const na = NODE_MAP[a],
+        nb = NODE_MAP[b];
+      if (!na || !nb) return;
+      const d = dist(na, nb);
+      if (d < D[a][b]) {
+        D[a][b] = d;
+        D[b][a] = d;
       }
     });
+    NODES.forEach((k) =>
+      NODES.forEach((i) =>
+        NODES.forEach((j) => {
+          const v = D[i.id][k.id] + D[k.id][j.id];
+          if (v < D[i.id][j.id]) D[i.id][j.id] = v;
+        }),
+      ),
+    );
+    return D;
+  }
+  const DIST_WALK = buildDist(WALK_EDGES);
+  const DIST_FULL = buildDist(EDGES);
 
-    if (!best) return null;
+  const unreachable = NODES.filter(
+    (n) => DIST_FULL["gate1"][n.id] === Infinity,
+  ).map((n) => n.id);
+  if (unreachable.length)
+    console.warn("Nodes not connected to the path network:", unreachable);
 
-    const maxSnapDistance = accuracyMeters
-      ? Math.min(360, Math.max(120, accuracyMeters * 5))
-      : 240;
+  function buildWalkGraph() {
+    const adj = {};
+    NODES.forEach((n) => {
+      if (isWalkNode(n.id)) adj[n.id] = [];
+    });
+    WALK_EDGES.forEach(([a, b]) => {
+      const na = NODE_MAP[a],
+        nb = NODE_MAP[b];
+      if (!na || !nb) return;
+      const d = dist(na, nb);
+      adj[a].push({ id: b, cost: d });
+      adj[b].push({ id: a, cost: d });
+    });
+    return adj;
+  }
+  const WALK_GRAPH = buildWalkGraph();
+  var WALK_PATH_CACHE = {};
+  const BREADCRUMB_MAX_HOPS = 30;
 
-    if (bestD > maxSnapDistance) return null;
+  function walkAStar(startId, goalId) {
+    if (startId === goalId) return [startId];
+    const key = startId + "|" + goalId;
+    if (WALK_PATH_CACHE[key]) return WALK_PATH_CACHE[key].slice();
+    const goal = NODE_MAP[goalId];
+    if (!goal || !NODE_MAP[startId]) return null;
 
-    if (preferId) {
-      const preferNode = NODE_MAP[preferId];
-      if (preferNode && preferNode.id !== best.id) {
-        const preferD = dist({ x: svgX, y: svgY }, preferNode);
-        if (preferD - bestD < NODE_SNAP_HYSTERESIS) {
-          return preferNode;
+    const open = new Map();
+    const closed = new Set();
+    const parent = new Map();
+    open.set(startId, { g: 0, f: dist(NODE_MAP[startId], goal) });
+    parent.set(startId, null);
+
+    while (open.size > 0) {
+      let curr = null,
+        best = Infinity;
+      open.forEach((v, k) => {
+        if (v.f < best) {
+          best = v.f;
+          curr = k;
+        }
+      });
+
+      if (curr === goalId) {
+        const path = [];
+        let node = curr;
+        while (node !== null) {
+          path.unshift(node);
+          node = parent.get(node) ?? null;
+          if (path.length > 300) break;
+        }
+        WALK_PATH_CACHE[key] = path.slice();
+        return path;
+      }
+
+      const currData = open.get(curr);
+      open.delete(curr);
+      closed.add(curr);
+
+      for (const neighbor of WALK_GRAPH[curr] || []) {
+        if (closed.has(neighbor.id)) continue;
+        const g = currData.g + neighbor.cost;
+        const existing = open.get(neighbor.id);
+        if (!existing || g < existing.g) {
+          open.set(neighbor.id, {
+            g,
+            f: g + dist(NODE_MAP[neighbor.id], goal),
+          });
+          parent.set(neighbor.id, curr);
         }
       }
     }
+    return null;
+  }
+
+  let currentPos = null;
+  let lastMatchTime = 0;
+  let rejectStreak = 0;
+
+  function posAtNode(nodeId) {
+    let id = nodeId;
+    if (!id || !NODE_MAP[id]) return null;
+    if (!isWalkNode(id)) {
+      let best = null,
+        bd = Infinity;
+      NODES.forEach((n) => {
+        if (!isWalkNode(n.id)) return;
+        const d = dist(NODE_MAP[id], n);
+        if (d < bd) {
+          bd = d;
+          best = n.id;
+        }
+      });
+      id = best;
+    }
+    const n = NODE_MAP[id];
+    const e = WALK_EDGES.find(([a, b]) => a === id || b === id);
+    if (!n || !e) return null;
+    const other = NODE_MAP[e[0] === id ? e[1] : e[0]];
+    return { a: n, b: other, t: 0, x: n.x, y: n.y };
+  }
+
+  function networkDistance(p, q) {
+    const pLen = dist(p.a, p.b),
+      qLen = dist(q.a, q.b);
+    if (p.a.id === q.a.id && p.b.id === q.b.id)
+      return Math.abs(p.t - q.t) * pLen;
+    if (p.a.id === q.b.id && p.b.id === q.a.id)
+      return Math.abs(p.t - (1 - q.t)) * pLen;
+    const pEnds = [
+      [p.a.id, p.t * pLen],
+      [p.b.id, (1 - p.t) * pLen],
+    ];
+    const qEnds = [
+      [q.a.id, q.t * qLen],
+      [q.b.id, (1 - q.t) * qLen],
+    ];
+    let best = Infinity;
+    for (const [pn, pd] of pEnds)
+      for (const [qn, qd] of qEnds) {
+        const d = pd + DIST_WALK[pn][qn] + qd;
+        if (d < best) best = d;
+      }
     return best;
   }
 
-  function snapToNearestEdge(svgX, svgY) {
-    let best = { a: null, b: null, t: 0, distSq: Infinity, x: svgX, y: svgY };
-
-    for (let i = 0; i < EDGES.length; i++) {
-      const [aId, bId] = EDGES[i];
-      const na = NODE_MAP[aId],
-        nb = NODE_MAP[bId];
-      if (!na || !nb) continue;
-      const r = pointToSegment(svgX, svgY, na.x, na.y, nb.x, nb.y);
-      if (r.distSq < best.distSq) {
-        best = { a: na, b: nb, t: r.t, distSq: r.distSq, x: r.cx, y: r.cy };
+  function snapToWalkway(x, y) {
+    let best = null,
+      bd = Infinity;
+    for (const [aId, bId] of WALK_EDGES) {
+      const a = NODE_MAP[aId],
+        b = NODE_MAP[bId];
+      const r = pointToSegment(x, y, a.x, a.y, b.x, b.y);
+      if (r.distSq < bd) {
+        bd = r.distSq;
+        best = { a, b, t: r.t, x: r.cx, y: r.cy };
       }
     }
-
-    if (currentEdge.a && currentEdge.b) {
-      const cur = pointToSegment(
-        svgX,
-        svgY,
-        currentEdge.a.x,
-        currentEdge.a.y,
-        currentEdge.b.x,
-        currentEdge.b.y,
-      );
-      if (cur.distSq < best.distSq + EDGE_SNAP_HYSTERESIS_SQ) {
-        return {
-          a: currentEdge.a,
-          b: currentEdge.b,
-          t: cur.t,
-          distSq: cur.distSq,
-          x: cur.cx,
-          y: cur.cy,
-        };
-      }
-    }
-
-    currentEdge = best;
     return best;
   }
+
+  let headingHistory = []; 
+  let currentHeading = null; 
+  const HEADING_HISTORY_MAX = 6;
+  const HEADING_MIN_DIST_PX = 25;
+  const HEADING_MAX_AGE_MS = 8000;
+  const DIRECTION_WEIGHT = 45; 
+
+  function updateHeading(x, y, t) {
+    headingHistory.push({ x, y, t });
+    if (headingHistory.length > HEADING_HISTORY_MAX) headingHistory.shift();
+
+    const cutoff = t - HEADING_MAX_AGE_MS;
+    const recent = headingHistory.filter((h) => h.t >= cutoff);
+    if (recent.length < 2) return;
+
+    const first = recent[0];
+    const last = recent[recent.length - 1];
+    const dx = last.x - first.x;
+    const dy = last.y - first.y;
+    if (dx * dx + dy * dy < HEADING_MIN_DIST_PX * HEADING_MIN_DIST_PX) return;
+
+    currentHeading = Math.atan2(dy, dx);
+  }
+
+  function resetHeading() {
+    headingHistory = [];
+    currentHeading = null;
+  }
+
+  function lineAngleDiff(headingA, headingB) {
+    const norm = (a) => (((a % Math.PI) + Math.PI) % Math.PI);
+    let d = Math.abs(norm(headingA) - norm(headingB));
+    if (d > Math.PI / 2) d = Math.PI - d;
+    return d;
+  }
+
+  function matchToGraph(x, y, accuracyMeters, now) {
+    const accPx = accuracyMeters * PX_PER_METER;
+    const searchR = Math.max(200, accPx * 2.5);
+    const maxJump = currentPos
+      ? ((now - lastMatchTime) / 1000) * MAX_WALK_MPS * PX_PER_METER +
+        accPx +
+        80
+      : Infinity;
+
+    let best = null,
+      bestCost = Infinity;
+    for (const [aId, bId] of WALK_EDGES) {
+      const a = NODE_MAP[aId],
+        b = NODE_MAP[bId];
+      const r = pointToSegment(x, y, a.x, a.y, b.x, b.y);
+      const perp = Math.sqrt(r.distSq);
+      if (perp > searchR) continue;
+      const cand = { a, b, t: r.t, x: r.cx, y: r.cy };
+      let cost = perp;
+      if (currentPos) {
+        const nd = networkDistance(currentPos, cand);
+        if (nd > maxJump) continue;
+        cost += CONTINUITY_WEIGHT * nd;
+      }
+      if (currentHeading !== null) {
+        const edgeAngle = Math.atan2(b.y - a.y, b.x - a.x);
+        const angDiff = lineAngleDiff(currentHeading, edgeAngle); 
+        cost += DIRECTION_WEIGHT * (angDiff / (Math.PI / 2));
+      }
+      if (cost < bestCost) {
+        bestCost = cost;
+        best = cand;
+      }
+    }
+    return best;
+  }
+
+  function setPosition(p) {
+    currentPos = p;
+    currentEdge = p;
+    currentUserNode = p.t <= 0.5 ? p.a.id : p.b.id;
+    updateHeading(p.x, p.y, Date.now());
+    moveUserDot(p.x, p.y);
+    traceBreadcrumb(p);
+  }
+
+  function routeFromPosition(p, destId) {
+    const len = dist(p.a, p.b);
+    const viaA = p.t * len + DIST_FULL[p.a.id][destId];
+    const viaB = (1 - p.t) * len + DIST_FULL[p.b.id][destId];
+    if (!isFinite(viaA) && !isFinite(viaB)) return null;
+    return aStar(viaA <= viaB ? p.a.id : p.b.id, destId);
+  }
+
+  const GPS_ACCEPTABLE_ACCURACY = 15;
 
   const CAMPUS_BOUNDS = {
     minLat: 14.6192,
@@ -621,20 +816,14 @@
 
   let smoothedLat = null;
   let smoothedLng = null;
-  const SMOOTHING_ALPHA = 0.35;
 
   let labelItems = [];
   let poiItems = [];
   let transformScheduled = false;
   let gestureActive = false;
-  let lastAppliedAngle = null;
-  let lastAppliedScale = null;
 
   let smoothAngle = 0;
   const HEADING_ALPHA = 0.08;
-  const METERS_PER_PIXEL = 0.045;
-  const WALK_SPEED_M_PER_MIN = 80;
-  const MIN_WALK_MINUTES = 1;
 
   let currentEdge = { a: null, b: null, t: 0, x: 0, y: 0 };
   let currentPath = [];
@@ -643,14 +832,12 @@
   let pathRemainingLine = null;
   let pathTraveledCasing = null;
   let pathRemainingCasing = null;
-  let gpsStatusEl = null;
   let gpsAccuracyMeters = null;
   const SAVED_ROUTE_KEY = "campus_map_saved_route";
-  const EDGE_SNAP_HYSTERESIS_SQ = 900;
-  const GPS_DEVIATION_TOLERANCE = 3;
 
-  var breadcrumbs = [];
+  var breadcrumbSegments = [[]];
   var breadcrumbGroup = null;
+  var lastBreadcrumbNode = null;
   const BREADCRUMB_MAX = 80;
   const BREADCRUMB_FADE_SEC = 90;
 
@@ -766,23 +953,6 @@
       transformScheduled = false;
       applyTransform();
     });
-  }
-
-  function svgToScreen(svgX, svgY) {
-    const cw = mapWrapEl.clientWidth;
-    const ch = mapWrapEl.clientHeight;
-    const localX = svgX - CAMPUS.x;
-    const localY = svgY - CAMPUS.y;
-    const mx = viewX + localX * viewScale;
-    const my = viewY + localY * viewScale;
-    const dx = mx - cw / 2;
-    const dy = my - ch / 2;
-    const cos = Math.cos(viewAngle);
-    const sin = Math.sin(viewAngle);
-    return {
-      x: cw / 2 + dx * cos - dy * sin,
-      y: ch / 2 + dx * sin + dy * cos,
-    };
   }
 
   function applyTransform() {
@@ -1148,9 +1318,6 @@
         tsp.setAttribute("x", b.x);
         tsp.setAttribute("dy", idx === 0 ? 0 : lineHeight);
         tsp.textContent = line;
-        if (idx === 0) {
-          tsp.setAttribute("dy", idx === 0 ? 0 : lineHeight);
-        }
         t.appendChild(tsp);
       });
       g.appendChild(t);
@@ -1247,7 +1414,7 @@
     poiGroupEl.id = "poiGroup";
     overlayEl.appendChild(poiGroupEl);
 
-    BUILDINGS_INFO.forEach((b, i) => {
+    BUILDINGS_INFO.forEach((b) => {
       const pinX = b.cx;
       const pinY = b.cy - b.ry - 34;
       const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -1297,6 +1464,7 @@
     overlayEl.addEventListener("click", hidePopup);
 
     buildNodeDebugLayer();
+    // toggleNodeDebug(true);
     buildCompass();
     startCompass();
     buildZoomControls();
@@ -1379,11 +1547,9 @@
       viewAngle = 0;
       autoCenterOnLocation = false;
       fitMap();
-      if (currentUserNode) {
-        const userNode = NODE_MAP[currentUserNode];
-        if (userNode) {
-          snapToUser(userNode.x, userNode.y);
-        }
+      const userNode = currentPos || (currentUserNode && NODE_MAP[currentUserNode]);
+      if (userNode) {
+        snapToUser(userNode.x, userNode.y);
       }
     });
     mapWrapEl.appendChild(btn);
@@ -1394,12 +1560,12 @@
       showLocatingToast("Enable location to see your position on the map.");
       return;
     }
-    if (!currentUserNode) {
+    const n = currentPos || (currentUserNode && NODE_MAP[currentUserNode]);
+    if (!n) {
       showLocatingToast("Finding your location…");
       return;
     }
     locateBtnEl.classList.add("locating");
-    const n = NODE_MAP[currentUserNode];
     smoothAngle = 0;
     if (viewScale < MIN_SCALE * 1.3) {
       const cw = mapWrapEl.clientWidth,
@@ -1680,41 +1846,18 @@
     gpsErrorShown = false;
     gpsPermissionDenied = false;
     firstFix = false;
+    resetHeading();
 
-    var edgeSnap = snapToNearestEdge(svgX, svgY);
-    currentEdge = edgeSnap;
-    testModePin.setAttribute("cx", edgeSnap.x);
-    testModePin.setAttribute("cy", edgeSnap.y);
+    var pos = forceNodeId ? posAtNode(forceNodeId) : snapToWalkway(svgX, svgY);
+    if (!pos) return;
+
+    testModePin.setAttribute("cx", pos.x);
+    testModePin.setAttribute("cy", pos.y);
     testModePin.setAttribute("opacity", "1");
 
-    moveUserDot(edgeSnap.x, edgeSnap.y);
-
-    var prevUserNode = currentUserNode;
-
-    if (forceNodeId) {
-      currentUserNode = forceNodeId;
-    } else {
-      var nodeSnap = nearestNode(edgeSnap.x, edgeSnap.y, null, 15);
-      if (nodeSnap) {
-        currentUserNode = nodeSnap.id;
-      } else if (edgeSnap.a) {
-        currentUserNode = edgeSnap.t <= 0.5 ? edgeSnap.a.id : edgeSnap.b.id;
-      }
-    }
-
-    if (prevUserNode && currentUserNode && prevUserNode !== currentUserNode) {
-      var pathNodes = aStar(prevUserNode, currentUserNode);
-      if (pathNodes && pathNodes.length > 0) {
-        var pts = [];
-        for (var p = 0; p < pathNodes.length; p++) {
-          var pn = NODE_MAP[pathNodes[p]];
-          if (pn) pts.push({ x: pn.x, y: pn.y });
-        }
-        if (pts.length > 0) addBreadcrumbBulk(pts);
-      }
-    } else {
-      addBreadcrumb(edgeSnap.x, edgeSnap.y);
-    }
+    setPosition(pos);
+    lastMatchTime = Date.now();
+    startFlagSet = false;
 
     currentPath = [];
     currentPathIdx = 0;
@@ -1870,6 +2013,7 @@
     );
     nodeDebugGroupEl.id = "nodeDebugGroup";
     nodeDebugGroupEl.style.display = "none";
+    nodeDebugGroupEl.style.pointerEvents = "none"; // don't block taps on buildings
 
     NODES.forEach((n) => {
       const isGate = n.id.startsWith("gate");
@@ -1930,23 +2074,6 @@
     nodeDebugGroupEl.insertBefore(edgeLayer, nodeDebugGroupEl.firstChild);
 
     overlayEl.appendChild(nodeDebugGroupEl);
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "mapNodeDebugBtn";
-    btn.textContent = "Nodes";
-    btn.style.cssText = `
-      display:none; position:absolute; top:14px; right:62px; z-index:41;
-      background:#111; color:#fff; font-size:12px; font-weight:700;
-      padding:8px 12px; border-radius:10px; border:none; cursor:pointer;
-      box-shadow:0 3px 14px rgba(0,40,20,0.18);
-    `;
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      toggleNodeDebug();
-      btn.style.background = nodeDebugVisible ? "#0a6635" : "#111";
-    });
-    mapWrapEl.appendChild(btn);
   }
 
   function toggleNodeDebug(force) {
@@ -1988,12 +2115,6 @@
   function startCompass() {
     disableDeviceOrientation = true;
     stopOrientationWatchers();
-  }
-
-  function listenOrientation() {
-    if (disableDeviceOrientation) return;
-    window.addEventListener("deviceorientationabsolute", onOrientation, true);
-    window.addEventListener("deviceorientation", onOrientation, true);
   }
 
   let compassDeg = 0;
@@ -2279,8 +2400,6 @@
   }
 
   function enforceMinZoom() {
-    const cw = mapWrapEl.clientWidth;
-    const ch = mapWrapEl.clientHeight;
     const a = Math.abs(viewAngle % (Math.PI / 2));
     const na = a > Math.PI / 4 ? Math.PI / 2 - a : a;
     const diagFactor =
@@ -2384,10 +2503,11 @@
     });
   }
 
+  function updateGPSStatus() {}
+
   function startGPS() {
     if (!navigator.geolocation) {
       gpsPermissionDenied = true;
-      updateGPSStatus("GPS unavailable", "weak");
       showGPSError(
         "Location isn't supported on this device — using the last saved route.",
       );
@@ -2395,7 +2515,6 @@
       return;
     }
     showLocatingToast("Finding your location…");
-    updateGPSStatus("Searching…", "neutral");
     watchId = navigator.geolocation.watchPosition(onPosition, onGeoError, {
       enableHighAccuracy: true,
       maximumAge: 3000,
@@ -2409,88 +2528,15 @@
       gpsPermissionDenied = true;
       msg =
         "Location permission denied — enable it in your browser settings to see directions.";
-      updateGPSStatus("Permission denied", "weak");
       restoreSavedRoute();
     } else if (err && err.code === err.TIMEOUT) {
       msg = "Couldn't get your location — retrying…";
-      updateGPSStatus("Retrying…", "neutral");
     }
-    showGPSError(msg, err && err.code === err.PERMISSION_DENIED ? "weak" : "neutral");
+    showGPSError(msg);
     if (err && err.code !== err.TIMEOUT) {
       drawRoute();
     }
   }
-
-  var gpsDebugPanelEl = null;
-
-  function ensureGPSDebugPanel() {
-    if (!mapWrapEl) return null;
-    if (gpsDebugPanelEl) return gpsDebugPanelEl;
-    var panel = document.getElementById("gpsDebugPanel");
-    if (!panel) {
-      panel = document.createElement("div");
-      panel.id = "gpsDebugPanel";
-      panel.style.cssText = [
-        "position:absolute",
-        "left:12px",
-        "bottom:52px",
-        "z-index:30",
-        "background:rgba(17,24,39,0.85)",
-        "color:#fff",
-        "font-size:10px",
-        "line-height:1.4",
-        "padding:8px 10px",
-        "border-radius:8px",
-        "font-family:monospace",
-        "pointer-events:none",
-        "max-width:280px",
-      ].join(";");
-      mapWrapEl.appendChild(panel);
-    }
-    gpsDebugPanelEl = panel;
-    return panel;
-  }
-
-  function updateDebugPanel(data) {
-    var panel = ensureGPSDebugPanel();
-    if (!panel) return;
-    panel.innerHTML =
-      "GPS raw: " + data.rawLat + ", " + data.rawLng + "<br>" +
-      "Acc: " + data.acc + " | inside: " + data.inside + "<br>" +
-      "Gate anchor: " + data.anchor + "<br>" +
-      "Smooth: " + data.smoothLat + ", " + data.smoothLng + "<br>" +
-      "SVG raw: (" + data.svgX + ", " + data.svgY + ")<br>" +
-      "Edge: " + data.edge + " snap(" + data.snapX + ", " + data.snapY + ")<br>" +
-      "Node: " + data.node + " (" + data.nodeX + ", " + data.nodeY + ")";
-  }
-
-  function ensureGPSStatus() {
-    if (!mapWrapEl) return null;
-    if (gpsStatusEl) return gpsStatusEl;
-
-    const wrapper = document.createElement("div");
-    wrapper.id = "mapGpsStatus";
-    wrapper.setAttribute("data-tone", "neutral");
-    wrapper.innerHTML = `
-      <span class="map-gps-label">Location</span>
-      <span class="map-gps-value">Searching…</span>
-    `;
-
-    const header = document.getElementById("mapHeaderBar");
-    if (header) {
-      const directionsBar = document.getElementById("mapDirectionsBar");
-      if (directionsBar) {
-        header.insertBefore(wrapper, directionsBar);
-      } else {
-        header.appendChild(wrapper);
-      }
-    }
-
-    gpsStatusEl = wrapper;
-    return wrapper;
-  }
-
-  function updateGPSStatus() {}
 
   function saveRouteState() {
     if (!destBuildingId && !currentUserNode) return;
@@ -2516,8 +2562,6 @@
       destBuildingId = saved.destBuildingId;
       if (saved.currentUserNode && NODE_MAP[saved.currentUserNode]) {
         currentUserNode = saved.currentUserNode;
-      } else if (saved.currentUserNode && saved.currentUserNode.startsWith("gate")) {
-        currentUserNode = saved.currentUserNode;
       } else {
         currentUserNode = "gate1";
       }
@@ -2531,7 +2575,7 @@
     }
   }
 
-  function showGPSError(msg, tone = "weak") {
+  function showGPSError(msg) {
     if (!mapWrapEl) return;
     const bar = document.getElementById("mapDirectionsBar");
     const txt = document.getElementById("mapDirectionsText");
@@ -2540,20 +2584,6 @@
       txt.textContent = msg;
       bar.style.display = "flex";
     }
-    updateGPSStatus(tone === "weak" ? "Weak signal" : "No GPS", tone);
-  }
-
-  function handlePathProgress(nodeId) {
-    if (!currentPath.length || currentPathIdx >= currentPath.length - 1) return false;
-    var nextNodeId = currentPath[currentPathIdx + 1];
-    if (nodeId === nextNodeId) {
-      currentPathIdx++;
-      return true;
-    }
-    if (nodeId !== currentPath[currentPathIdx] && currentPath.indexOf(nodeId) === -1) {
-      return true;
-    }
-    return false;
   }
 
   function onPosition(pos) {
@@ -2573,19 +2603,18 @@
 
     const accuracy = pos.coords.accuracy ?? GPS_ACCEPTABLE_ACCURACY;
     gpsAccuracyMeters = accuracy;
-
     const { latitude: lat, longitude: lng } = pos.coords;
     const nearestGate = nearestCampusGate(lat, lng);
 
-    // Too rough to trust: keep the last good position instead of teleporting.
     if (accuracy > 50) {
-      if (!currentUserNode && nearestGate && NODE_MAP[nearestGate.id]) {
-        currentUserNode = nearestGate.id;
-      }
-      if (currentUserNode && NODE_MAP[currentUserNode] && userSvgX === null) {
-        const n = NODE_MAP[currentUserNode];
-        moveUserDot(n.x, n.y);
-        if (destBuildingId) drawRoute();
+      if (!currentPos) {
+        const start = posAtNode(
+          currentUserNode || (nearestGate && nearestGate.id),
+        );
+        if (start) {
+          setPosition(start);
+          if (destBuildingId) drawRoute();
+        }
       }
       const bar = document.getElementById("mapDirectionsBar");
       const txt = document.getElementById("mapDirectionsText");
@@ -2597,115 +2626,52 @@
     }
 
     const gateAnchor = resolveNearestCampusAnchor(lat, lng, accuracy);
-    const insideCampus = isInsideCampus(lat, lng);
     updateAccuracyRing(accuracy);
 
     const weighting = Math.max(0.15, Math.min(0.6, 10 / accuracy));
+    const nextLat =
+      smoothedLat === null ? lat : smoothedLat + weighting * (lat - smoothedLat);
+    const nextLng =
+      smoothedLng === null ? lng : smoothedLng + weighting * (lng - smoothedLng);
 
-    if (smoothedLat === null) {
-      smoothedLat = lat;
-      smoothedLng = lng;
-    } else {
-      smoothedLat += weighting * (lat - smoothedLat);
-      smoothedLng += weighting * (lng - smoothedLng);
-    }
-
-    const projectedLat = gateAnchor ? nearestGate.lat : smoothedLat;
-    const projectedLng = gateAnchor ? nearestGate.lng : smoothedLng;
+    const projectedLat = gateAnchor ? nearestGate.lat : nextLat;
+    const projectedLng = gateAnchor ? nearestGate.lng : nextLng;
     const svgPos = gpsToSvg(projectedLat, projectedLng);
-    const edgeSnap = snapToNearestEdge(svgPos.x, svgPos.y);
-    const snapped = gateAnchor
-      ? gateAnchor
-      : nearestNode(svgPos.x, svgPos.y, currentUserNode, accuracy);
 
-    if (snapped && (!insideCampus || !gateAnchor)) {
-      currentUserNode = snapped.id;
-      moveUserDot(edgeSnap.x, edgeSnap.y);
-      addBreadcrumb(edgeSnap.x, edgeSnap.y);
-      if (destBuildingId) {
-        if (handlePathProgress(snapped.id)) drawRoute();
-        else updatePathProgress();
-      }
+    const now = Date.now();
+    const matched = matchToGraph(svgPos.x, svgPos.y, accuracy, now);
 
-      if (firstFix) {
-        firstFix = false;
-        autoCenterOnLocation = false;
-        snapToUser(edgeSnap.x, edgeSnap.y);
-        drawRoute();
-        if (locatingToastEl) locatingToastEl.classList.remove("show");
-      } else if (autoCenterOnLocation) {
-        centerOnUser(edgeSnap.x, edgeSnap.y);
+    if (!matched) {
+      rejectStreak++;
+      if (rejectStreak >= 5) {
+        currentPos = null;
+        smoothedLat = null;
+        smoothedLng = null;
+        rejectStreak = 0;
+        lastBreadcrumbNode = null;
+        resetHeading();
       }
-      saveRouteState();
       return;
     }
 
-    if (insideCampus) {
-      const campusSnap = nearestNode(svgPos.x, svgPos.y, currentUserNode, accuracy);
-      if (campusSnap) {
-        currentUserNode = campusSnap.id;
-        moveUserDot(edgeSnap.x, edgeSnap.y);
-        addBreadcrumb(edgeSnap.x, edgeSnap.y);
-        if (destBuildingId) {
-          if (handlePathProgress(campusSnap.id)) drawRoute();
-          else updatePathProgress();
-        }
+    rejectStreak = 0;
+    smoothedLat = nextLat;
+    smoothedLng = nextLng;
+    lastMatchTime = now;
 
-        if (firstFix) {
-          firstFix = false;
-          autoCenterOnLocation = false;
-          snapToUser(edgeSnap.x, edgeSnap.y);
-          drawRoute();
-          if (locatingToastEl) locatingToastEl.classList.remove("show");
-        } else if (autoCenterOnLocation) {
-          centerOnUser(edgeSnap.x, edgeSnap.y);
-        }
-        saveRouteState();
-        return;
-      }
-    }
-
-    if (currentUserNode) {
-      const prev = NODE_MAP[currentUserNode];
-      if (prev) {
-        moveUserDot(prev.x, prev.y);
-        addBreadcrumb(prev.x, prev.y);
-        if (destBuildingId) drawRoute();
-        saveRouteState();
-        return;
-      }
-    }
-
-    if (nearestGate) {
-      const gateNode = NODE_MAP[nearestGate.id];
-      if (gateNode) {
-        currentUserNode = gateNode.id;
-        moveUserDot(edgeSnap.x, edgeSnap.y);
-        addBreadcrumb(edgeSnap.x, edgeSnap.y);
-        if (destBuildingId) drawRoute();
-        saveRouteState();
-        return;
-      }
-    }
+    setPosition(matched);
+    if (destBuildingId) drawRoute();
 
     if (firstFix) {
       firstFix = false;
       autoCenterOnLocation = false;
+      snapToUser(matched.x, matched.y);
       if (locatingToastEl) locatingToastEl.classList.remove("show");
+    } else if (autoCenterOnLocation) {
+      centerOnUser(matched.x, matched.y);
     }
+    saveRouteState();
   }
-
-  function updateETAFromPosition(edgeSnap, nodeSnap) {
-    var bar = document.getElementById("mapDirectionsBar");
-    var txt = document.getElementById("mapDirectionsText");
-    if (!bar || !txt) return;
-    gpsErrorShown = false;
-    var bInfo = BUILDING_INFO[destBuildingId];
-    txt.textContent = "Head towards " + (bInfo ? bInfo.name : "your destination");
-    bar.style.display = "flex";
-  }
-
-  const PX_PER_METER = 11;
 
   function updateAccuracyRing(acc) {
     if (!userDot) return;
@@ -2725,54 +2691,83 @@
     }
   }
 
-  function addBreadcrumb(x, y) {
-    var now = Date.now();
-    var last = breadcrumbs.length ? breadcrumbs[breadcrumbs.length - 1] : null;
+  function addBreadcrumbPoint(x, y) {
+    const seg = breadcrumbSegments[breadcrumbSegments.length - 1];
+    const last = seg.length ? seg[seg.length - 1] : null;
     if (last) {
-      var dx = x - last.x, dy = y - last.y;
+      const dx = x - last.x,
+        dy = y - last.y;
       if (dx * dx + dy * dy < 16) return;
     }
-    breadcrumbs.push({ x: x, y: y, t: now });
-    if (breadcrumbs.length > BREADCRUMB_MAX) breadcrumbs.shift();
+    seg.push({ x: x, y: y, t: Date.now() });
+
+    let total = breadcrumbSegments.reduce((n, s) => n + s.length, 0);
+    while (total > BREADCRUMB_MAX && breadcrumbSegments.length) {
+      const first = breadcrumbSegments[0];
+      if (first.length) {
+        first.shift();
+        total--;
+      } else {
+        breadcrumbSegments.shift();
+      }
+    }
     renderBreadcrumbs();
   }
 
-  function addBreadcrumbBulk(points) {
-    for (var i = 0; i < points.length; i++) {
-      var p = points[i];
-      var last = breadcrumbs.length ? breadcrumbs[breadcrumbs.length - 1] : null;
-      if (last) {
-        var dx = p.x - last.x, dy = p.y - last.y;
-        if (dx * dx + dy * dy < 16) continue;
-      }
-      breadcrumbs.push({ x: p.x, y: p.y, t: Date.now() });
+  function startNewBreadcrumbSegment() {
+    if (breadcrumbSegments[breadcrumbSegments.length - 1].length) {
+      breadcrumbSegments.push([]);
     }
-    if (breadcrumbs.length > BREADCRUMB_MAX) breadcrumbs.splice(0, breadcrumbs.length - BREADCRUMB_MAX);
-    renderBreadcrumbs();
+  }
+
+  function traceBreadcrumb(p) {
+    const newNode = p.t <= 0.5 ? p.a.id : p.b.id;
+
+    if (lastBreadcrumbNode && lastBreadcrumbNode !== newNode) {
+      const path = walkAStar(lastBreadcrumbNode, newNode);
+      if (path && path.length > 1 && path.length <= BREADCRUMB_MAX_HOPS) {
+        for (let i = 1; i < path.length; i++) {
+          const n = NODE_MAP[path[i]];
+          if (n) addBreadcrumbPoint(n.x, n.y);
+        }
+      } else {
+        startNewBreadcrumbSegment();
+      }
+    } else if (!lastBreadcrumbNode) {
+      startNewBreadcrumbSegment();
+    }
+
+    addBreadcrumbPoint(p.x, p.y);
+    lastBreadcrumbNode = newNode;
   }
 
   function renderBreadcrumbs() {
     if (!breadcrumbGroup) return;
-    var now = Date.now();
-    var points = "";
-    var totalElapsed = 0;
-    for (var i = 0; i < breadcrumbs.length; i++) {
-      var b = breadcrumbs[i];
-      var elapsed = (now - b.t) / 1000;
-      if (elapsed > BREADCRUMB_FADE_SEC) continue;
-      points += b.x + "," + b.y + " ";
-      if (i === breadcrumbs.length - 1) totalElapsed = elapsed;
-    }
-    if (!points) { breadcrumbGroup.innerHTML = ""; return; }
-    var pts = points.trim();
-    var alpha = Math.max(0.15, 1 - totalElapsed / BREADCRUMB_FADE_SEC);
-    breadcrumbGroup.innerHTML =
-      '<polyline points="' + pts + '" fill="none" stroke="#374151" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" opacity="' + alpha.toFixed(2) + '"/>' +
-      '<polyline points="' + pts + '" fill="none" stroke="#6b7280" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 4" opacity="' + alpha.toFixed(2) + '"/>';
+    const now = Date.now();
+    let html = "";
+
+    breadcrumbSegments.forEach((seg) => {
+      const live = seg.filter((b) => (now - b.t) / 1000 <= BREADCRUMB_FADE_SEC);
+      if (live.length < 2) return;
+      const pts = live.map((b) => b.x + "," + b.y).join(" ");
+      const elapsed = (now - live[live.length - 1].t) / 1000;
+      const alpha = Math.max(0.15, 1 - elapsed / BREADCRUMB_FADE_SEC);
+      html +=
+        '<polyline points="' + pts + '" fill="none" stroke="#374151" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" opacity="' + alpha.toFixed(2) + '"/>' +
+        '<polyline points="' + pts + '" fill="none" stroke="#6b7280" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8 4" opacity="' + alpha.toFixed(2) + '"/>';
+    });
+
+    breadcrumbGroup.innerHTML = html;
+
+    breadcrumbSegments = breadcrumbSegments.filter((seg) =>
+      seg.some((b) => (now - b.t) / 1000 <= BREADCRUMB_FADE_SEC),
+    );
+    if (!breadcrumbSegments.length) breadcrumbSegments = [[]];
   }
 
   function clearBreadcrumbs() {
-    breadcrumbs = [];
+    breadcrumbSegments = [[]];
+    lastBreadcrumbNode = null;
     if (breadcrumbGroup) breadcrumbGroup.innerHTML = "";
   }
 
@@ -2814,77 +2809,55 @@
 
   function drawRoute() {
     if (!destBuildingId) { clearAllPaths(); return; }
-    var destNodeId = BUILDING_NODE[destBuildingId];
-    if (!destNodeId) { clearAllPaths(); return; }
+    const destNodeId = BUILDING_NODE[destBuildingId];
+    const destNode = NODE_MAP[destNodeId];
+    if (!destNode) { clearAllPaths(); return; }
 
-    if (!currentUserNode) { clearAllPaths(); return; }
+    if (!currentPos && currentUserNode) currentPos = posAtNode(currentUserNode);
+    if (!currentPos) { clearAllPaths(); return; }
 
-    if (currentUserNode === destNodeId) {
+    const bar = document.getElementById("mapDirectionsBar");
+    const txt = document.getElementById("mapDirectionsText");
+
+    if (dist(currentPos, destNode) < ARRIVE_PX) {
       clearAllPaths();
+      destMarker.setAttribute("transform", `translate(${destNode.x},${destNode.y})`);
       destMarker.setAttribute("opacity", "1");
-      var barA = document.getElementById("mapDirectionsBar");
-      var txtA = document.getElementById("mapDirectionsText");
-      if (barA && txtA) {
-        txtA.textContent = "You've arrived!";
-        barA.style.display = "flex";
+      if (bar && txt) {
+        txt.textContent = "You've arrived!";
+        bar.style.display = "flex";
       }
       currentPath = [];
       currentPathIdx = 0;
       return;
     }
 
-    var pathIds = aStar(currentUserNode, destNodeId);
-    if (!pathIds) { clearAllPaths(); return; }
-
-    currentPath = pathIds;
-
-    if (!startFlagSet && startFlag && pathIds.length > 0) {
-      startFlagSet = true;
-      var flagX = currentEdge.x !== undefined ? currentEdge.x : NODE_MAP[pathIds[0]].x;
-      var flagY = currentEdge.y !== undefined ? currentEdge.y : NODE_MAP[pathIds[0]].y;
-      startFlag.setAttribute("transform", "translate(" + flagX + "," + flagY + ")");
-      startFlag.setAttribute("opacity", "1");
-    }
-
-    var nodeIdx = pathIds.indexOf(currentUserNode);
-    if (nodeIdx === -1) {
-      nodeIdx = 0;
-      currentPathIdx = 0;
-    } else {
-      currentPathIdx = nodeIdx;
-    }
-
-    renderPathSplit(nodeIdx, NODE_MAP[pathIds[nodeIdx]].x, NODE_MAP[pathIds[nodeIdx]].y);
-
-    var destNode = NODE_MAP[destNodeId];
-    destMarker.setAttribute("transform", "translate(" + destNode.x + "," + destNode.y + ")");
-    destMarker.setAttribute("opacity", "1");
-
-    updateHeader();
-    updateETA(pathIds, nodeIdx);
-  }
-
-  function updatePathProgress() {
-    if (!currentPath.length || !destBuildingId || !currentUserNode) return;
-    if (!currentEdge.a || !currentEdge.b) return;
-
-    var traveledIdx = currentPathIdx;
-    for (var i = currentPathIdx; i < currentPath.length - 1; i++) {
-      var a = currentPath[i], b = currentPath[i + 1];
-      var ea = currentEdge.a.id, eb = currentEdge.b.id;
-      if ((ea === a && eb === b) || (ea === b && eb === a)) {
-        traveledIdx = i;
-        break;
+    const route = routeFromPosition(currentPos, destNodeId);
+    if (!route) {
+      clearAllPaths();
+      if (bar && txt) {
+        txt.textContent = "No walkable route found from here.";
+        bar.style.display = "flex";
       }
-    }
-
-    if (currentPath.indexOf(currentUserNode) === -1 && traveledIdx === currentPathIdx) {
-      drawRoute();
       return;
     }
 
-    renderPathSplit(traveledIdx, currentEdge.x, currentEdge.y);
-    updateETAFromPosition(currentEdge, null);
+    currentPath = route;
+    currentPathIdx = 0;
+
+    if (!startFlagSet && startFlag) {
+      startFlagSet = true;
+      startFlag.setAttribute("transform", `translate(${currentPos.x},${currentPos.y})`);
+      startFlag.setAttribute("opacity", "1");
+    }
+
+    renderPathSplit(-1, currentPos.x, currentPos.y);
+
+    destMarker.setAttribute("transform", `translate(${destNode.x},${destNode.y})`);
+    destMarker.setAttribute("opacity", "1");
+
+    updateHeader();
+    updateETA(route, 0);
   }
 
   function renderPathSplit(nodeIdx, splitX, splitY) {
@@ -2917,7 +2890,7 @@
     pathRemainingLine.setAttribute("opacity", "1");
   }
 
-  function updateETA(pathIds, traveledIdx) {
+  function updateETA() {
     var bar = document.getElementById("mapDirectionsBar");
     var txt = document.getElementById("mapDirectionsText");
     if (!bar || !txt) return;
@@ -2940,7 +2913,7 @@
     refit: fitMap,
     toggleNodes: toggleNodeDebug,
     toggleGateAnchor: function () { debugDisableGateAnchor = !debugDisableGateAnchor; return debugDisableGateAnchor; },
-    debugData: function () { return { currentUserNode: currentUserNode, currentEdge: currentEdge, currentPath: currentPath, currentPathIdx: currentPathIdx }; },
+    debugData: function () { return { currentUserNode: currentUserNode, currentPos: currentPos, currentPath: currentPath, currentHeadingDeg: currentHeading === null ? null : (currentHeading * 180) / Math.PI }; },
 
     setDestination(officeName, buildingHint) {
       const id = resolveBuildingId(officeName, buildingHint);
