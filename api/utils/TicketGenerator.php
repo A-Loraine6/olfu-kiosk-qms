@@ -324,6 +324,37 @@ class TicketGenerator
         return (int)($row['cnt'] ?? 0);
     }
 
+    public function withNextTicketNumber(int $office_id, bool $is_priority, callable $callback): mixed
+    {
+        $office = $this->fetchOffice($office_id);
+        if (!$office) {
+            throw new RuntimeException('Office not found');
+        }
+
+        $lockName = "ticket_gen_{$office_id}";
+        $lockStmt = $this->db->prepare("SELECT GET_LOCK(?, 5) AS acquired");
+        if (!$lockStmt) {
+            throw new RuntimeException('Database prepare failed for lock');
+        }
+        $lockStmt->bind_param('s', $lockName);
+        $lockStmt->execute();
+        $lockRow = $lockStmt->get_result()->fetch_assoc();
+        $lockStmt->close();
+
+        if (!$lockRow || !$lockRow['acquired']) {
+            throw new RuntimeException('Server busy — please try again');
+        }
+
+        try {
+            return $callback($this->generateTicketNumber($office, $is_priority));
+        } finally {
+            $unlockStmt = $this->db->prepare("SELECT RELEASE_LOCK(?)");
+            $unlockStmt->bind_param('s', $lockName);
+            $unlockStmt->execute();
+            $unlockStmt->close();
+        }
+    }
+
     private function countAllToday(int $office_id, string $today): int
     {
         $stmt = $this->db->prepare("

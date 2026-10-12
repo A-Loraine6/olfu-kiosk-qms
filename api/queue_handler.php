@@ -4,6 +4,7 @@ require_once '../includes/db.php';
 require_once '../includes/auth.php';
 require_once __DIR__ . '/../includes/request_validation.php';
 require_once __DIR__ . '/activity_logger.php';
+require_once __DIR__ . '/utils/TicketGenerator.php';
 
 header('Content-Type: application/json');
 
@@ -52,6 +53,32 @@ function getOfficeQueueMode(Database $db, int $officeId): string
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
     return $row['queue_mode'] ?? 'unified';
+}
+
+function getTransferQueueOrderAt(Database $db, int $officeId, int $isPriority, string $placement, string $transferNow): string
+{
+    $direction = $placement === 'top' ? 'ASC' : 'DESC';
+    $dateFunction = $placement === 'top' ? 'DATE_SUB' : 'DATE_ADD';
+    $today = date('Y-m-d');
+    $stmt = $db->prepare("
+        SELECT DATE_FORMAT(
+            {$dateFunction}(COALESCE(queue_order_at, created_at), INTERVAL 1 MICROSECOND),
+            '%Y-%m-%d %H:%i:%s.%f'
+        ) AS queue_order_at
+        FROM tickets
+        WHERE office_id = ?
+          AND status = 'waiting'
+          AND is_priority = ?
+          AND DATE(created_at) = ?
+        ORDER BY COALESCE(queue_order_at, created_at) {$direction}, id {$direction}
+        LIMIT 1
+    ");
+    $stmt->bind_param('iis', $officeId, $isPriority, $today);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return $row['queue_order_at'] ?? ($transferNow . '.000000');
 }
 
 if ($action === 'get_stats') {
@@ -127,7 +154,7 @@ if ($action === 'get_queue') {
     $statuses = $statusMap[$tab] ?? ['waiting'];
 
     $placeholders = implode(',', array_fill(0, count($statuses), '?'));
-    $orderBy = ($tab === 'done') ? 'completed_at DESC' : 't.is_priority DESC, t.created_at ASC';
+    $orderBy = ($tab === 'done') ? 'completed_at DESC' : 't.is_priority DESC, COALESCE(t.queue_order_at, t.created_at) ASC, t.id ASC';
     $today   = date('Y-m-d');
 
     $types  = 'is' . str_repeat('s', count($statuses));
@@ -230,7 +257,7 @@ if ($action === 'call_next') {
                 SELECT 1 FROM service_windows sw
                 WHERE sw.service_id = tt.id AND sw.window_number = ?
             )
-            ORDER BY t.is_priority DESC, t.created_at ASC
+            ORDER BY t.is_priority DESC, COALESCE(t.queue_order_at, t.created_at) ASC, t.id ASC
             LIMIT 1";
         $types   .= 'i';
         $params[] = $windowNumber;
@@ -240,7 +267,7 @@ if ($action === 'call_next') {
                 WHERE t.office_id = ?
                   AND t.status = 'waiting'
                   AND DATE(t.created_at) = ?
-                ORDER BY t.is_priority DESC, t.created_at ASC
+                ORDER BY t.is_priority DESC, COALESCE(t.queue_order_at, t.created_at) ASC, t.id ASC
                 LIMIT 1";
     }
 
@@ -587,7 +614,7 @@ if ($action === 'transfer_ticket') {
     }
 
     $newStatus      = 'waiting';
-    $newPriority    = ($placement === 'top') ? 1 : 0;
+    $newPriority    = (int) $ticket['is_priority'];
     $newServedBy    = null;
     $newServedAt    = null;
     $newCompletedAt = null;
@@ -599,10 +626,33 @@ if ($action === 'transfer_ticket') {
     }
 
     $transferNow = date(DATETIME_FORMAT);
-
-    $stmt = $db->prepare("
+    $ticketNumber = null;
+    try {
+        $updated = (new TicketGenerator($db))->withNextTicketNumber(
+            $targetOfficeId,
+            (bool) $newPriority,
+            function (string $newTicketNumber) use (
+                $db,
+                $targetOfficeId,
+                $newStatus,
+                $newPriority,
+                $newServedBy,
+                $newServedAt,
+                $newCompletedAt,
+                $newOnHoldAt,
+                $newTimeSpent,
+                $transferNow,
+                $placement,
+                $newTransactionType,
+                $ticketId,
+                &$ticketNumber
+            ): bool {
+                $queueOrderAt = getTransferQueueOrderAt($db, $targetOfficeId, $newPriority, $placement, $transferNow);
+                $stmt = $db->prepare("
         UPDATE tickets
         SET office_id = ?,
+            ticket_number = ?,
+            queue_order_at = ?,
             status = ?,
             is_priority = ?,
             served_by = ?,
@@ -615,27 +665,44 @@ if ($action === 'transfer_ticket') {
             window_id = NULL
         WHERE id = ?
     ");
-    $stmt->bind_param('isiissiissi',
-        $targetOfficeId,
-        $newStatus,
-        $newPriority,
-        $newServedBy,
-        $newServedAt,
-        $newCompletedAt,
-        $newOnHoldAt,
-        $newTimeSpent,
-        $transferNow,
-        $newTransactionType,
-        $ticketId
-    );
-    $stmt->execute();
+                $stmt->bind_param('isssiisssissi',
+                    $targetOfficeId,
+                    $newTicketNumber,
+                    $queueOrderAt,
+                    $newStatus,
+                    $newPriority,
+                    $newServedBy,
+                    $newServedAt,
+                    $newCompletedAt,
+                    $newOnHoldAt,
+                    $newTimeSpent,
+                    $transferNow,
+                    $newTransactionType,
+                    $ticketId
+                );
+                $success = $stmt->execute();
+                $stmt->close();
+                if ($success) {
+                    $ticketNumber = $newTicketNumber;
+                }
+                return $success;
+            }
+        );
+    } catch (Throwable $error) {
+        respond(['success' => false, 'message' => 'Could not assign a new ticket number. Please try again.']);
+    }
+
+    if (!$updated) {
+        respond(['success' => false, 'message' => 'Ticket transfer failed. Please try again.']);
+    }
 
     respond([
         'success' => true,
         'message' => ($placement === 'top')
-            ? 'Ticket moved to the top of the target queue.'
-            : 'Ticket queued again at the end of the target queue.',
+            ? 'Ticket moved to the top of the target queue. New ticket number: ' . $ticketNumber . '.'
+            : 'Ticket queued again at the end of the target queue. New ticket number: ' . $ticketNumber . '.',
         'ticket_id' => $ticketId,
+        'ticket_number' => $ticketNumber,
         'target_office_id' => $targetOfficeId,
         'placement' => $placement,
     ]);
@@ -683,13 +750,19 @@ if ($action === 'transfer_window') {
         }
     }
 
-    $newPriority = $placement === 'top' ? 1 : 0;
+    $newPriority = (int) $ticket['is_priority'];
     $newTimeSpent = $ticket['status'] === 'on-hold' ? (int) ($ticket['time_spent'] ?? 0) : 0;
     $transferNow = date(DATETIME_FORMAT);
     $newStatus = 'waiting';
+    $queueOrderAt = getTransferQueueOrderAt($db, $officeId, $newPriority, $placement, $transferNow);
 
-    $stmt = $db->prepare("\n        UPDATE tickets\n        SET status = ?, is_priority = ?, served_by = NULL, served_at = NULL,\n            completed_at = NULL, on_hold_at = NULL, time_spent = ?, created_at = ?, window_id = ?\n        WHERE id = ? AND office_id = ?\n    ");
-    $stmt->bind_param('siisiii', $newStatus, $newPriority, $newTimeSpent, $transferNow, $targetWindow, $ticketId, $officeId);
+    $stmt = $db->prepare("
+        UPDATE tickets
+        SET status = ?, is_priority = ?, queue_order_at = ?, served_by = NULL, served_at = NULL,
+            completed_at = NULL, on_hold_at = NULL, time_spent = ?, created_at = ?, window_id = ?
+        WHERE id = ? AND office_id = ?
+    ");
+    $stmt->bind_param('sisisiii', $newStatus, $newPriority, $queueOrderAt, $newTimeSpent, $transferNow, $targetWindow, $ticketId, $officeId);
     $stmt->execute();
 
     respond([

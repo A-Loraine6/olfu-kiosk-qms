@@ -888,6 +888,7 @@ CREATE TABLE `tickets` (
   `window_id` int(11) DEFAULT NULL,
   `status` enum('waiting','serving','completed','skipped','on-hold','cancelled') NOT NULL DEFAULT 'waiting',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `queue_order_at` datetime(6) DEFAULT NULL,
   `served_at` timestamp NULL DEFAULT NULL,
   `completed_at` timestamp NULL DEFAULT NULL,
   `on_hold_at` timestamp NULL DEFAULT NULL,

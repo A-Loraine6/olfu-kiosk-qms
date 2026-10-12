@@ -25,7 +25,7 @@ if (!empty($officeIds)) {
         WHERE t.office_id IN ($placeholders)
           AND DATE(t.created_at) = ?
           AND t.status IN ('serving','waiting','completed','skipped')
-        ORDER BY t.created_at ASC
+        ORDER BY t.is_priority DESC, COALESCE(t.queue_order_at, t.created_at) ASC, t.id ASC
     ");
     $params = array_merge($officeIds, [$today]);
     $stmt->bind_param($types . 's', ...$params);
