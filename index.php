@@ -91,7 +91,7 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Queue Kiosk</title>
     <link rel="shortcut icon" href="img/olfu-logo.png" type="image/x-icon">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -206,7 +206,7 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
         <div class="screen active" id="screen0">
             <div class="screen-head">
                 <div class="eyebrow">Step 1</div>
-                <h1 class="screen-title">Who Is This Queue For?</h1>
+                <h1 class="screen-title">Select Queueing Type</h1>
             </div>
             <div class="screen-body">
                 <div class="priority-grid stagger">

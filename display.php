@@ -99,7 +99,7 @@ if (!empty($officeIds)) {
 
     <script>
         const DATA = <?php echo $officesJson; ?>;
-        const REFRESH_MS = 10000;
+        const REFRESH_MS = 8000;
         const HARD_RELOAD_MS = 60 * 60 * 1000;
 
         let offices = DATA;

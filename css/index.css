@@ -49,6 +49,18 @@ body {
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
   user-select: none;
+  -webkit-user-select: none;
+  touch-action: pan-x pan-y;   /* blocks pinch-zoom, allows scrolling */
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior: none;
+}
+
+button,
+.office-card,
+.service-card,
+.priority-card,
+.screen-body {
+  touch-action: pan-x pan-y;
 }
 
 
