@@ -100,14 +100,60 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'No office specified.']);
             exit;
         }
-        $wcStmt = $conn->prepare("SELECT window_count FROM offices WHERE name = ? LIMIT 1");
+        if (!requestOptionalIntIsValid($input, 'staff_id')) {
+            echo json_encode(['success' => false, 'message' => 'Invalid staff assignment.']);
+            exit;
+        }
+        $staffId = requestOptionalInt($input, 'staff_id');
+        $wcStmt = $conn->prepare("SELECT id, window_count FROM offices WHERE name = ? LIMIT 1");
+        if (!$wcStmt) {
+            echo json_encode(['success' => false, 'message' => 'Failed to load office windows.']);
+            exit;
+        }
         $wcStmt->bind_param('s', $officeName);
-        $wcStmt->execute();
+        if (!$wcStmt->execute()) {
+            $wcStmt->close();
+            echo json_encode(['success' => false, 'message' => 'Failed to load office windows.']);
+            exit;
+        }
         $wcRow = $wcStmt->get_result()->fetch_assoc();
         $wcStmt->close();
+        $assignedWindows = [];
+        if ($wcRow) {
+            $assignedStmt = $staffId === null
+                ? $conn->prepare(
+                    "SELECT window_number FROM users
+                     WHERE office_id = ? AND window_number IS NOT NULL AND is_deleted = 0"
+                )
+                : $conn->prepare(
+                    "SELECT window_number FROM users
+                     WHERE office_id = ? AND window_number IS NOT NULL AND is_deleted = 0 AND id != ?"
+                );
+            if (!$assignedStmt) {
+                echo json_encode(['success' => false, 'message' => 'Failed to load window assignments.']);
+                exit;
+            }
+            $officeId = (int) $wcRow['id'];
+            if ($staffId === null) {
+                $assignedStmt->bind_param('i', $officeId);
+            } else {
+                $assignedStmt->bind_param('ii', $officeId, $staffId);
+            }
+            if (!$assignedStmt->execute()) {
+                $assignedStmt->close();
+                echo json_encode(['success' => false, 'message' => 'Failed to load window assignments.']);
+                exit;
+            }
+            $assignedResult = $assignedStmt->get_result();
+            while ($assignedRow = $assignedResult->fetch_assoc()) {
+                $assignedWindows[] = (int) $assignedRow['window_number'];
+            }
+            $assignedStmt->close();
+        }
         echo json_encode([
             'success'      => (bool) $wcRow,
             'window_count' => (int) ($wcRow['window_count'] ?? 1),
+            'assigned_windows' => $assignedWindows,
         ]);
         exit;
 

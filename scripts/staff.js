@@ -13,6 +13,9 @@ let logsSearchDebounce;
 document.addEventListener("DOMContentLoaded", () => {
   fetchFilteredRows();
   restrictFutureDates();
+  if (document.getElementById("add_office").value) {
+    loadWindowOptions("add_office", "add_window", "add_window_group");
+  }
 });
 
 function restrictFutureDates() {
@@ -343,7 +346,12 @@ async function openEditStaffModal(staffId) {
     document.getElementById("edit_office").value = s.office ?? "";
     document.getElementById("edit_role").value = s.role_id ?? "";
 
-    await loadWindowOptions("edit_office", "edit_window", "edit_window_group");
+    await loadWindowOptions(
+      "edit_office",
+      "edit_window",
+      "edit_window_group",
+      s.id,
+    );
     if (s.window_number)
       document.getElementById("edit_window").value = s.window_number;
 
@@ -405,14 +413,11 @@ async function submitAddStaff() {
       (id) => (document.getElementById(id).value = ""),
     );
     document.getElementById("add_office").selectedIndex = 0;
-    document.getElementById("add_window").innerHTML =
-      '<option value="" disabled selected>Select window</option>';
-    document.getElementById("add_window_group").style.display = "none";
+    await loadWindowOptions("add_office", "add_window", "add_window_group");
 
     currentPage = 1;
-    updateTable(data.tableHtml);
     updateStats(data);
-    renderPagination(data.page, data.totalPages, data.count, data.limit);
+    await fetchFilteredRows();
     showToast(data.message, "success");
   } else {
     showToast(data.message, "error");
@@ -443,9 +448,8 @@ async function submitEditStaff() {
   if (data.success) {
     closeModal("editStaffModal");
     currentPage = 1;
-    updateTable(data.tableHtml);
     updateStats(data);
-    renderPagination(data.page, data.totalPages, data.count, data.limit);
+    await fetchFilteredRows();
     showToast(data.message, "success");
   } else {
     showToast(data.message, "error");
@@ -467,9 +471,8 @@ async function submitToggleStaff() {
   if (data.success) {
     closeModal("toggleStaffModal");
     currentPage = 1;
-    updateTable(data.tableHtml);
     updateStats(data);
-    renderPagination(data.page, data.totalPages, data.count, data.limit);
+    await fetchFilteredRows();
     showToast(data.message, "success");
   } else {
     showToast(data.message, "error");
@@ -512,22 +515,25 @@ async function submitDeleteStaff() {
   if (data.success) {
     closeModal("deleteStaffModal");
     currentPage = 1;
-    updateTable(data.tableHtml);
     updateStats(data);
-    renderPagination(data.page, data.totalPages, data.count, data.limit);
+    await fetchFilteredRows();
     showToast(data.message, "success");
   } else {
     showToast(data.message, "error");
   }
 }
 
-async function loadWindowOptions(officeSelectId, windowSelectId, groupId) {
+async function loadWindowOptions(
+  officeSelectId,
+  windowSelectId,
+  groupId,
+  staffId = null,
+) {
   const officeVal = document.getElementById(officeSelectId).value;
   const windowSel = document.getElementById(windowSelectId);
   const group = document.getElementById(groupId);
 
-  windowSel.innerHTML =
-    '<option value="" disabled selected>Select window</option>';
+  windowSel.innerHTML = '<option value="">No window</option>';
   if (!officeVal) {
     group.style.display = "none";
     return;
@@ -536,16 +542,25 @@ async function loadWindowOptions(officeSelectId, windowSelectId, groupId) {
   const data = await ajax({
     action: "get_windows_for_office",
     office: officeVal,
+    staff_id: staffId,
   });
-  if (!data.success || data.window_count < 1) {
+  if (!data.success) {
+    group.style.display = "none";
+    showToast(data.message || "Failed to load window assignments.", "error");
+    return;
+  }
+  if (data.window_count < 1) {
     group.style.display = "none";
     return;
   }
 
+  const assignedWindows = data.assigned_windows || [];
   for (let i = 1; i <= data.window_count; i++) {
     const opt = document.createElement("option");
     opt.value = i;
-    opt.textContent = `Window ${i}`;
+    const assigned = assignedWindows.includes(i);
+    opt.textContent = assigned ? `Window ${i} (assigned)` : `Window ${i}`;
+    opt.disabled = assigned;
     windowSel.appendChild(opt);
   }
   group.style.display = "";

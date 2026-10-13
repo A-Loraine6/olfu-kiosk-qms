@@ -339,7 +339,7 @@ $pageLimit = 10;
                 <div class="form-group" id="add_window_group" style="display:none;">
                     <label for="add_window">Window</label>
                     <select id="add_window">
-                        <option value="" disabled selected>Select window</option>
+                        <option value="">No window</option>
                     </select>
                 </div>
             </div>
@@ -398,7 +398,7 @@ $pageLimit = 10;
                 <div class="form-group" id="edit_window_group" style="display:none;">
                     <label for="edit_window">Window</label>
                     <select id="edit_window">
-                        <option value="" disabled selected>Select window</option>
+                        <option value="">No window</option>
                     </select>
                 </div>
             </div>

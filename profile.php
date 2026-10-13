@@ -227,7 +227,7 @@ function buildDiffHtml(array $before, array $after): string
                                         <h3 class="section-title-sm">Profile Information</h3>
                                         <p class="section-subtitle">View and update your personal details</p>
                                     </div>
-                                    <?php if (($currentUser['role'] ?? '') !== 'staff'): ?>
+                                    <?php if (strtolower(trim((string) ($currentUser['role'] ?? ''))) !== 'staff'): ?>
                                         <button class="btn-edit-toggle" id="editToggleBtn" onclick="toggleEditMode()">
                                             <i class="fas fa-pen"></i> Edit Profile
                                         </button>
@@ -250,7 +250,7 @@ function buildDiffHtml(array $before, array $after): string
                                         </div>
                                     <?php endif; ?>
                                 </div>
-                                <?php if (($currentUser['role'] ?? '') !== 'staff'): ?>
+                                <?php if (strtolower(trim((string) ($currentUser['role'] ?? ''))) !== 'staff'): ?>
                                     <div id="profileEditMode" class="profile-edit-form" style="display:none;">
                                         <div class="form-row-2">
                                             <div class="form-group">
