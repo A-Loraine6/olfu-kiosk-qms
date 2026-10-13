@@ -5,7 +5,7 @@ require_once 'includes/db.php';
 date_default_timezone_set('Asia/Manila');
 
 $officesResult = $db->query("
-    SELECT id, name, code, queue_prefix, queue_mode
+    SELECT id, name, code, window_count, queue_prefix, queue_mode
     FROM offices
     ORDER BY name ASC
 ");
@@ -53,7 +53,8 @@ if (!empty($officeIds)) {
             'id'            => $oid,
             'name'          => $office['name'],
             'code'          => $office['code'],
-            'now_serving'   => array_slice($serving,   0, 4),
+            'window_count'  => max(1, (int) $office['window_count']),
+            'now_serving'   => $serving,
             'next_up'       => $waiting,
             'recently_done' => array_slice($completed, 0, 3),
             'waiting_count' => count($waiting),
@@ -104,7 +105,15 @@ if (!empty($officeIds)) {
 
         let offices = DATA;
 
-        let lastServing = {}; // officeId -> last announced ticket_number
+        let lastServing = {}; // "officeId:windowId" -> last announced ticket_number
+        const flashUntil = {}; // "officeId:windowId" -> timestamp
+        const FLASH_MS = 10000;
+
+        // Seed so a page load / hourly reload doesn't re-announce everything
+        DATA.forEach(o => (o.now_serving || []).forEach(t => {
+            lastServing[`${o.id}:${t.window_id ?? 'unassigned'}`] = t.ticket_number;
+        }));
+
         let audioUnlocked = false;
         let audioCtx = null;
         let selectedVoice = null;
@@ -228,20 +237,20 @@ if (!empty($officeIds)) {
 
         function announceNewCalls(newOffices) {
             newOffices.forEach(o => {
-                const current = (o.now_serving || [])[0];
-                if (!current) return;
+                (o.now_serving || []).forEach(current => {
+                    const key = `${o.id}:${current.window_id ?? 'unassigned'}`;
+                    if (current.ticket_number === lastServing[key]) return;
 
-                const key = o.id;
-                if (current.ticket_number === lastServing[key]) return;
+                    lastServing[key] = current.ticket_number;
+                    flashUntil[key] = Date.now() + FLASH_MS;
 
-                lastServing[key] = current.ticket_number;
+                    const spoken = spellTicketNumber(current.ticket_number);
+                    const text = current.window_id
+                        ? `Now serving ${spoken}, window ${current.window_id}, ${o.name}`
+                        : `Now serving ${spoken}, ${o.name}`;
 
-                const spoken = spellTicketNumber(current.ticket_number);
-                const text = current.window_id
-                    ? `Now serving ${spoken}, window ${current.window_id}, ${o.name}`
-                    : `Now serving ${spoken}, ${o.name}`;
-
-                speakText(text);
+                    speakText(text);
+                });
             });
         }
 
@@ -273,34 +282,6 @@ if (!empty($officeIds)) {
             return d.innerHTML;
         }
 
-        function buildNowServing(o) {
-            const ns = o.now_serving || [];
-
-            if (ns.length === 0) {
-                return `<div class="c-noticket">
-                    <div class="c-noticket-dash">—</div>
-                    <div class="c-noticket-txt">No ticket called</div>
-                </div>`;
-            }
-
-            if (ns.length === 1) {
-                const t = ns[0];
-                return `<div class="c-hero">
-                    <div class="c-hero-num">${esc(t.ticket_number)}</div>
-                    ${t.window_id
-                        ? `<div class="c-hero-win">Window ${esc(t.window_id)}</div>`
-                        : `<div class="c-hero-win muted">Now Serving</div>`}
-                </div>`;
-            }
-
-            const cards = ns.slice(0, 2).map(t => `
-                <div class="c-mini">
-                    <div class="c-mini-num">${esc(t.ticket_number)}</div>
-                    ${t.window_id ? `<div class="c-mini-win">W${esc(t.window_id)}</div>` : ''}
-                </div>`).join('');
-            return `<div class="c-mini-grid">${cards}</div>`;
-        }
-
         function buildNextUp(o) {
             const nu = Array.isArray(o.next_up) ? o.next_up : [];
             if (nu.length === 0) {
@@ -322,6 +303,28 @@ if (!empty($officeIds)) {
         }
 
         function buildCard(o) {
+            const serving = o.now_serving || [];
+            // Only windows that are currently serving a ticket, ordered by window number
+            const active = [...serving].sort((a, b) =>
+                (Number(a.window_id) || 999) - (Number(b.window_id) || 999));
+
+            const windows = active.length === 0
+                ? `<div class="c-noticket windows-empty">
+                        <div class="c-noticket-dash">—</div>
+                        <div class="c-noticket-txt">No ticket called</div>
+                   </div>`
+                : active.map(current => {
+                    const key = `${o.id}:${current.window_id ?? 'unassigned'}`;
+                    const flashing = (flashUntil[key] || 0) > Date.now();
+                    const label = current.window_id ? `Window ${esc(String(current.window_id))}` : 'Now Serving';
+
+                    return `<div class="window-tile active${flashing ? ' flash' : ''}">
+                        <div class="window-label">${label}</div>
+                        <div class="window-ticket">
+                            <div class="c-hero-num">${esc(current.ticket_number)}</div>
+                        </div>
+                    </div>`;
+                }).join('');
             const wc = o.waiting_count || 0;
             return `
             <div class="office-card">
@@ -329,8 +332,8 @@ if (!empty($officeIds)) {
                     <div class="c-name">${esc(o.name)}</div>
                     <div class="c-badge${wc > 0 ? ' amber' : ''}">${wc} waiting</div>
                 </div>
-                <div class="c-ns-label"><span class="c-ns-dot"></span>Now Serving</div>
-                <div class="c-ns">${buildNowServing(o)}</div>
+                <div class="c-ns-label"><span class="c-ns-dot"></span>Windows</div>
+                <div class="office-windows">${windows}</div>
                 <div class="c-next-label">Next Up</div>
                 ${buildNextUp(o)}
             </div>`;

@@ -12,7 +12,7 @@ date_default_timezone_set('Asia/Manila');
 
 try {
     $officesResult = $db->query("
-        SELECT id, name, code, queue_prefix, queue_mode
+        SELECT id, name, code, window_count, queue_prefix, queue_mode
         FROM offices
         ORDER BY name ASC
     ");
@@ -80,7 +80,8 @@ try {
             'code'          => $office['code'],
             'prefix'        => $office['queue_prefix'],
             'mode'          => $office['queue_mode'],
-            'now_serving'   => array_slice($serving, 0, 4),
+            'window_count'  => max(1, (int) $office['window_count']),
+            'now_serving'   => $serving,
             'next_up'       => $waiting,
             'recently_done' => array_slice($completed, 0, 3),
             'waiting_count' => count($waiting),
