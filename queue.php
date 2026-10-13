@@ -10,7 +10,7 @@ if (!isLoggedIn()) {
 }
 
 $currentUser = getCurrentUser();
-if (($currentUser['role'] ?? '') !== 'staff') {
+if (strtolower(trim((string) ($currentUser['role'] ?? ''))) !== 'staff') {
     header('Location: ' . BASE_URL . 'dashboard.php');
     exit;
 }

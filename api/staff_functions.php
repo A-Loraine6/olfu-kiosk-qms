@@ -95,6 +95,55 @@ function getStaffById($db, int $id): ?array
     return $row ?: null;
 }
 
+function beginWindowAssignment($db, int $officeId, ?int $windowNumber, int $excludeStaffId = 0): string
+{
+    if (!$db->begin_transaction()) {
+        return 'error';
+    }
+
+    $officeStmt = $db->prepare("SELECT id FROM offices WHERE id = ? FOR UPDATE");
+    if (!$officeStmt) {
+        $db->rollback();
+        return 'error';
+    }
+    $officeStmt->bind_param('i', $officeId);
+    if (!$officeStmt->execute() || !$officeStmt->get_result()->fetch_assoc()) {
+        $officeStmt->close();
+        $db->rollback();
+        return 'error';
+    }
+    $officeStmt->close();
+
+    if ($windowNumber === null) {
+        return 'available';
+    }
+
+    $assignedStmt = $db->prepare(
+        "SELECT id FROM users
+         WHERE office_id = ? AND window_number = ? AND is_deleted = 0 AND id != ?
+         LIMIT 1"
+    );
+    if (!$assignedStmt) {
+        $db->rollback();
+        return 'error';
+    }
+    $assignedStmt->bind_param('iii', $officeId, $windowNumber, $excludeStaffId);
+    if (!$assignedStmt->execute()) {
+        $assignedStmt->close();
+        $db->rollback();
+        return 'error';
+    }
+    $isAssigned = (bool) $assignedStmt->get_result()->fetch_assoc();
+    $assignedStmt->close();
+
+    if ($isAssigned) {
+        $db->rollback();
+        return 'assigned';
+    }
+
+    return 'available';
+}
+
 function addStaff($db, string $full_name, string $email, string $password, string $office, ?int $window_number, ?int $role_id = null): array
 {
     $full_name = validName($full_name);
@@ -157,19 +206,38 @@ function addStaff($db, string $full_name, string $email, string $password, strin
     $is_active       = 1;
     $created_at      = date('Y-m-d H:i:s');
 
+    $assignmentStatus = beginWindowAssignment($db, (int) $office_id, $window_number);
+    if ($assignmentStatus !== 'available') {
+        return [
+            'success' => false,
+            'message' => $assignmentStatus === 'assigned'
+                ? 'That window is already assigned to another staff member.'
+                : 'Database error occurred while checking the window assignment.',
+        ];
+    }
+
     $insertStmt = $db->prepare(
         "INSERT INTO users (full_name, email, password, role, role_id, office_id, window_number, is_active, created_by, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     );
+    if (!$insertStmt) {
+        $db->rollback();
+        return ['success' => false, 'message' => 'Database error occurred.'];
+    }
     $insertStmt->bind_param('ssssiiiiis', $full_name, $email, $hashed_password, $role, $role_id, $office_id, $window_number, $is_active, $created_by, $created_at);
 
     if (!$insertStmt->execute()) {
         $insertStmt->close();
+        $db->rollback();
         return ['success' => false, 'message' => 'Failed to add staff member.'];
     }
 
     $new_id = $insertStmt->insert_id;
     $insertStmt->close();
+    if (!$db->commit()) {
+        $db->rollback();
+        return ['success' => false, 'message' => 'Failed to add staff member.'];
+    }
 
     logActivity(
         $db,
@@ -243,16 +311,35 @@ function updateStaff($db, int $id, string $full_name, string $email, string $off
     $office_id = $officeRow['id'] ?? null;
     if (!$office_id) return ['success' => false, 'message' => 'Invalid office selected.'];
 
+    $assignmentStatus = beginWindowAssignment($db, (int) $office_id, $window_number, $id);
+    if ($assignmentStatus !== 'available') {
+        return [
+            'success' => false,
+            'message' => $assignmentStatus === 'assigned'
+                ? 'That window is already assigned to another staff member.'
+                : 'Database error occurred while checking the window assignment.',
+        ];
+    }
+
     $updateStmt = $db->prepare(
         "UPDATE users SET full_name = ?, email = ?, role = ?, role_id = ?, office_id = ?, window_number = ? WHERE id = ?"
     );
+    if (!$updateStmt) {
+        $db->rollback();
+        return ['success' => false, 'message' => 'Database error occurred.'];
+    }
     $updateStmt->bind_param('sssiiii', $full_name, $email, $role, $role_id, $office_id, $window_number, $id);
 
     if (!$updateStmt->execute()) {
         $updateStmt->close();
+        $db->rollback();
         return ['success' => false, 'message' => 'Failed to update staff member.'];
     }
     $updateStmt->close();
+    if (!$db->commit()) {
+        $db->rollback();
+        return ['success' => false, 'message' => 'Failed to update staff member.'];
+    }
 
     [$before, $after] = diffSnapshot(
         ['full_name' => $currentStaff['full_name'], 'email' => $currentStaff['email'], 'office' => $currentStaff['office'], 'window_number' => $currentStaff['window_number']],
