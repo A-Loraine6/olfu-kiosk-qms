@@ -275,67 +275,84 @@ body {
   border-bottom: 1.5px solid var(--border);
 }
 
-/* flex-wrap + grow: the last row stretches, so no orphan tiles */
+/* ===== Windows ===== */
+/* Density class (one / few / many) is set in display.php based on
+   how many windows are currently serving. */
 .office-windows {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: clamp(6px, 0.8vh, 10px);
-  margin-bottom: clamp(10px, 1.4vh, 18px);
+  grid-template-columns: 1fr;
+  gap: clamp(6px, 0.9vh, 10px);
+  margin-bottom: clamp(8px, 1.2vh, 14px);
+  flex-shrink: 0;
+}
+
+.office-windows.one {
+  grid-template-columns: 1fr;
+}
+
+.office-windows.few,
+.office-windows.many {
+  grid-template-columns: 1fr 1fr;
 }
 
 .window-tile {
+  container-type: inline-size;
   min-width: 0;
-  min-height: clamp(90px, 12vh, 140px);
-  padding: clamp(8px, 0.9vh, 12px);
-  background: var(--faint);
-  border: 1px solid var(--border);
+  min-height: 0;
+  padding: 8px 12px;
+  background: var(--green-50);
+  border: 1px solid var(--green-700);
   border-radius: var(--radius-sm);
+  box-shadow: 0 2px 10px rgba(0, 139, 67, 0.15);
+  text-align: center;
   overflow: hidden;
   transition: background 0.3s, border-color 0.3s;
 }
 
-.window-label {
-  margin-bottom: 6px;
-  color: var(--ink-3);
-  font-size: clamp(9px, 0.8vw, 11px);
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.window-ticket .c-hero-num {
-  font-size: clamp(20px, 2vw, 30px);
-}
-
-/* idle = quiet */
-.window-tile.idle {
-  opacity: 0.55;
-}
-
-.w-idle {
-  font-family: var(--mono);
-  font-size: clamp(18px, 1.8vw, 26px);
-  color: var(--ink-4);
-  line-height: 1;
-}
-
-/* active = obvious */
-.window-tile.active {
-  background: var(--green-50);
-  border-color: var(--green-700);
-  box-shadow: 0 2px 10px rgba(0, 139, 67, 0.15);
-}
-
-.window-tile.active .window-label {
+.window-tile .window-label {
   color: var(--green-700);
+  font-size: clamp(10px, 0.9vw, 14px);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  margin: 0 0 2px;
 }
 
-.window-tile.active .c-hero-num {
-  font-size: clamp(34px, 4vw, 64px);
+/* number scales with its tile and never wraps */
+.window-tile .c-hero-num {
+  display: block;
+  white-space: nowrap;
+  line-height: 1.05;
+  font-size: clamp(22px, 14cqw, 40px);
 }
 
-.window-tile.active .window-label {
-  font-size: clamp(11px, 1vw, 15px);
-  margin-bottom: 10px;
+/* 1 window: big hero */
+.office-windows.one .window-tile .c-hero-num {
+  font-size: clamp(40px, 18cqw, 90px);
+}
+
+/* 5+ windows: compact row, label left, number right */
+.office-windows.many .window-tile {
+  display: block;
+  padding: clamp(4px, 0.7vh, 9px) 10px;
+  text-align: center;
+}
+
+.office-windows.many .window-label {
+  margin: 0 0 1px;
+  font-size: clamp(11px, 1vw, 16px);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.office-windows.many .window-tile .c-hero-num {
+  font-size: clamp(20px, 1.9vw, 30px);
+  line-height: 1.05;
+}
+
+.office-windows.many .window-tile:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
 }
 
 /* empty state spans the full row and stays on one line */
@@ -471,7 +488,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: clamp(8px, 1.2vh, 16px) clamp(10px, 1.2vw, 18px);
+  padding: clamp(5px, 0.8vh, 10px) clamp(10px, 1vw, 16px);
   border-radius: var(--radius-sm);
   background: var(--faint);
   border: 1px solid var(--border);
@@ -484,7 +501,7 @@ body {
 
 .c-q-num {
   font-family: var(--mono);
-  font-size: clamp(16px, 1.9vw, 28px);
+  font-size: clamp(14px, 1.5vw, 22px);
   font-weight: 500;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
@@ -505,6 +522,15 @@ body {
   font-size: clamp(13px, 1.3vw, 18px);
   color: var(--ink-4);
   font-weight: 500;
+}
+
+.c-q-more {
+  flex-shrink: 0;
+  text-align: center;
+  font-size: clamp(12px, 1.1vw, 16px);
+  font-weight: 700;
+  color: var(--ink-4);
+  padding: 2px 0;
 }
 
 .g-empty {

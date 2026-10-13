@@ -102,6 +102,7 @@ if (!empty($officeIds)) {
         const DATA = <?php echo $officesJson; ?>;
         const REFRESH_MS = 8000;
         const HARD_RELOAD_MS = 60 * 60 * 1000;
+        const MAX_NEXT_UP = 6; // rows shown in "Next Up" before collapsing into "+N more"
 
         let offices = DATA;
 
@@ -288,7 +289,8 @@ if (!empty($officeIds)) {
                 return `<div class="c-q-empty">Queue is clear</div>`;
             }
 
-            const visibleQueue = nu.length <= 11 ? nu : nu.slice(0, 11);
+            const visibleQueue = nu.slice(0, MAX_NEXT_UP);
+            const extra = nu.length - visibleQueue.length;
 
             return `
                 <div class="c-q-list">
@@ -298,17 +300,22 @@ if (!empty($officeIds)) {
                             <span class="c-q-pos">#${i + 1}</span>
                         </div>
                     `).join('')}
+                    ${extra > 0 ? `<div class="c-q-more">+${extra} more</div>` : ''}
                 </div>
             `;
         }
 
         function buildCard(o) {
             const serving = o.now_serving || [];
-            // Only windows that are currently serving a ticket, ordered by window number
+            // Only windows that are currently serving a ticket, always ordered by window number
             const active = [...serving].sort((a, b) =>
                 (Number(a.window_id) || 999) - (Number(b.window_id) || 999));
 
-            const windows = active.length === 0
+            // Layout density: 1 = big hero, 2-4 = 2-col grid, 5+ = compact rows
+            const n = active.length;
+            const density = n <= 1 ? 'one' : n <= 4 ? 'few' : 'many';
+
+            const windows = n === 0
                 ? `<div class="c-noticket windows-empty">
                         <div class="c-noticket-dash">—</div>
                         <div class="c-noticket-txt">No ticket called</div>
@@ -333,7 +340,7 @@ if (!empty($officeIds)) {
                     <div class="c-badge${wc > 0 ? ' amber' : ''}">${wc} waiting</div>
                 </div>
                 <div class="c-ns-label"><span class="c-ns-dot"></span>Windows</div>
-                <div class="office-windows">${windows}</div>
+                <div class="office-windows ${density}">${windows}</div>
                 <div class="c-next-label">Next Up</div>
                 ${buildNextUp(o)}
             </div>`;
