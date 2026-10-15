@@ -26,7 +26,7 @@ $isOfficeScoped    = !$isAdmin && !empty($currentUser['office_id']);
 $staffOffice       = $isOfficeScoped ? (int) ($currentUser['office_id'] ?? 0) : null;
 
 $input  = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-$action = requestEnum($input, 'action', ['add_service', 'edit_service', 'get_windows_for_service', 'get_windows_for_office', 'toggle_service', 'delete_service', 'toggle_queue_mode', 'get_services']);
+$action = requestEnum($input, 'action', ['add_service', 'edit_service', 'get_windows_for_service', 'get_windows_for_office', 'toggle_service', 'delete_service', 'toggle_queue_mode', 'set_queue_mode', 'save_window_levels', 'get_services']);
 $csrf   = requestString($input, 'csrf_token', 255, true);
 
 if ($action === null || $csrf === null || !verifyCsrfToken($csrf)) {
@@ -36,6 +36,12 @@ if ($action === null || $csrf === null || !verifyCsrfToken($csrf)) {
 }
 
 $conn = $db->getConnection();
+$officeIsAllowed = static fn(int $officeId): bool => !$isOfficeScoped || $officeId === $staffOffice;
+$denyOfficeScope = static function (): void {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'You may only access or manage data in your office.']);
+    exit;
+};
 
 $actionPermMap = [
     'add_service'    => 'add_services',
@@ -54,15 +60,24 @@ if (isset($actionPermMap[$action]) && $actionPermMap[$action] === 'admin' && !$i
     exit;
 }
 
-if ($action === 'toggle_queue_mode' && !hasPermission('manage_settings')) {
+if (in_array($action, ['toggle_queue_mode', 'set_queue_mode', 'save_window_levels'], true) && !hasPermission('manage_settings')) {
     logPermissionDenied($db->getConnection(), 'Attempted queue mode toggle without manage_settings permission', (int) ($_SESSION['user_id'] ?? 0), 'service');
     echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
+    exit;
+}
+if ($action === 'save_window_levels' && !$isAdmin) {
+    logPermissionDenied($db->getConnection(), 'Attempted window level update without admin role', (int) ($_SESSION['user_id'] ?? 0), 'service');
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Only an administrator can assign window levels.']);
     exit;
 }
 
 switch ($action) {
 
     case 'add_service':
+        if (!$officeIsAllowed(requestInt($input, 'office_id') ?? 0)) {
+            $denyOfficeScope();
+        }
         $windows = requestIntList($input, 'windows');
         if ($windows === null) {
             echo json_encode(['success' => false, 'message' => 'Invalid service window list.']);
@@ -79,6 +94,14 @@ switch ($action) {
         break;
 
     case 'edit_service':
+        $serviceId = requestInt($input, 'service_id') ?? 0;
+        $officeId = requestInt($input, 'office_id') ?? 0;
+        if (
+            !$officeIsAllowed($officeId)
+            || ($isOfficeScoped && !serviceBelongsToOffice($conn, $serviceId, (int) $staffOffice))
+        ) {
+            $denyOfficeScope();
+        }
         $windows = requestIntList($input, 'windows');
         if ($windows === null) {
             echo json_encode(['success' => false, 'message' => 'Invalid service window list.']);
@@ -86,9 +109,9 @@ switch ($action) {
         }
         $result = updateService(
             $conn,
-            requestInt($input, 'service_id') ?? 0,
+            $serviceId,
             requestString($input, 'name', 100, true) ?? '',
-            requestInt($input, 'office_id') ?? 0,
+            $officeId,
             requestEnum($input, 'category', ['simple', 'regular', 'complicated']),
             requestString($input, 'description', 65535) ?? '',
             $windows
@@ -97,6 +120,9 @@ switch ($action) {
 
     case 'get_windows_for_service':
         $serviceId = requestInt($input, 'service_id') ?? 0;
+        if ($isOfficeScoped && $serviceId > 0 && !serviceBelongsToOffice($conn, $serviceId, (int) $staffOffice)) {
+            $denyOfficeScope();
+        }
         $windows   = $serviceId ? getWindowsForService($conn, $serviceId) : [];
         echo json_encode(['success' => true, 'windows' => $windows]);
         exit;
@@ -106,6 +132,9 @@ switch ($action) {
         if (!$officeId) {
             echo json_encode(['success' => false, 'window_count' => 0]);
             exit;
+        }
+        if (!$officeIsAllowed($officeId)) {
+            $denyOfficeScope();
         }
         $stmt = $conn->prepare("SELECT window_count FROM offices WHERE id = ? LIMIT 1");
         $stmt->bind_param('i', $officeId);
@@ -119,7 +148,11 @@ switch ($action) {
         exit;
 
     case 'toggle_service':
-        $result = toggleServiceStatus($conn, requestInt($input, 'service_id') ?? 0);
+        $serviceId = requestInt($input, 'service_id') ?? 0;
+        if ($isOfficeScoped && !serviceBelongsToOffice($conn, $serviceId, (int) $staffOffice)) {
+            $denyOfficeScope();
+        }
+        $result = toggleServiceStatus($conn, $serviceId);
         break;
 
     case 'delete_service':
@@ -127,7 +160,46 @@ switch ($action) {
         break;
 
     case 'toggle_queue_mode':
-        $result = toggleOfficeQueueMode($conn, requestInt($input, 'office_id') ?? 0);
+        $officeId = requestInt($input, 'office_id') ?? 0;
+        if (!$officeIsAllowed($officeId)) {
+            $denyOfficeScope();
+        }
+        $result = toggleOfficeQueueMode($conn, $officeId);
+        break;
+
+    case 'set_queue_mode':
+        $queueMode = requestEnum($input, 'queue_mode', ['unified', 'service-based', 'level-based']);
+        if ($queueMode === null) {
+            echo json_encode(['success' => false, 'message' => 'Invalid queue mode.']);
+            exit;
+        }
+        if ($queueMode === 'level-based' && !$isAdmin) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Only an administrator can enable level-based queues.']);
+            exit;
+        }
+        $officeId = requestInt($input, 'office_id') ?? 0;
+        if (!$officeIsAllowed($officeId)) {
+            $denyOfficeScope();
+        }
+        $result = setOfficeQueueMode($conn, $officeId, $queueMode);
+        break;
+
+    case 'save_window_levels':
+        $inputLevels = $input['window_levels'] ?? null;
+        if (!is_array($inputLevels)) {
+            echo json_encode(['success' => false, 'message' => 'Invalid window level assignments.']);
+            exit;
+        }
+        $levels = [];
+        foreach ($inputLevels as $window => $level) {
+            if (!ctype_digit((string) $window) || !is_string($level)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid window level assignments.']);
+                exit;
+            }
+            $levels[(int) $window] = $level;
+        }
+        $result = saveOfficeWindowLevels($conn, requestInt($input, 'office_id') ?? 0, $levels);
         break;
 
     case 'get_services':

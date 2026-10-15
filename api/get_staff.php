@@ -30,6 +30,22 @@ if ($id === null) {
 }
 
 $staff = getStaffById($db->getConnection(), $id);
+if ($staff && isDepartmentHeadUser()) {
+    $officeId = (int) ($_SESSION['office_id'] ?? 0);
+    if ($id === (int) ($_SESSION['user_id'] ?? 0)
+        || (int) $staff['office_id'] !== $officeId
+        || strcasecmp((string) $staff['role'], 'staff') !== 0) {
+        echo json_encode(['success' => false, 'message' => 'Staff member not found in your office.']);
+        exit;
+    }
+    $staff = array_intersect_key($staff, array_flip([
+        'id',
+        'full_name',
+        'email',
+        'office',
+        'window_number',
+    ]));
+}
 if ($staff) {
     echo json_encode(['success' => true, 'staff' => $staff]);
 } else {

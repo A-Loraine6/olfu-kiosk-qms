@@ -19,7 +19,7 @@ if (!empty($officeIds)) {
     $types = str_repeat('i', count($officeIds));
 
     $stmt = $db->prepare("
-        SELECT t.office_id, t.ticket_number, t.transaction_type,
+        SELECT t.office_id, t.ticket_number, t.transaction_type, t.student_level,
                t.window_id, t.status, t.served_at, t.created_at
         FROM tickets t
         WHERE t.office_id IN ($placeholders)
@@ -296,8 +296,8 @@ if (!empty($officeIds)) {
                 <div class="c-q-list">
                     ${visibleQueue.map((t, i) => `
                         <div class="c-q-row${i === 0 ? ' first' : ''}">
-                            <span class="c-q-num">${esc(t.ticket_number)}</span>
                             <span class="c-q-pos">#${i + 1}</span>
+                            <span class="c-q-num">${esc(t.ticket_number)}${t.student_level ? ` <small class="ticket-level">${t.student_level === 'shs' ? 'SHS' : 'College'}</small>` : ''}</span>
                         </div>
                     `).join('')}
                     ${extra > 0 ? `<div class="c-q-more">+${extra} more</div>` : ''}
@@ -328,7 +328,7 @@ if (!empty($officeIds)) {
                     return `<div class="window-tile active${flashing ? ' flash' : ''}">
                         <div class="window-label">${label}</div>
                         <div class="window-ticket">
-                            <div class="c-hero-num">${esc(current.ticket_number)}</div>
+                            <div class="c-hero-num">${esc(current.ticket_number)}${current.student_level ? `<small class="ticket-level">${current.student_level === 'shs' ? 'SHS' : 'College'}</small>` : ''}</div>
                         </div>
                     </div>`;
                 }).join('');

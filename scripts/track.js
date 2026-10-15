@@ -434,6 +434,7 @@ function render(data) {
 		ticket_number,
 		office_name,
 		service_name,
+		student_level,
 		status,
 		people_ahead,
 		now_serving,
@@ -449,12 +450,20 @@ function render(data) {
 
 	const displayStatus = cancelled ? "cancelled" : status;
 	const cancelRow = document.getElementById("cancelRow");
-	const canCancel = !expired && !["completed", "skipped", "cancelled"].includes(displayStatus);
+	const canCancel = !expired && !["completed", "cancelled"].includes(displayStatus);
 	if (cancelRow) cancelRow.classList.toggle("visible", canCancel);
 
 	document.getElementById("officeName").textContent = office_name;
 	document.getElementById("serviceName").textContent = service_name;
-	renderWindowBadge(counter_window ?? window_number ?? null);
+	const levelEl = document.getElementById("studentLevel");
+	if (levelEl) {
+		levelEl.textContent =
+			student_level === "shs" ? "SHS" : student_level === "college" ? "College" : "";
+		levelEl.style.display = student_level ? "inline-flex" : "none";
+	}
+	renderWindowBadge(
+		displayStatus === "serving" ? (counter_window ?? window_number ?? null) : null,
+	);
 	document.getElementById("ticketNumber").textContent = ticket_number;
 	document
 		.getElementById("ticketNumber")
@@ -478,7 +487,7 @@ function render(data) {
 	if (window.CampusMap)
 		window.CampusMap.setDestination(office_name, building_hint || "");
 
-	if (expired || displayStatus === "completed" || displayStatus === "skipped" || displayStatus === "cancelled") {
+	if (expired || displayStatus === "completed" || displayStatus === "cancelled") {
 		renderDone(displayStatus);
 		clearInterval(pollInterval);
 		document.getElementById("refreshHint").style.display = "none";
@@ -652,7 +661,7 @@ function renderStatusPill(status, peopleAhead) {
 				: ["pill-waiting", "Waiting"],
 		serving: ["pill-serving", "Now serving you"],
 		completed: ["pill-completed", "Completed"],
-		skipped: ["pill-skipped", "Skipped"],
+		skipped: ["pill-skipped", "You were skipped"],
 		cancelled: ["pill-skipped", "Cancelled"],
 		"on-hold": ["pill-onhold", "On hold"],
 	};
@@ -675,6 +684,12 @@ function renderAlerts(status, peopleAhead) {
 		area.innerHTML = `<div class="alert-strip alert-info">
 			<i class="fas fa-pause-circle"></i>
 			<span>Your ticket is on hold. Please wait for further updates.</span></div>`;
+		return;
+	}
+	if (status === "skipped") {
+		area.innerHTML = `<div class="alert-strip alert-warn">
+			<i class="fas fa-circle-exclamation"></i>
+			<span>You were skipped, please see the staff. Your ticket may still be recalled.</span></div>`;
 		return;
 	}
 	if (peopleAhead <= 5 && peopleAhead > 0) {

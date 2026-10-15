@@ -18,6 +18,11 @@ if (strtolower(trim((string) ($currentUser['role'] ?? ''))) === 'staff') {
 }
 
 $isAdminUser = (($_SESSION['role_id'] ?? null) === 1) || (($_SESSION['role'] ?? '') === 'admin');
+$isDepartmentHead = in_array(strtolower(trim((string) ($currentUser['role'] ?? ''))), [
+    'department head',
+    'department_head',
+    'department-head',
+], true);
 $scopeOfficeId = (!$isAdminUser && !empty($currentUser['office_id'])) ? (int) $currentUser['office_id'] : null;
 $scopeOfficeName = null;
 if ($scopeOfficeId) {
@@ -26,10 +31,10 @@ if ($scopeOfficeId) {
 }
 
 $queueSummary   = getTodayQueueSummary($db, $scopeOfficeId);
-$queueByOffice  = getQueueByOffice($db, $scopeOfficeId);
+$queueByOffice  = $isDepartmentHead ? [] : getQueueByOffice($db, $scopeOfficeId);
 $queueTrendData = getQueueTrendData($db, $scopeOfficeId);
 
-$hasOfficeData = is_array($queueByOffice) && array_sum(array_column($queueByOffice, 'count')) > 0;
+$hasOfficeData = !$isDepartmentHead && is_array($queueByOffice) && array_sum(array_column($queueByOffice, 'count')) > 0;
 $hasTrendData  = is_array($queueTrendData) && array_sum(array_column($queueTrendData, 'count')) > 0;
 
 $officeChartData = $hasOfficeData ? json_encode(array_values($queueByOffice)) : '[]';
@@ -126,8 +131,9 @@ $currentTime = date('l, F j, Y \a\t g:i A');
                         <i class="fas fa-chart-bar"></i> Analytics
                     </h2>
 
-                    <div class="charts-grid">
+                    <div class="charts-grid<?php echo $isDepartmentHead ? ' charts-grid-single' : ''; ?>">
 
+                        <?php if (!$isDepartmentHead): ?>
                         <div class="chart-container">
                             <h3 class="chart-title">
                                 <i class="fas fa-building"></i> Queue by Office
@@ -145,6 +151,7 @@ $currentTime = date('l, F j, Y \a\t g:i A');
                                 endif; ?>
                             </div>
                         </div>
+                        <?php endif; ?>
 
                         <div class="chart-container">
                             <h3 class="chart-title">

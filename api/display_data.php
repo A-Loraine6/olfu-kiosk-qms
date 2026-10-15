@@ -33,6 +33,7 @@ try {
             t.office_id,
             t.ticket_number,
             t.transaction_type,
+            t.student_level,
             t.window_id,
             t.status,
             t.served_at,

@@ -402,6 +402,18 @@ body {
   line-height: 1;
 }
 
+.ticket-level {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--green-50);
+  color: var(--green-700);
+  font: 800 11px/1 var(--font);
+  vertical-align: middle;
+}
+
 .c-hero-win {
   font-size: clamp(12px, 1.2vw, 16px);
   font-weight: 800;
