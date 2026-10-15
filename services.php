@@ -173,7 +173,7 @@ function getCategoryColor(?string $cat): string
                                         <select class="filter-select queue-mode-select"
                                             id="office-mode-select-<?php echo $office['id']; ?>"
                                             data-current-mode="<?php echo htmlspecialchars($office['queue_mode']); ?>"
-                                            onchange="setQueueMode(<?php echo $office['id']; ?>, this)">
+                                            onchange="openQueueModeConfirmation(<?php echo $office['id']; ?>, this)">
                                             <option value="unified" <?php echo $office['queue_mode'] === 'unified' ? 'selected' : ''; ?>>Unified</option>
                                             <option value="service-based" <?php echo $office['queue_mode'] === 'service-based' ? 'selected' : ''; ?>>Service-Based</option>
                                             <option value="level-based" <?php echo $office['queue_mode'] === 'level-based' ? 'selected' : ''; ?>
@@ -403,6 +403,27 @@ function getCategoryColor(?string $cat): string
     </div>
 
     <div id="toast-container"></div>
+
+    <div id="queueModeConfirmModal" class="modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2><i class="fas fa-exchange-alt"></i> Confirm Queue Mode Change</h2>
+                <button type="button" class="modal-close" onclick="closeQueueModeModal()" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p><strong id="queueModeOfficeName"></strong></p>
+                <p><span id="queueModeCurrentLabel"></span> &rarr; <span id="queueModeNextLabel"></span></p>
+                <p id="queueModeDescription"></p>
+                <p class="modal-warning" id="queueModeWindowWarning" style="display:none;"></p>
+                <p class="modal-warning" id="queueModeError" style="display:none;"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-outline" id="queueModeCancelBtn" onclick="closeQueueModeModal()">Cancel</button>
+                <button type="button" class="btn-primary" id="queueModeConfirmBtn" onclick="confirmQueueModeChange()" data-action="confirm">Confirm</button>
+                <button type="button" class="btn-outline" id="queueModeCloseBtn" onclick="closeQueueModeModal()" style="display:none;">Close</button>
+            </div>
+        </div>
+    </div>
 
     <div id="addServiceModal" class="modal">
         <div class="modal-content">

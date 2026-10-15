@@ -286,7 +286,7 @@ if (!empty($officeIds)) {
         function buildNextUp(o) {
             const nu = Array.isArray(o.next_up) ? o.next_up : [];
             if (nu.length === 0) {
-                return `<div class="c-q-empty">Queue is clear</div>`;
+                return `<div class="c-q-empty"><span class="c-q-empty-icon">✓</span><span>Queue is clear</span></div>`;
             }
 
             const visibleQueue = nu.slice(0, MAX_NEXT_UP);
@@ -296,8 +296,8 @@ if (!empty($officeIds)) {
                 <div class="c-q-list">
                     ${visibleQueue.map((t, i) => `
                         <div class="c-q-row${i === 0 ? ' first' : ''}">
-                            <span class="c-q-pos">#${i + 1}</span>
-                            <span class="c-q-num">${esc(t.ticket_number)}${t.student_level ? ` <small class="ticket-level">${t.student_level === 'shs' ? 'SHS' : 'College'}</small>` : ''}</span>
+                            <span class="c-q-pos">${i + 1}</span>
+                            <span class="c-q-ticket">${esc(t.ticket_number)}</span>
                         </div>
                     `).join('')}
                     ${extra > 0 ? `<div class="c-q-more">+${extra} more</div>` : ''}
@@ -327,9 +327,7 @@ if (!empty($officeIds)) {
 
                     return `<div class="window-tile active${flashing ? ' flash' : ''}">
                         <div class="window-label">${label}</div>
-                        <div class="window-ticket">
-                            <div class="c-hero-num">${esc(current.ticket_number)}${current.student_level ? `<small class="ticket-level">${current.student_level === 'shs' ? 'SHS' : 'College'}</small>` : ''}</div>
-                        </div>
+                        <div class="c-hero-num">${esc(current.ticket_number)}</div>
                     </div>`;
                 }).join('');
             const wc = o.waiting_count || 0;

@@ -10,6 +10,7 @@ let refreshRingInterval = null;
 let newBadgeTimeout = null;
 let transferTargetQueueMode = "unified";
 let sessionExpired = false;
+let modeReloadPending = false;
 
 const AUTO_REFRESH_MS = 15000;
 const TIMER_WARN_SECS = 300;
@@ -28,6 +29,13 @@ function initQueue() {
   typeFilterId = localStorage.getItem(filterStorageKey) || "";
   const typeFilterEl = document.getElementById("typeFilter");
   if (typeFilterEl) {
+    const hasSavedOption = Array.from(typeFilterEl.options).some(
+      (option) => option.value === typeFilterId,
+    );
+    if (typeFilterId && !hasSavedOption) {
+      typeFilterId = "";
+      localStorage.setItem(filterStorageKey, "");
+    }
     typeFilterEl.value = typeFilterId;
   }
 
@@ -64,7 +72,7 @@ async function loadAllTabCounts() {
 
       const res = await apiFetch("api/queue_handler.php", params);
       if (res.success) {
-        const count = res.tickets?.length ?? 0;
+        const count = res.tab_count ?? res.tickets?.length ?? 0;
         updateTabCount(tab, count);
       }
     });
@@ -284,9 +292,14 @@ async function loadQueue() {
     showQueueLoading(false);
 
     if (res.success) {
+      if (res.queue_mode && res.queue_mode !== QUEUE_MODE && !modeReloadPending) {
+        modeReloadPending = true;
+        window.location.reload();
+        return;
+      }
       renderQueueList(res.tickets || []);
 
-      const count = res.tickets?.length ?? 0;
+      const count = res.tab_count ?? res.tickets?.length ?? 0;
       const badge = document.getElementById("queueCountBadge");
       if (badge) {
         badge.textContent = count;
@@ -310,6 +323,9 @@ async function loadStats() {
     const res = await apiFetch("api/queue_handler.php", {
       action: "get_stats",
       office_id: OFFICE_ID,
+      ...(QUEUE_MODE === "level-based" && typeFilterId
+        ? { level_filter: typeFilterId }
+        : {}),
     });
     if (res.success) {
       setStatVal("statServed", res.served ?? 0);
@@ -741,6 +757,7 @@ function levelBadgeHtml(level) {
 
 function renderServingCard(ticket, showNew = false) {
   const ticketEl = document.getElementById("servingTicket");
+  const levelBadgeEl = document.getElementById("servingLevelBadge");
   const studentEl = document.getElementById("servingStudent");
   const typeEl = document.getElementById("servingType");
   const windowEl = document.getElementById("servingWindow");
@@ -753,6 +770,11 @@ function renderServingCard(ticket, showNew = false) {
   ticketEl.classList.remove("is-idle", "pulse");
   void ticketEl.offsetWidth;
   ticketEl.classList.add("pulse");
+  if (levelBadgeEl) {
+    const hasLevel = ticket.student_level === "shs" || ticket.student_level === "college";
+    levelBadgeEl.textContent = ticket.student_level === "shs" ? "SHS" : "College";
+    levelBadgeEl.style.display = hasLevel ? "inline-flex" : "none";
+  }
 
   cardEl.classList.add("has-ticket");
 
@@ -778,11 +800,11 @@ function renderServingCard(ticket, showNew = false) {
     studentEl.style.display = "none";
   }
 
-  if (ticket.transaction_type || ticket.student_level) {
+  if (ticket.transaction_type) {
     const serviceText = ticket.transaction_type
       ? `<i class="fas fa-tag" style="font-size:10px;opacity:0.7;"></i> ${escHtml(ticket.transaction_type)}`
       : "";
-    typeEl.innerHTML = `${serviceText} ${levelBadgeHtml(ticket.student_level)}`;
+    typeEl.innerHTML = serviceText;
     typeEl.style.display = "";
   } else {
     typeEl.style.display = "none";
@@ -803,10 +825,15 @@ function renderServingCard(ticket, showNew = false) {
 
 function clearServingCard() {
   const ticketEl = document.getElementById("servingTicket");
+  const levelBadgeEl = document.getElementById("servingLevelBadge");
   const cardEl = document.getElementById("servingCard");
   const studentEl = document.getElementById("servingStudent");
 
   ticketEl.textContent = "No ticket";
+  if (levelBadgeEl) {
+    levelBadgeEl.textContent = "";
+    levelBadgeEl.style.display = "none";
+  }
   ticketEl.classList.remove("pulse");
   ticketEl.classList.add("is-idle");
   cardEl.classList.remove("has-ticket");
@@ -880,9 +907,14 @@ function renderTicketRow(t, index) {
     ? `<div class="ticket-student">${escHtml(t.student_id)}</div>`
     : "";
 
-  const typeHtml = t.transaction_type || t.student_level
-    ? `<div class="ticket-type">${t.transaction_type ? `<i class="fas fa-tag" style="font-size:9px;margin-right:3px;opacity:0.6;"></i>${escHtml(t.transaction_type)}` : ""} ${levelBadgeHtml(t.student_level)}</div>`
+  const typeHtml = t.transaction_type
+    ? `<div class="ticket-type">${t.transaction_type ? `<i class="fas fa-tag" style="font-size:9px;margin-right:3px;opacity:0.6;"></i>${escHtml(t.transaction_type)}` : ""}</div>`
     : "";
+  const ticketNumberHtml = `
+    <div class="ticket-number-level-wrap">
+      <span class="ticket-num">${escHtml(t.ticket_number)}</span>
+      ${levelBadgeHtml(t.student_level)}
+    </div>`;
 
   const statusChip = isDone
     ? `<span class="ticket-status-chip chip-done"><i class="fas fa-check"></i> Done</span>`
@@ -938,7 +970,7 @@ function renderTicketRow(t, index) {
   return `
     <div class="${rowClass}" id="ticketRow_${t.id}">
       ${pos}
-      <span class="ticket-num">${escHtml(t.ticket_number)}</span>
+      ${ticketNumberHtml}
       <div class="ticket-info">
         ${studentHtml}
         ${typeHtml}

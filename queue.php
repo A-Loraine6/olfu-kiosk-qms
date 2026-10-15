@@ -138,6 +138,10 @@ while ($officeRow = $transferResult->fetch_assoc()) {
                         <span class="office-badge" style="background:rgba(26,111,170,0.08);color:#1a6faa;border-color:rgba(26,111,170,0.2);">
                             <i class="fas fa-layer-group"></i> Service-Based
                         </span>
+                    <?php elseif ($queueMode === 'level-based'): ?>
+                        <span class="office-badge" style="background:rgba(126,87,194,0.08);color:#7e57c2;border-color:rgba(126,87,194,0.2);">
+                            <i class="fas fa-graduation-cap"></i> Level-Based
+                        </span>
                     <?php else: ?>
                         <span class="office-badge" style="background:rgba(42,157,92,0.08);color:#2a9d5c;border-color:rgba(42,157,92,0.2);">
                             <i class="fas fa-stream"></i> Unified Queue
@@ -176,7 +180,10 @@ while ($officeRow = $transferResult->fetch_assoc()) {
                                     </div>
                                 </div>
                                 <div class="serving-ticket-wrap">
-                                    <div class="serving-ticket is-idle" id="servingTicket">No ticket</div>
+                                    <div class="serving-ticket-level-wrap">
+                                        <div class="serving-ticket is-idle" id="servingTicket">No ticket</div>
+                                        <span class="ticket-level-badge" id="servingLevelBadge" style="display:none;"></span>
+                                    </div>
                                     <span class="new-badge" id="newBadge" style="display:none;">NEW</span>
                                 </div>
 
