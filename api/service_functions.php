@@ -89,6 +89,73 @@ function toggleOfficeQueueMode(mysqli $conn, int $officeId): array
     return setOfficeQueueMode($conn, $officeId, $newMode);
 }
 
+function countBlockingOfficeTickets(mysqli $conn, int $officeId): ?int
+{
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) AS active_count
+        FROM tickets
+        WHERE office_id = ?
+          AND DATE(created_at) = ?
+          AND status IN ('waiting', 'serving', 'on-hold', 'skipped')
+    ");
+    if (!$stmt) {
+        return null;
+    }
+
+    $today = date('Y-m-d');
+    $stmt->bind_param('is', $officeId, $today);
+    if (!$stmt->execute()) {
+        $stmt->close();
+        return null;
+    }
+    $count = (int) ($stmt->get_result()->fetch_assoc()['active_count'] ?? 0);
+    $stmt->close();
+    return $count;
+}
+
+function checkOfficeQueueModeChange(mysqli $conn, int $officeId, string $newMode): array
+{
+    if (!in_array($newMode, ['unified', 'service-based', 'level-based'], true)) {
+        return serviceResponse(false, 'Invalid queue mode.');
+    }
+    if ($officeId <= 0) {
+        return serviceResponse(false, 'Invalid office.');
+    }
+
+    $office = getOfficeById($conn, $officeId);
+    if (!$office) {
+        return serviceResponse(false, 'Office not found.');
+    }
+    $blockingCount = countBlockingOfficeTickets($conn, $officeId);
+    if ($blockingCount === null) {
+        return serviceResponse(false, 'Could not check the active queue.');
+    }
+
+    $assignedWindows = 0;
+    if ($newMode === 'level-based') {
+        $stmt = $conn->prepare('SELECT COUNT(*) AS assigned_count FROM window_levels WHERE office_id = ?');
+        if (!$stmt) {
+            return serviceResponse(false, 'Could not check window level assignments.');
+        }
+        $stmt->bind_param('i', $officeId);
+        if (!$stmt->execute()) {
+            $stmt->close();
+            return serviceResponse(false, 'Could not check window level assignments.');
+        }
+        $assignedWindows = (int) ($stmt->get_result()->fetch_assoc()['assigned_count'] ?? 0);
+        $stmt->close();
+    }
+
+    return serviceResponse(true, 'Queue mode change check complete.', [
+        'office_name' => $office['name'],
+        'current_mode' => $office['queue_mode'],
+        'new_mode' => $newMode,
+        'blocking_count' => $blockingCount,
+        'window_count' => max(1, (int) $office['window_count']),
+        'assigned_window_count' => $assignedWindows,
+    ]);
+}
+
 function setOfficeQueueMode(mysqli $conn, int $officeId, string $newMode): array
 {
     if (!in_array($newMode, ['unified', 'service-based', 'level-based'], true)) {
@@ -159,30 +226,17 @@ function setOfficeQueueModeWithLock(mysqli $conn, int $officeId, string $newMode
         return serviceResponse(false, 'Office not found.');
     }
 
-    if ($newMode === 'level-based' && $office['queue_mode'] !== 'level-based') {
-        $activeStmt = $conn->prepare("
-            SELECT COUNT(*) AS active_count
-            FROM tickets
-            WHERE office_id = ?
-              AND DATE(created_at) = ?
-              AND status IN ('waiting', 'serving', 'on-hold', 'skipped')
-        ");
-        if (!$activeStmt) {
+    if ($office['queue_mode'] !== $newMode) {
+        $activeCount = countBlockingOfficeTickets($conn, $officeId);
+        if ($activeCount === null) {
             $conn->rollback();
             return serviceResponse(false, 'Could not check the active queue.');
         }
-        $today = date('Y-m-d');
-        $activeStmt->bind_param('is', $officeId, $today);
-        if (!$activeStmt->execute()) {
-            $activeStmt->close();
-            $conn->rollback();
-            return serviceResponse(false, 'Could not check the active queue.');
-        }
-        $activeCount = (int) ($activeStmt->get_result()->fetch_assoc()['active_count'] ?? 0);
-        $activeStmt->close();
         if ($activeCount > 0) {
             $conn->rollback();
-            return serviceResponse(false, 'Clear all waiting, serving, on-hold, and skipped tickets before switching to level-based mode.');
+            return serviceResponse(false, "Cannot switch: {$activeCount} active tickets. Complete or cancel them first.", [
+                'blocking_count' => $activeCount,
+            ]);
         }
     }
 
@@ -199,7 +253,7 @@ function setOfficeQueueModeWithLock(mysqli $conn, int $officeId, string $newMode
     }
     $stmt->close();
 
-    if ($newMode === 'level-based') {
+    if ($newMode === 'level-based' && $office['queue_mode'] !== 'level-based') {
         $levelStmt = $conn->prepare("
             INSERT INTO window_levels (office_id, window_number, student_level)
             VALUES (?, ?, 'both')

@@ -217,6 +217,11 @@ function getTransferQueueOrderAt(Database $db, int $officeId, int $isPriority, s
 if ($action === 'get_stats') {
     $today = date('Y-m-d');
     $queueMode = getOfficeQueueMode($db, $officeId);
+    $levelFilterInput = requestString($_POST, 'level_filter', 20);
+    if ($levelFilterInput === null || ($levelFilterInput !== '' && !in_array($levelFilterInput, ['shs', 'college'], true))) {
+        respond(['success' => false, 'message' => 'Invalid level filter.']);
+    }
+    $levelFilter = $levelFilterInput !== '' ? $levelFilterInput : null;
     $personalStats = strtolower(trim((string) ($currentUser['role'] ?? ''))) === 'staff';
     $staffStmt = $db->prepare("SELECT window_number, overflow_mode FROM users WHERE id = ? LIMIT 1");
     $staffStmt->bind_param('i', $staffId);
@@ -275,6 +280,11 @@ if ($action === 'get_stats') {
         $waitingParams[] = $windowNumber;
         $waitingParams[] = $windowNumber;
     }
+    if ($queueMode === 'level-based' && $levelFilter !== null) {
+        $waitingSql .= ' AND t.student_level = ?';
+        $waitingTypes .= 's';
+        $waitingParams[] = $levelFilter;
+    }
     $stmt = $db->prepare($waitingSql);
     $stmt->bind_param($waitingTypes, ...$waitingParams);
     $stmt->execute();
@@ -323,7 +333,11 @@ if ($action === 'get_active') {
 if ($action === 'get_queue') {
     $tab        = requestEnum($_POST, 'tab', ['waiting', 'on-hold', 'skipped', 'done', 'cancelled'], false) ?: 'waiting';
     $typeFilter = requestOptionalInt($_POST, 'type_filter') ?? 0;
-    $levelFilter = requestEnum($_POST, 'level_filter', ['shs', 'college'], false);
+    $levelFilterInput = requestString($_POST, 'level_filter', 20);
+    if ($levelFilterInput === null || ($levelFilterInput !== '' && !in_array($levelFilterInput, ['shs', 'college'], true))) {
+        respond(['success' => false, 'message' => 'Invalid level filter.']);
+    }
+    $levelFilter = $levelFilterInput !== '' ? $levelFilterInput : null;
     $queueMode  = getOfficeQueueMode($db, $officeId);
 
     $stmt = $db->prepare("SELECT window_number, overflow_mode FROM users WHERE id = ? LIMIT 1");
@@ -424,6 +438,19 @@ if ($action === 'get_queue') {
     $stmt->execute();
     $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
+    $countSql = "SELECT COUNT(*) AS cnt
+        FROM tickets t
+        WHERE t.office_id=?
+          AND DATE(t.created_at) = ?
+          AND t.status IN ($placeholders)
+          $ownerClause
+          $windowClause
+          $typeClause";
+    $countStmt = $db->prepare($countSql);
+    $countStmt->bind_param($types, ...$params);
+    $countStmt->execute();
+    $tabCount = (int) $countStmt->get_result()->fetch_assoc()['cnt'];
+
     $queueMode = getOfficeQueueMode($db, $officeId);
     $waitingCountSql = "SELECT COUNT(*) AS cnt
         FROM tickets t
@@ -448,6 +475,11 @@ if ($action === 'get_queue') {
             $waitingCountParams[] = $windowNumber;
             $waitingCountParams[] = $windowNumber;
         }
+        if ($levelFilter !== null) {
+            $waitingCountSql .= ' AND t.student_level = ?';
+            $waitingCountTypes .= 's';
+            $waitingCountParams[] = $levelFilter;
+        }
     }
     $stmt2 = $db->prepare($waitingCountSql);
     $stmt2->bind_param($waitingCountTypes, ...$waitingCountParams);
@@ -455,7 +487,13 @@ if ($action === 'get_queue') {
     $stmt2->execute();
     $waitingCount = (int) $stmt2->get_result()->fetch_assoc()['cnt'];
 
-    respond(['success' => true, 'tickets' => $rows, 'waiting_count' => $waitingCount]);
+    respond([
+        'success' => true,
+        'tickets' => $rows,
+        'waiting_count' => $waitingCount,
+        'tab_count' => $tabCount,
+        'queue_mode' => $queueMode,
+    ]);
 }
 
 if ($action === 'call_next') {

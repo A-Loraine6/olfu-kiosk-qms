@@ -170,8 +170,22 @@
   min-height: 72px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
   margin-bottom: 12px;
+  min-width: 0;
+}
+
+.serving-ticket-level-wrap,
+.ticket-number-level-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.serving-ticket-level-wrap {
+  flex: 0 1 auto;
 }
 
 .serving-ticket {
@@ -183,6 +197,10 @@
   font-variant-numeric: tabular-nums;
   transition: all 0.3s var(--ease);
   font-family: var(--font-mono, "DM Mono", monospace);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .serving-ticket.is-idle {
@@ -230,6 +248,7 @@
     badgeFade 0.4s var(--ease) 1.8s forwards;
   align-self: flex-start;
   margin-top: 8px;
+  flex-shrink: 0;
 }
 
 @keyframes badgePop {
@@ -938,7 +957,10 @@ kbd {
   font-size: 16px;
   font-weight: 700;
   color: var(--text-1);
-  min-width: 72px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   font-family: var(--font-mono, "DM Mono", monospace);
@@ -974,17 +996,24 @@ kbd {
 .ticket-level-badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
   border-radius: 999px;
-  padding: 2px 7px;
-  margin-left: 4px;
+  padding: 3px 8px;
   background: rgba(0, 139, 67, 0.1);
   color: var(--primary-dark);
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 1.3;
+  border: 1px solid rgba(0, 139, 67, 0.2);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.serving-ticket-level-wrap .ticket-level-badge {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
 }
 
 .ticket-time {

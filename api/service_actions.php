@@ -26,7 +26,7 @@ $isOfficeScoped    = !$isAdmin && !empty($currentUser['office_id']);
 $staffOffice       = $isOfficeScoped ? (int) ($currentUser['office_id'] ?? 0) : null;
 
 $input  = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-$action = requestEnum($input, 'action', ['add_service', 'edit_service', 'get_windows_for_service', 'get_windows_for_office', 'toggle_service', 'delete_service', 'toggle_queue_mode', 'set_queue_mode', 'save_window_levels', 'get_services']);
+$action = requestEnum($input, 'action', ['add_service', 'edit_service', 'get_windows_for_service', 'get_windows_for_office', 'toggle_service', 'delete_service', 'toggle_queue_mode', 'check_queue_mode', 'set_queue_mode', 'save_window_levels', 'get_services']);
 $csrf   = requestString($input, 'csrf_token', 255, true);
 
 if ($action === null || $csrf === null || !verifyCsrfToken($csrf)) {
@@ -60,7 +60,7 @@ if (isset($actionPermMap[$action]) && $actionPermMap[$action] === 'admin' && !$i
     exit;
 }
 
-if (in_array($action, ['toggle_queue_mode', 'set_queue_mode', 'save_window_levels'], true) && !hasPermission('manage_settings')) {
+if (in_array($action, ['toggle_queue_mode', 'check_queue_mode', 'set_queue_mode', 'save_window_levels'], true) && !hasPermission('manage_settings')) {
     logPermissionDenied($db->getConnection(), 'Attempted queue mode toggle without manage_settings permission', (int) ($_SESSION['user_id'] ?? 0), 'service');
     echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
     exit;
@@ -165,6 +165,24 @@ switch ($action) {
             $denyOfficeScope();
         }
         $result = toggleOfficeQueueMode($conn, $officeId);
+        break;
+
+    case 'check_queue_mode':
+        $queueMode = requestEnum($input, 'queue_mode', ['unified', 'service-based', 'level-based']);
+        if ($queueMode === null) {
+            echo json_encode(['success' => false, 'message' => 'Invalid queue mode.']);
+            exit;
+        }
+        if ($queueMode === 'level-based' && !$isAdmin) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Only an administrator can enable level-based queues.']);
+            exit;
+        }
+        $officeId = requestInt($input, 'office_id') ?? 0;
+        if (!$officeIsAllowed($officeId)) {
+            $denyOfficeScope();
+        }
+        $result = checkOfficeQueueModeChange($conn, $officeId, $queueMode);
         break;
 
     case 'set_queue_mode':
