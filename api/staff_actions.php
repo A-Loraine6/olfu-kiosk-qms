@@ -29,6 +29,7 @@ if ($action === null || $csrf === null || !verifyCsrfToken($csrf)) {
 
 $canEdit   = hasPermission('edit_staff');
 $isAdmin   = ($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin';
+$isDepartmentHead = isDepartmentHeadUser();
 $canDelete = $isAdmin;
 $canToggle = hasPermission('toggle_staff');
 $canManage = $canEdit || $canDelete || $canToggle;
@@ -79,6 +80,27 @@ switch ($action) {
         break;
 
     case 'edit_staff':
+        if ($isDepartmentHead) {
+            $allowedFields = ['action', 'csrf_token', 'staff_id', 'full_name', 'email', 'window_number'];
+            if (array_diff(array_keys($input), $allowedFields)) {
+                echo json_encode(['success' => false, 'message' => 'Department heads may only update name, email, and window assignment.']);
+                exit;
+            }
+            if (!requestOptionalIntIsValid($input, 'window_number')) {
+                echo json_encode(['success' => false, 'message' => 'Invalid window assignment.']);
+                exit;
+            }
+            $result = updateStaffForDepartmentHead(
+                $conn,
+                requestInt($input, 'staff_id') ?? 0,
+                (int) ($_SESSION['user_id'] ?? 0),
+                (int) ($_SESSION['office_id'] ?? 0),
+                requestString($input, 'full_name', 100, true) ?? '',
+                requestString($input, 'email', 100, true) ?? '',
+                requestOptionalInt($input, 'window_number')
+            );
+            break;
+        }
         if (!requestOptionalIntIsValid($input, 'window_number') || !requestOptionalIntIsValid($input, 'role_id')) {
             echo json_encode(['success' => false, 'message' => 'Invalid staff assignment.']);
             exit;
@@ -105,12 +127,19 @@ switch ($action) {
             exit;
         }
         $staffId = requestOptionalInt($input, 'staff_id');
-        $wcStmt = $conn->prepare("SELECT id, window_count FROM offices WHERE name = ? LIMIT 1");
+        $wcStmt = $isDepartmentHead
+            ? $conn->prepare("SELECT id, window_count FROM offices WHERE name = ? AND id = ? LIMIT 1")
+            : $conn->prepare("SELECT id, window_count FROM offices WHERE name = ? LIMIT 1");
         if (!$wcStmt) {
             echo json_encode(['success' => false, 'message' => 'Failed to load office windows.']);
             exit;
         }
-        $wcStmt->bind_param('s', $officeName);
+        if ($isDepartmentHead) {
+            $officeId = (int) ($_SESSION['office_id'] ?? 0);
+            $wcStmt->bind_param('si', $officeName, $officeId);
+        } else {
+            $wcStmt->bind_param('s', $officeName);
+        }
         if (!$wcStmt->execute()) {
             $wcStmt->close();
             echo json_encode(['success' => false, 'message' => 'Failed to load office windows.']);
@@ -253,7 +282,7 @@ switch ($action) {
         }
         $staff        = getAllStaff($conn);
         $search       = strtolower(requestString($input, 'search', 100) ?? '');
-        $filterOffice = requestString($input, 'office', 100) ?? '';
+        $filterOffice = $isDepartmentHead ? '' : (requestString($input, 'office', 100) ?? '');
         $filterStatus = requestEnum($input, 'status', ['active', 'inactive'], false) ?? '';
         $filterRole   = requestOptionalInt($input, 'role');
 

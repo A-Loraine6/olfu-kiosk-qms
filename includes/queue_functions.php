@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../api/utils/QueueEligibility.php';
+
 function getTodayQueueSummary($db, $office_id = null)
 {
     $today = date('Y-m-d');
@@ -370,6 +372,124 @@ function getOfficeQueueTrend($db, $office_id)
             'count' => $count,
         );
     }
+
+    return $trendData;
+}
+
+function getStaffQueueSummary($db, int $staff_id, ?int $office_id): array
+{
+    $summary = ['waiting' => 0, 'served' => 0, 'skipped' => 0];
+    if (!$office_id) {
+        return $summary;
+    }
+
+    $today = date('Y-m-d');
+    $staffStmt = $db->prepare("
+        SELECT u.window_number, u.overflow_mode, o.queue_mode
+        FROM users u
+        LEFT JOIN offices o ON o.id = u.office_id
+        WHERE u.id = ? AND u.office_id = ?
+        LIMIT 1
+    ");
+    $staffStmt->bind_param('ii', $staff_id, $office_id);
+    $staffStmt->execute();
+    $staffData = $staffStmt->get_result()->fetch_assoc();
+    $staffStmt->close();
+    if (!$staffData) {
+        return $summary;
+    }
+
+    $waitingSql = "
+        SELECT COUNT(*) AS count
+        FROM tickets t
+        WHERE t.office_id = ?
+          AND DATE(t.created_at) = ?
+          AND t.status = 'waiting'
+    ";
+    $waitingTypes = 'is';
+    $waitingParams = [$office_id, $today];
+    if (($staffData['queue_mode'] ?? 'unified') === 'service-based') {
+        $waitingSql .= ' AND ' . queueTicketServiceEligibilitySql('t');
+        $windowNumber = (int) ($staffData['window_number'] ?? 0);
+        if (empty($staffData['overflow_mode']) && $windowNumber > 0) {
+            $waitingSql .= ' AND ' . queueTicketWindowEligibilitySql('t');
+            $waitingTypes .= 'iii';
+            $waitingParams[] = $windowNumber;
+            $waitingParams[] = $windowNumber;
+            $waitingParams[] = $windowNumber;
+        }
+    } elseif (($staffData['queue_mode'] ?? 'unified') === 'level-based') {
+        $windowNumber = (int) ($staffData['window_number'] ?? 0);
+        if ($windowNumber > 0) {
+            $waitingSql .= ' AND ' . queueTicketWindowEligibilitySql('t');
+            $waitingTypes .= 'iii';
+            $waitingParams[] = $windowNumber;
+            $waitingParams[] = $windowNumber;
+            $waitingParams[] = $windowNumber;
+        }
+    }
+    $waitingStmt = $db->prepare($waitingSql);
+    $waitingStmt->bind_param($waitingTypes, ...$waitingParams);
+    $waitingStmt->execute();
+    $summary['waiting'] = (int) ($waitingStmt->get_result()->fetch_assoc()['count'] ?? 0);
+    $waitingStmt->close();
+
+    $staffStmt = $db->prepare("
+        SELECT
+            COUNT(CASE WHEN status = 'completed' AND DATE(completed_at) = ? THEN 1 END) AS served,
+            COUNT(CASE WHEN status = 'skipped' AND DATE(created_at) = ? THEN 1 END) AS skipped
+        FROM tickets
+        WHERE office_id = ? AND served_by = ?
+    ");
+    $staffStmt->bind_param('ssii', $today, $today, $office_id, $staff_id);
+    $staffStmt->execute();
+    $staffCounts = $staffStmt->get_result()->fetch_assoc() ?: [];
+    $staffStmt->close();
+    $summary['served'] = (int) ($staffCounts['served'] ?? 0);
+    $summary['skipped'] = (int) ($staffCounts['skipped'] ?? 0);
+
+    return $summary;
+}
+
+function getStaffQueueTrend($db, int $staff_id, ?int $office_id): array
+{
+    if (!$office_id) {
+        return [];
+    }
+
+    $today = date('Y-m-d');
+    $hoursStmt = $db->prepare("
+        SELECT open_time, close_time
+        FROM offices
+        WHERE id = ?
+        LIMIT 1
+    ");
+    $hoursStmt->bind_param('i', $office_id);
+    $hoursStmt->execute();
+    $officeRow = $hoursStmt->get_result()->fetch_assoc();
+    $hoursStmt->close();
+
+    $openHour = !empty($officeRow['open_time']) ? (int) explode(':', $officeRow['open_time'])[0] : 6;
+    $closeHour = !empty($officeRow['close_time']) ? (int) explode(':', $officeRow['close_time'])[0] : 18;
+    $trendData = [];
+
+    $countStmt = $db->prepare("
+        SELECT COUNT(*) AS count
+        FROM tickets
+        WHERE office_id = ?
+          AND served_by = ?
+          AND status = 'completed'
+          AND DATE(completed_at) = ?
+          AND HOUR(completed_at) = ?
+    ");
+    for ($hour = $openHour; $hour <= $closeHour; $hour++) {
+        $countStmt->bind_param('iisi', $office_id, $staff_id, $today, $hour);
+        $countStmt->execute();
+        $count = (int) ($countStmt->get_result()->fetch_assoc()['count'] ?? 0);
+        $hourLabel = (($hour % 12) ?: 12) . ':00 ' . ($hour < 12 ? 'AM' : 'PM');
+        $trendData[] = ['hour' => $hourLabel, 'count' => $count];
+    }
+    $countStmt->close();
 
     return $trendData;
 }

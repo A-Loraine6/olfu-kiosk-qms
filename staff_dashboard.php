@@ -21,15 +21,15 @@ $staffOfficeId = $currentUser['office_id'] ?? null;
 $officeInfo      = $staffOfficeId ? getOfficeInfo($db, $staffOfficeId) : null;
 $staffOfficeName = $officeInfo['name'] ?? 'Unassigned Office';
 
-$officeSummary  = getOfficeQueueSummary($db, $staffOfficeId);
-$officeTrend    = getOfficeQueueTrend($db, $staffOfficeId);
+$staffSummary = getStaffQueueSummary($db, (int) $currentUser['id'], $staffOfficeId ? (int) $staffOfficeId : null);
+$staffTrend   = getStaffQueueTrend($db, (int) $currentUser['id'], $staffOfficeId ? (int) $staffOfficeId : null);
 
-$waiting = intval($officeSummary['waiting']  ?? $officeSummary['total_queued']  ?? 0);
-$served  = intval($officeSummary['served']   ?? $officeSummary['total_served']  ?? 0);
-$skipped = intval($officeSummary['skipped']  ?? $officeSummary['total_skipped'] ?? 0);
+$waiting = (int) ($staffSummary['waiting'] ?? 0);
+$served  = (int) ($staffSummary['served'] ?? 0);
+$skipped = (int) ($staffSummary['skipped'] ?? 0);
 
-$hasTrendData  = is_array($officeTrend) && array_sum(array_column($officeTrend, 'count')) > 0;
-$trendChartData = $hasTrendData ? json_encode(array_values($officeTrend)) : '[]';
+$hasTrendData  = is_array($staffTrend) && array_sum(array_column($staffTrend, 'count')) > 0;
+$trendChartData = $hasTrendData ? json_encode(array_values($staffTrend)) : '[]';
 
 date_default_timezone_set('Asia/Manila');
 $currentTime = date('l, F j, Y \a\t g:i A');
@@ -94,7 +94,7 @@ $currentTime = date('l, F j, Y \a\t g:i A');
                                 <div class="card-label">Currently Waiting</div>
                             </div>
                             <div class="card-value" id="waitingCount"><?php echo $waiting; ?></div>
-                            <div class="card-description">Students in queue right now</div>
+                            <div class="card-description">Tickets waiting for your window</div>
                             <div class="live-dot">Live</div>
                         </div>
 
@@ -126,7 +126,7 @@ $currentTime = date('l, F j, Y \a\t g:i A');
                         <div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:18px;">
                             <div>
                                 <h3 class="chart-title" style="margin-bottom:0;">
-                                    <i class="fas fa-chart-line"></i> Peak Hours Trend
+                                    <i class="fas fa-chart-line"></i> Your Completed Tickets by Hour
                                 </h3>
                                 <p class="refresh-note">
                                     <i class="fas fa-sync-alt"></i>
@@ -146,7 +146,7 @@ $currentTime = date('l, F j, Y \a\t g:i A');
                                 echo renderEmptyChartState(
                                     'fas fa-chart-line',
                                     'No Trend Data Yet',
-                                    'Hourly queue volume for your office will appear once the system starts recording activity.'
+                                    'Your completed tickets by hour will appear once you serve tickets today.'
                                 );
                             endif; ?>
                         </div>
@@ -200,7 +200,7 @@ $currentTime = date('l, F j, Y \a\t g:i A');
                         data: {
                             labels: labels,
                             datasets: [{
-                                label: 'Queue Volume',
+                                label: 'Completed Tickets',
                                 data: counts,
                                 borderColor: '#008b43',
                                 backgroundColor: 'rgba(0,139,67,0.08)',

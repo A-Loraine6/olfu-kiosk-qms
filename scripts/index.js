@@ -39,6 +39,7 @@ let state = {
 	screen: 0,
 	office: null,
 	service: null,
+	studentLevel: null,
 	history: [0],
 	isPriority: false,
 };
@@ -221,7 +222,10 @@ setInterval(updateClocks, 1000);
 
 function getTotalSteps() {
 	const o = state.office;
-	return o && o.mode === "service-based" && o.services && o.services.length
+	return o && (
+		o.mode === "level-based" ||
+		(o.mode === "service-based" && o.services && o.services.length)
+	)
 		? 4
 		: 3;
 }
@@ -368,6 +372,7 @@ function renderOffices() {
 function selectOffice(o) {
 	state.office = o;
 	state.service = null;
+	state.studentLevel = null;
 	state.history = [0, 1];
 
 	const check = isOfficeAcceptingQueue(o);
@@ -378,7 +383,11 @@ function selectOffice(o) {
 
 	updatePriorityPills();
 
-	if (o.mode === "service-based" && o.services && o.services.length) {
+	if (o.mode === "level-based") {
+		renderLevels(o);
+		state.history.push(2);
+		showScreen(2);
+	} else if (o.mode === "service-based" && o.services && o.services.length) {
 		renderServices(o);
 		state.history.push(2);
 		showScreen(2);
@@ -401,9 +410,11 @@ function updatePriorityPills() {
 }
 
 function renderServices(o) {
+	document.getElementById("s2Title").textContent = "Select a Service";
 	document.getElementById("s2OfficeName").textContent = o.name;
 	const grid = document.getElementById("serviceGrid");
 	grid.innerHTML = "";
+	grid.classList.remove("level-grid");
 	o.services.forEach((s) => {
 		const btn = document.createElement("button");
 		btn.className = "service-card";
@@ -413,6 +424,38 @@ function renderServices(o) {
 		btn.addEventListener("click", () => selectService(s));
 		grid.appendChild(btn);
 	});
+}
+
+function renderLevels(o) {
+	document.getElementById("s2Title").textContent = "Select your student level";
+	document.getElementById("s2OfficeName").textContent = o.name;
+	const grid = document.getElementById("serviceGrid");
+	grid.innerHTML = "";
+	grid.classList.add("level-grid");
+	[
+		{ value: "shs", label: "SHS", desc: "Senior High School", icon: "fa-graduation-cap" },
+		{ value: "college", label: "College", desc: "Undergraduate / Graduate", icon: "fa-graduation-cap" },
+	].forEach((level) => {
+		const btn = document.createElement("button");
+		btn.className = "level-card";
+		btn.innerHTML = `
+			<div class="level-card-icon"><i class="fas ${level.icon}"></i></div>
+			<div class="level-card-name">${level.label}</div>
+			<div class="level-card-desc">${level.desc}</div>`;
+		btn.addEventListener("click", () => selectStudentLevel(level.value));
+		grid.appendChild(btn);
+	});
+}
+
+function selectStudentLevel(level) {
+	if (level !== "shs" && level !== "college") return;
+	const check = isOfficeAcceptingQueue(state.office);
+	if (!check.ok) {
+		showBlockedMessage(check.code, check.reason);
+		return;
+	}
+	state.studentLevel = level;
+	checkAndPrepareConfirm();
 }
 
 function selectService(s) {
@@ -428,17 +471,18 @@ function selectService(s) {
 function prepareConfirm() {
 	const o = state.office,
 		s = state.service;
+	const studentLevel = state.studentLevel;
 	document.getElementById("s3OfficeName").textContent = o.name;
-	document.getElementById("s3ServiceName").textContent = s
-		? s.name
-		: "General Queue";
+	document.getElementById("s3ServiceName").textContent = o.mode === "level-based"
+		? (studentLevel === "shs" ? "SHS" : "College")
+		: (s ? s.name : "General Queue");
 	document.getElementById("s3QueuePreview").textContent = "—";
 	updatePriorityPills();
 
 	fetch("api/preview_ticket.php", {
 		method: "POST",
 		headers: { "Content-Type": "application/x-www-form-urlencoded" },
-		body: `office_id=${o.id}&is_priority=${state.isPriority ? 1 : 0}&csrf_token=${encodeURIComponent(CSRF_TOKEN)}`,
+		body: `office_id=${o.id}&service_name=${encodeURIComponent(s ? s.name : "")}&student_level=${encodeURIComponent(studentLevel || "")}&is_priority=${state.isPriority ? 1 : 0}&csrf_token=${encodeURIComponent(CSRF_TOKEN)}`,
 	})
 		.then((r) => r.json())
 		.then((data) => {
@@ -502,11 +546,12 @@ function confirmQueue() {
 
 	const o = state.office,
 		s = state.service;
+	const studentLevel = state.studentLevel;
 
 	fetch("api/issue_ticket.php", {
 		method: "POST",
 		headers: { "Content-Type": "application/x-www-form-urlencoded" },
-		body: `office_id=${o.id}&service_name=${encodeURIComponent(s ? s.name : "")}&is_priority=${state.isPriority ? 1 : 0}&csrf_token=${encodeURIComponent(CSRF_TOKEN)}`,
+		body: `office_id=${o.id}&service_name=${encodeURIComponent(s ? s.name : "")}&student_level=${encodeURIComponent(studentLevel || "")}&is_priority=${state.isPriority ? 1 : 0}&csrf_token=${encodeURIComponent(CSRF_TOKEN)}`,
 	})
 		.then((r) => r.json())
 		.then((data) => {
@@ -633,14 +678,14 @@ function renderWindowBadge(elId, windowNumber) {
 function showTicket(data) {
 	const o = state.office,
 		s = state.service;
+	const studentLevel = data.student_level || state.studentLevel;
 	document.getElementById("s4OfficeName").textContent = o.name;
 	document.getElementById("s4ServiceName").textContent = s
 		? s.name
-		: "General Queue";
-	renderWindowBadge(
-		"s4WindowLabel",
-		data.window_number ?? data.window_id ?? null,
-	);
+		: o.mode === "level-based"
+			? (studentLevel === "shs" ? "SHS" : "College")
+			: "General Queue";
+	renderWindowBadge("s4WindowLabel", null);
 	document.getElementById("s4TicketNumber").textContent = data.ticket_number;
 	updatePriorityPills();
 
@@ -767,11 +812,13 @@ function esc(str) {
 
 function checkAndPrepareConfirm() {
 	const o = state.office;
+	const s = state.service;
+	const studentLevel = state.studentLevel;
 
 	fetch("api/preview_ticket.php", {
 		method: "POST",
 		headers: { "Content-Type": "application/x-www-form-urlencoded" },
-		body: `office_id=${o.id}&is_priority=${state.isPriority ? 1 : 0}&csrf_token=${encodeURIComponent(CSRF_TOKEN)}`,
+		body: `office_id=${o.id}&service_name=${encodeURIComponent(s ? s.name : "")}&student_level=${encodeURIComponent(studentLevel || "")}&is_priority=${state.isPriority ? 1 : 0}&csrf_token=${encodeURIComponent(CSRF_TOKEN)}`,
 	})
 		.then((r) => r.json())
 		.then((data) => {
@@ -780,9 +827,10 @@ function checkAndPrepareConfirm() {
 				showBlockedMessage(code, data.message || "Unable to proceed.");
 				return;
 			}
-			const s = state.service;
 			document.getElementById("s3OfficeName").textContent = o.name;
-			document.getElementById("s3ServiceName").textContent = s ? s.name : "General Queue";
+			document.getElementById("s3ServiceName").textContent = o.mode === "level-based"
+				? (studentLevel === "shs" ? "SHS" : "College")
+				: (s ? s.name : "General Queue");
 			document.getElementById("s3QueuePreview").textContent = data.preview_ticket;
 			updatePriorityPills();
 

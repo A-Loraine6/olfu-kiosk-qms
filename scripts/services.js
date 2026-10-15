@@ -242,44 +242,86 @@ async function fetchFilteredRows() {
   if (requestId !== currentRequest) return;
   setTableLoading(false);
 
-  if (data.success) {
-    currentTotal = data.count;
-    currentTotalPages = data.totalPages;
-    currentPage = data.page;
-
-    updateTable(data.html);
-    updateResultCount(currentTotal, currentLimit, currentPage);
-    renderPagination(
-      currentPage,
-      currentTotalPages,
-      currentTotal,
-      currentLimit,
-    );
+  if (!data.success) {
+    showToast(data.message || "Unable to load services.", "error");
+    return;
   }
+
+  currentTotal = data.count;
+  currentTotalPages = data.totalPages;
+  currentPage = data.page;
+
+  updateTable(data.html);
+  updateResultCount(currentTotal, currentLimit, currentPage);
+  renderPagination(
+    currentPage,
+    currentTotalPages,
+    currentTotal,
+    currentLimit,
+  );
 }
 
-async function toggleQueueMode(officeId, btn) {
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+async function setQueueMode(officeId, select) {
+  const previousMode = select.dataset.currentMode;
+  select.disabled = true;
+  const data = await ajax({
+    action: "set_queue_mode",
+    office_id: officeId,
+    queue_mode: select.value,
+  });
+  select.disabled = false;
 
-  const data = await ajax({ action: "toggle_queue_mode", office_id: officeId });
-
-  btn.disabled = false;
-  btn.innerHTML = '<i class="fas fa-exchange-alt"></i>';
-
-  if (data.success) {
-    const isServiceBased = data.message.includes("Service-Based");
-    const label = document.getElementById(`office-mode-label-${officeId}`);
-    const desc = document.getElementById(`office-mode-desc-${officeId}`);
-    label.textContent = isServiceBased ? "Service-Based" : "Unified";
-    label.className =
-      "queue-mode-value " + (isServiceBased ? "mode-service" : "mode-unified");
-    desc.textContent = isServiceBased
-      ? "Kiosk shows service selection before issuing a number."
-      : "Kiosk issues a number directly without service selection.";
-    showToast(data.message, "success");
-  } else {
+  if (!data.success) {
+    select.value = previousMode;
     showToast(data.message, "error");
+    return;
+  }
+
+  select.dataset.currentMode = data.queue_mode;
+  const descriptions = {
+    unified: "Kiosk issues a number directly without service selection.",
+    "service-based": "Kiosk shows service selection before issuing a number.",
+    "level-based": "Kiosk asks for SHS or College; windows serve their assigned level.",
+  };
+  document.getElementById(`office-mode-desc-${officeId}`).textContent =
+    descriptions[data.queue_mode];
+  const levelsButton = document.getElementById(`office-levels-${officeId}`);
+  if (levelsButton) {
+    levelsButton.style.display = data.queue_mode === "level-based" ? "" : "none";
+  }
+  showToast(data.message, "success");
+}
+
+async function saveWindowLevels(officeId, windowCount, button) {
+  const windowLevels = {};
+  for (let windowNumber = 1; windowNumber <= windowCount; windowNumber++) {
+    const select = document.getElementById(
+      `office-${officeId}-window-${windowNumber}`,
+    );
+    if (!select) {
+      showToast("Could not read all window assignments.", "error");
+      return;
+    }
+    windowLevels[windowNumber] = select.value;
+  }
+
+  if (button) button.disabled = true;
+  try {
+    const data = await ajax({
+      action: "save_window_levels",
+      office_id: officeId,
+      window_levels: windowLevels,
+    });
+    showToast(
+      data.message ||
+        (data.success
+          ? "Window levels saved."
+          : "Unable to save window levels."),
+      data.success ? "success" : "error",
+    );
+    if (data.success) closeModal(`windowLevelsModal-${officeId}`);
+  } finally {
+    if (button) button.disabled = false;
   }
 }
 

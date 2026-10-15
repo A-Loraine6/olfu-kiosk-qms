@@ -35,6 +35,14 @@ CREATE TABLE `login_attempts` (
   KEY `idx_login_attempts_last_attempt` (`last_attempt_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+CREATE TABLE `window_levels` (
+  `office_id` int(11) NOT NULL,
+  `window_number` tinyint(3) UNSIGNED NOT NULL,
+  `student_level` enum('shs','college','both') NOT NULL DEFAULT 'both',
+  PRIMARY KEY (`office_id`,`window_number`),
+  KEY `idx_window_levels_office_level` (`office_id`,`student_level`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 -- --------------------------------------------------------
 
 --
@@ -709,7 +717,7 @@ CREATE TABLE `offices` (
   `code` varchar(20) DEFAULT NULL,
   `description` text DEFAULT NULL,
   `window_count` int(11) DEFAULT 1,
-  `queue_mode` enum('unified','service-based') DEFAULT 'unified',
+  `queue_mode` enum('unified','service-based','level-based') DEFAULT 'unified',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `open_time` time NOT NULL DEFAULT '08:00:00',
   `close_time` time NOT NULL DEFAULT '17:00:00',
@@ -885,9 +893,11 @@ CREATE TABLE `tickets` (
   `office_id` int(11) NOT NULL,
   `is_priority` tinyint(1) NOT NULL DEFAULT 0,
   `transaction_type` varchar(50) DEFAULT NULL,
+  `student_level` enum('shs','college') DEFAULT NULL,
   `window_id` int(11) DEFAULT NULL,
   `status` enum('waiting','serving','completed','skipped','on-hold','cancelled') NOT NULL DEFAULT 'waiting',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `original_created_at` datetime DEFAULT NULL,
   `queue_order_at` datetime(6) DEFAULT NULL,
   `served_at` timestamp NULL DEFAULT NULL,
   `completed_at` timestamp NULL DEFAULT NULL,
@@ -895,6 +905,22 @@ CREATE TABLE `tickets` (
   `served_by` int(11) DEFAULT NULL,
   `time_spent` int(11) DEFAULT 0,
   `counter_window` varchar(50) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `ticket_events` (
+  `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `ticket_id` int(11) NOT NULL,
+  `event` varchar(50) NOT NULL,
+  `from_status` varchar(20) DEFAULT NULL,
+  `to_status` varchar(20) DEFAULT NULL,
+  `staff_id` int(11) DEFAULT NULL,
+  `office_id` int(11) NOT NULL,
+  `window_id` int(11) DEFAULT NULL,
+  `meta` JSON NOT NULL,
+  `created_at` datetime(6) NOT NULL DEFAULT current_timestamp(6),
+  PRIMARY KEY (`id`),
+  KEY `idx_ticket_events_ticket_created` (`ticket_id`,`created_at`),
+  KEY `idx_ticket_events_office_created` (`office_id`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -1004,6 +1030,10 @@ INSERT INTO `tickets` (`id`, `ticket_number`, `tracking_token`, `office_id`, `is
 (139, 'ACC-6', '0acdb26524536d2ba60145d0f59fdadc7c4cc6053f2da11f182a33a6ce92a898', 2, 0, 'Miscellaneous Fee', NULL, 'waiting', '2026-09-10 07:01:52', NULL, NULL, NULL, NULL, 0, NULL),
 (140, 'ACC-1', '81c1896c95995b25af5116f64ffab4ee45a635ba488051f33dfb8814f127c94b', 2, 0, 'Tuition Fee', 1, 'waiting', '2026-09-11 01:49:08', NULL, NULL, NULL, NULL, 0, NULL),
 (141, 'ACC-2', '01c79b2bcad1afb6bf3d636fe29d14c32dbfd7a7bcf17f1576613bdca4f8c35e', 2, 0, 'System Discrepancy', NULL, 'waiting', '2026-09-11 08:44:57', NULL, NULL, NULL, NULL, 0, NULL);
+
+UPDATE `tickets`
+SET `original_created_at` = `created_at`
+WHERE `original_created_at` IS NULL;
 
 -- --------------------------------------------------------
 
@@ -1170,6 +1200,7 @@ ALTER TABLE `tickets`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uq_tracking_token` (`tracking_token`),
   ADD KEY `idx_office_id` (`office_id`),
+  ADD KEY `idx_tickets_office_student_level_status` (`office_id`,`student_level`,`status`),
   ADD KEY `idx_status` (`status`),
   ADD KEY `idx_created_at` (`created_at`),
   ADD KEY `fk_tickets_served_by` (`served_by`);

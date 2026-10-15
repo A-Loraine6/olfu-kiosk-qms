@@ -646,6 +646,10 @@ body {
   gap: 16px;
 }
 
+.charts-grid-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .chart-container {
   background: var(--surface);
   border-radius: var(--radius-lg);
