@@ -271,14 +271,20 @@ const ICONS = {
 	ADM: "fa-user-graduate",
 };
 
-function isOfficeClosed(office) {
-	const now = new Date();
-	const [closeH, closeM] = office.close_time.split(":").map(Number);
-	const [openH, openM] = office.open_time.split(":").map(Number);
-	const closeMinutes = closeH * 60 + closeM;
-	const openMinutes = openH * 60 + openM;
-	const nowMinutes = now.getHours() * 60 + now.getMinutes();
-	return nowMinutes < openMinutes || nowMinutes >= closeMinutes;
+function isOfficeClosed(office, now = getManilaTime()) {
+	const openTime = office.open_time.slice(0, 5);
+	const closeTime = office.close_time.slice(0, 5);
+	const cutoffPassed = office.queue_cutoff && now >= office.queue_cutoff.slice(0, 5);
+	return now < openTime || now >= closeTime || cutoffPassed;
+}
+
+function getManilaTime() {
+	return new Date().toLocaleTimeString("en-PH", {
+		hour: "2-digit",
+		minute: "2-digit",
+		hour12: false,
+		timeZone: "Asia/Manila",
+	});
 }
 
 function formatTime12(hhmm) {
@@ -290,15 +296,9 @@ function formatTime12(hhmm) {
 }
 
 function isOfficeAcceptingQueue(office) {
-	const now = new Date();
-	const hhmm = now.toLocaleTimeString("en-PH", {
-		hour: "2-digit",
-		minute: "2-digit",
-		hour12: false,
-		timeZone: "Asia/Manila",
-	});
+	const hhmm = getManilaTime();
 
-	if (office.queue_cutoff && hhmm >= office.queue_cutoff) {
+	if (office.queue_cutoff && hhmm >= office.queue_cutoff.slice(0, 5)) {
 		return {
 			ok: false,
 			code: "cutoff",
@@ -311,14 +311,8 @@ function isOfficeAcceptingQueue(office) {
 
 function getBreakInfo(office) {
 	if (!office.break_start || !office.break_end) return { onBreak: false };
-	const now = new Date();
-	const hhmm = now.toLocaleTimeString("en-PH", {
-		hour: "2-digit",
-		minute: "2-digit",
-		hour12: false,
-		timeZone: "Asia/Manila",
-	});
-	if (hhmm >= office.break_start && hhmm < office.break_end) {
+	const hhmm = getManilaTime();
+	if (hhmm >= office.break_start.slice(0, 5) && hhmm < office.break_end.slice(0, 5)) {
 		return { onBreak: true, breakEnd: office.break_end };
 	}
 	return { onBreak: false };
@@ -340,14 +334,18 @@ function renderOffices() {
 	OFFICES.forEach((o) => {
 		const w = o.waiting;
 		const icon = ICONS[o.code] || "fa-building";
-		const closed = isOfficeClosed(o);
+		const now = getManilaTime();
+		const closed = isOfficeClosed(o, now);
 		const breakInfo = getBreakInfo(o);
+		const cutoffPassed = o.queue_cutoff && now >= o.queue_cutoff.slice(0, 5);
 		const btn = document.createElement("button");
 		btn.className = "office-card" + (closed ? " office-closed" : "");
 		btn.disabled = closed;
 
 		let badgeHtml;
-		if (closed) {
+		if (cutoffPassed) {
+			badgeHtml = '<i class="fas fa-clock" style="font-size:10px"></i> Cut-off passed';
+		} else if (closed) {
 			badgeHtml = '<i class="fas fa-lock" style="font-size:10px"></i> Closed';
 		} else if (breakInfo.onBreak) {
 			badgeHtml = `<i class="fas fa-coffee" style="font-size:10px"></i> On break until ${formatTime12(breakInfo.breakEnd)}`;
@@ -845,4 +843,7 @@ function checkAndPrepareConfirm() {
 
 
 renderOffices();
+setInterval(() => {
+	if (state.screen === 1) renderOffices();
+}, 30000);
 resetIdle();
