@@ -400,6 +400,13 @@ function openDeleteModal(staffId) {
 }
 
 async function submitAddStaff() {
+  const fullNameInput = document.getElementById("add_full_name");
+  fullNameInput.value = fullNameInput.value.trim();
+  if (!fullNameInput.checkValidity()) {
+    showToast("Full name must be 3 to 100 characters and use only letters, spaces, periods, hyphens, or apostrophes.", "error");
+    return;
+  }
+
   setBtnLoading("addStaffBtn", true, '<i class="fas fa-plus"></i> Add Staff');
   const data = await ajax({
     action: "add_staff",
@@ -430,6 +437,13 @@ async function submitAddStaff() {
 }
 
 async function submitEditStaff() {
+  const fullNameInput = document.getElementById("edit_full_name");
+  fullNameInput.value = fullNameInput.value.trim();
+  if (!fullNameInput.checkValidity()) {
+    showToast("Full name must be 3 to 100 characters and use only letters, spaces, periods, hyphens, or apostrophes.", "error");
+    return;
+  }
+
   setBtnLoading(
     "editStaffBtn",
     true,

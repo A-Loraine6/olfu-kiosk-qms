@@ -295,7 +295,9 @@ $pageLimit = 10;
             <div class="modal-body-scroll">
                 <div class="form-group">
                     <label for="add_full_name">Full Name <span class="required">*</span></label>
-                    <input type="text" id="add_full_name" placeholder="Enter full name">
+                    <input type="text" id="add_full_name" placeholder="Enter full name" required minlength="3" maxlength="100"
+                        pattern="(?:\p{L}\p{M}*)+(?:(?: +|[\-'])(?:\p{L}\p{M}*)+|\. *(?:\p{L}\p{M}*)+)*\.?"
+                        title="Use letters, spaces, periods, hyphens, or apostrophes.">
                 </div>
 
                 <div class="form-group">
@@ -368,7 +370,9 @@ $pageLimit = 10;
                 <input type="hidden" id="edit_staff_id">
                 <div class="form-group">
                     <label for="edit_full_name">Full Name <span class="required">*</span></label>
-                    <input type="text" id="edit_full_name">
+                    <input type="text" id="edit_full_name" required minlength="3" maxlength="100"
+                        pattern="(?:\p{L}\p{M}*)+(?:(?: +|[\-'])(?:\p{L}\p{M}*)+|\. *(?:\p{L}\p{M}*)+)*\.?"
+                        title="Use letters, spaces, periods, hyphens, or apostrophes.">
                 </div>
                 <div class="form-group">
                     <label for="edit_email">Email <span class="required">*</span></label>

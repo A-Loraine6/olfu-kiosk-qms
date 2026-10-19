@@ -157,7 +157,7 @@ function beginWindowAssignment($db, int $officeId, ?int $windowNumber, int $excl
 
 function addStaff($db, string $full_name, string $email, string $password, string $office, ?int $window_number, ?int $role_id = null): array
 {
-    $full_name = validName($full_name);
+    $full_name = validFullName($full_name);
     $email     = validEmail($email);
     $office    = trim($office);
     $roleName = 'staff';
@@ -175,7 +175,7 @@ function addStaff($db, string $full_name, string $email, string $password, strin
     $role = $roleName;
 
     if ($full_name === null)
-        return ['success' => false, 'message' => 'Name must contain letters and spaces only, and be 3 to 100 characters.'];
+        return ['success' => false, 'message' => 'Full name must be 3 to 100 characters and use only letters, spaces, periods, hyphens, or apostrophes.'];
     if ($email === null)
         return ['success' => false, 'message' => 'Invalid email address.'];
     if (validPassword($password) === null)
@@ -265,7 +265,7 @@ function addStaff($db, string $full_name, string $email, string $password, strin
 
 function updateStaff($db, int $id, string $full_name, string $email, string $office, ?int $window_number, ?int $role_id = null): array
 {
-    $full_name = validName($full_name);
+    $full_name = validFullName($full_name);
     $email     = validEmail($email);
     $office    = trim($office);
     $roleName = 'staff';
@@ -283,7 +283,7 @@ function updateStaff($db, int $id, string $full_name, string $email, string $off
     $role = $roleName;
 
     if ($full_name === null)
-        return ['success' => false, 'message' => 'Name must contain letters and spaces only, and be 3 to 100 characters.'];
+        return ['success' => false, 'message' => 'Full name must be 3 to 100 characters and use only letters, spaces, periods, hyphens, or apostrophes.'];
     if ($email === null)
         return ['success' => false, 'message' => 'Invalid email address.'];
 
@@ -377,10 +377,10 @@ function updateStaffForDepartmentHead(
         return ['success' => false, 'message' => 'You cannot edit your own staff assignment.'];
     }
 
-    $full_name = validName($full_name);
+    $full_name = validFullName($full_name);
     $email = validEmail($email);
     if ($full_name === null) {
-        return ['success' => false, 'message' => 'Name must contain letters and spaces only, and be 3 to 100 characters.'];
+        return ['success' => false, 'message' => 'Full name must be 3 to 100 characters and use only letters, spaces, periods, hyphens, or apostrophes.'];
     }
     if ($email === null) {
         return ['success' => false, 'message' => 'Invalid email address.'];

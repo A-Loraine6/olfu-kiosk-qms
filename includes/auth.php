@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/request_validation.php';
+
 session_name(SESSION_NAME);
 $isHttps = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
 session_set_cookie_params([
@@ -280,8 +282,8 @@ function validateRegistrationInputs(
         return 'Invalid request. Please refresh and try again.';
     }
 
-    if (mb_strlen($full_name) < 3 || mb_strlen($full_name) > 100) {
-        return 'Full name must be between 3 and 100 characters.';
+    if (validFullName($full_name) === null) {
+        return 'Full name must be 3 to 100 characters and use only letters, spaces, periods, hyphens, or apostrophes.';
     }
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 254) {
@@ -313,6 +315,7 @@ function register($db, string $full_name, string $email, string $password, strin
         return ['success' => false, 'message' => $inputError];
     }
 
+    $full_name = validFullName($full_name) ?? $full_name;
     $dbError = insertNewUser($db, $full_name, $email, $password);
     if ($dbError !== '') {
         return ['success' => false, 'message' => $dbError];

@@ -136,6 +136,18 @@ function validName(string $value, int $minLength = 3, int $maxLength = 100): ?st
     return preg_match('/^\p{L}+(?: +\p{L}+)*$/u', $value) ? $value : null;
 }
 
+function validFullName(string $value, int $minLength = 3, int $maxLength = 100): ?string
+{
+    $value = preg_replace('/^\s+|\s+$/u', '', $value);
+    if ($value === null || mb_strlen($value) < $minLength || mb_strlen($value) > $maxLength) {
+        return null;
+    }
+
+    return preg_match('/^(?:\p{L}\p{M}*)+(?:(?: +|[-\'])(?:\p{L}\p{M}*)+|\. *(?:\p{L}\p{M}*)+)*\.?$/u', $value)
+        ? $value
+        : null;
+}
+
 function validEmail(string $value, int $maxLength = 100): ?string
 {
     $value = strtolower(trim($value));
