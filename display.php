@@ -286,23 +286,59 @@ if (!empty($officeIds)) {
         function buildNextUp(o) {
             const nu = Array.isArray(o.next_up) ? o.next_up : [];
             if (nu.length === 0) {
-                return `<div class="c-q-empty"><span class="c-q-empty-icon">✓</span><span>Queue is clear</span></div>`;
+                return `<div class="c-q-empty">
+                    <span class="c-q-empty-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="5 12.5 10 17.5 19 7"/>
+                        </svg>
+                    </span>
+                    <span>Queue is clear</span>
+                </div>`;
             }
 
-            const visibleQueue = nu.slice(0, MAX_NEXT_UP);
-            const extra = nu.length - visibleQueue.length;
-
+            // Render everything; fitQueues() hides whatever doesn't fit
             return `
-                <div class="c-q-list">
-                    ${visibleQueue.map((t, i) => `
+                <div class="c-q-list" data-total="${nu.length}">
+                    ${nu.map((t, i) => `
                         <div class="c-q-row${i === 0 ? ' first' : ''}">
                             <span class="c-q-pos">${i + 1}</span>
                             <span class="c-q-ticket">${esc(t.ticket_number)}</span>
                         </div>
                     `).join('')}
-                    ${extra > 0 ? `<div class="c-q-more">+${extra} more</div>` : ''}
+                    <div class="c-q-more"></div>
                 </div>
             `;
+        }
+
+        function fitQueues() {
+            document.querySelectorAll('.c-q-list').forEach(list => {
+                const rows = [...list.querySelectorAll('.c-q-row')];
+                const more = list.querySelector('.c-q-more');
+                const total = rows.length;
+                const gap = parseFloat(getComputedStyle(list).rowGap) || 0;
+                const limit = list.clientHeight;
+
+                // reset
+                rows.forEach(r => r.style.display = '');
+                more.style.display = 'none';
+
+                const bottomOf = r => r.offsetTop + r.offsetHeight;
+
+                // everything fits, no "+N more" needed
+                if (bottomOf(rows[total - 1]) <= limit) return;
+
+                // otherwise reserve room for the "+N more" line
+                more.textContent = '+0 more';
+                more.style.display = 'block';
+                const reserve = more.offsetHeight + gap;
+
+                let shown = total;
+                while (shown > 1 && bottomOf(rows[shown - 1]) + reserve > limit) {
+                    rows[shown - 1].style.display = 'none';
+                    shown--;
+                }
+                more.textContent = `+${total - shown} more`;
+            });
         }
 
         function buildCard(o) {
@@ -351,6 +387,7 @@ if (!empty($officeIds)) {
                 return;
             }
             stage.innerHTML = `<div class="office-grid">${offices.map(buildCard).join('')}</div>`;
+            fitQueues();
         }
 
         async function refresh() {
@@ -370,6 +407,7 @@ if (!empty($officeIds)) {
         render();
         setTimeout(refresh, REFRESH_MS);
         attemptAutoUnlock();
+        window.addEventListener('resize', fitQueues);
     </script>
 
 </body>
