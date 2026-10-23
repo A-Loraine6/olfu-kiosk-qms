@@ -29,12 +29,12 @@ function initQueue() {
   typeFilterId = localStorage.getItem(filterStorageKey) || "";
   const typeFilterEl = document.getElementById("typeFilter");
   if (typeFilterEl) {
-    const hasSavedOption = Array.from(typeFilterEl.options).some(
-      (option) => option.value === typeFilterId,
-    );
-    if (typeFilterId && !hasSavedOption) {
-      typeFilterId = "";
-      localStorage.setItem(filterStorageKey, "");
+    const optionValues = Array.from(typeFilterEl.options).map((o) => o.value);
+    if (!optionValues.includes(typeFilterId)) {
+      // saved value is missing or no longer allowed: use the first option
+      // "" (All Levels) if both levels, otherwise the single assigned level
+      typeFilterId = optionValues[0] ?? "";
+      localStorage.setItem(filterStorageKey, typeFilterId);
     }
     typeFilterEl.value = typeFilterId;
   }
@@ -1210,8 +1210,8 @@ function updateOverflowBtn(isOverflow) {
     : "Pull tickets from your assigned window only";
 
   if (typeFilter) {
-    typeFilter.value = "";
-    typeFilterId = "";
+    typeFilter.value = typeFilter.options[0]?.value ?? "";
+    typeFilterId = typeFilter.value;
   }
 
   loadQueue();

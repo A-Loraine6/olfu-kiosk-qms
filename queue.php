@@ -66,23 +66,37 @@ if ($queueMode === 'service-based') {
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) $transactionTypes[] = $row;
-} elseif ($queueMode === 'level-based' && $staffWindowNumber > 0) {
-    $levelStmt = $db->prepare("
-        SELECT student_level
-        FROM window_levels
-        WHERE office_id = ? AND window_number = ?
-        LIMIT 1
-    ");
-    $levelStmt->bind_param('ii', $staffOfficeId, $staffWindowNumber);
-    $levelStmt->execute();
-    $windowLevel = $levelStmt->get_result()->fetch_assoc()['student_level'] ?? null;
-    $levelStmt->close();
-    if ($windowLevel === 'shs') {
-        $queueLevels = ['shs'];
-    } elseif ($windowLevel === 'college') {
-        $queueLevels = ['college'];
-    } elseif ($windowLevel !== 'both') {
-        $queueLevels = [];
+} elseif ($queueMode === 'level-based') {
+    $queueLevels = [];
+
+    $liveStmt = $db->prepare("SELECT window_number FROM users WHERE id = ? LIMIT 1");
+    $liveStmt->bind_param('i', $currentUser['id']);
+    $liveStmt->execute();
+    $staffWindowNumber = (int) ($liveStmt->get_result()->fetch_assoc()['window_number'] ?? 0);
+    $liveStmt->close();
+
+    if ($staffWindowNumber > 0) {
+        $levelStmt = $db->prepare("
+            SELECT student_level
+            FROM window_levels
+            WHERE office_id = ? AND window_number = ?
+        ");
+        $levelStmt->bind_param('ii', $staffOfficeId, $staffWindowNumber);
+        $levelStmt->execute();
+        $levelResult = $levelStmt->get_result();
+        while ($row = $levelResult->fetch_assoc()) {
+            if ($row['student_level'] === 'both') {
+                $queueLevels = ['shs', 'college'];
+                break;
+            }
+            if (in_array($row['student_level'], ['shs', 'college'], true)) {
+                $queueLevels[] = $row['student_level'];
+            }
+        }
+        $levelStmt->close();
+        $queueLevels = array_values(array_unique($queueLevels));
+    } else {
+        $queueLevels = ['shs', 'college']; // no window assigned: matches the API, which doesn't filter
     }
 }
 
@@ -138,7 +152,7 @@ while ($officeRow = $transferResult->fetch_assoc()) {
                         <span class="office-badge" style="background:rgba(26,111,170,0.08);color:#1a6faa;border-color:rgba(26,111,170,0.2);">
                             <i class="fas fa-layer-group"></i> Service-Based
                         </span>
-                    <?php elseif ($queueMode === 'level-based'): ?>
+                    <?php elseif ($queueMode === 'level-based' && count($queueLevels) > 1): ?>
                         <span class="office-badge" style="background:rgba(126,87,194,0.08);color:#7e57c2;border-color:rgba(126,87,194,0.2);">
                             <i class="fas fa-graduation-cap"></i> Level-Based
                         </span>
@@ -293,9 +307,12 @@ while ($officeRow = $transferResult->fetch_assoc()) {
                                                 <option value="<?= $tt['id']; ?>"><?= htmlspecialchars($tt['name']); ?></option>
                                             <?php endforeach; ?>
                                         </select>
-                                    <?php elseif ($queueMode === 'level-based'): ?>
-                                        <select id="typeFilter" class="queue-type-filter" onchange="applyTypeFilter()">
-                                            <option value="">All Levels</option>
+                                    <?php elseif ($queueMode === 'level-based' && !empty($queueLevels)): ?>
+                                        <select id="typeFilter" class="queue-type-filter" onchange="applyTypeFilter()"
+                                            <?= count($queueLevels) === 1 ? 'disabled title="Your window only serves this level"' : ''; ?>>
+                                            <?php if (count($queueLevels) > 1): ?>
+                                                <option value="">All Levels</option>
+                                            <?php endif; ?>
                                             <?php foreach ($queueLevels as $level): ?>
                                                 <option value="<?= htmlspecialchars($level); ?>"><?= $level === 'shs' ? 'SHS' : 'College'; ?></option>
                                             <?php endforeach; ?>
