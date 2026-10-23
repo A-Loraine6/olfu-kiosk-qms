@@ -10,17 +10,6 @@ document.addEventListener(
 	document.addEventListener(evt, (e) => e.preventDefault()),
 );
 
-let lastTouchEnd = 0;
-document.addEventListener(
-	"touchend",
-	(e) => {
-		const now = Date.now();
-		if (now - lastTouchEnd <= 300) e.preventDefault();
-		lastTouchEnd = now;
-	},
-	{ passive: false },
-);
-
 document.addEventListener(
 	"wheel",
 	(e) => {
@@ -58,6 +47,353 @@ function formatMinutes(mins) {
 	const h = Math.floor(mins / 60);
 	const m = mins % 60;
 	return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+let nameKeyboardUppercase = true;
+let nameKeyboardCloseTimeout = null;
+let backspaceRepeatTimeout = null;
+let backspaceRepeatInterval = null;
+let backspacePointerActivation = false;
+
+function buildNameKeyboard() {
+	const rows = [
+		["keyboardRow1", "qwertyuiop"],
+		["keyboardRow2", "asdfghjkl"],
+		["keyboardRow3", "zxcvbnm"],
+	];
+
+	rows.forEach(([rowId, letters]) => {
+		const row = document.getElementById(rowId);
+		if (rowId === "keyboardRow3") {
+			row.appendChild(
+				createNameKeyboardKey(
+					"shift",
+					"Shift",
+					"keyboard-key-shift",
+					"fas fa-arrow-up",
+				),
+			);
+		}
+		[...letters].forEach((letter) => row.appendChild(createNameKeyboardKey(letter, letter)));
+		if (rowId === "keyboardRow3") {
+			row.appendChild(
+				createNameKeyboardKey(
+					"backspace",
+					"Backspace",
+					"keyboard-key-backspace",
+					"fas fa-delete-left",
+				),
+			);
+		}
+	});
+
+	const keyboard = document.getElementById("nameKeyboard");
+	keyboard.addEventListener("click", (event) => {
+		if (suppressKeyClick) {
+			suppressKeyClick = false;
+			return;
+		}
+		const key = event.target.closest("[data-key]");
+		if (!key) return;
+		if (key.dataset.key === "backspace") {
+			if (backspacePointerActivation) backspacePointerActivation = false;
+			else deleteNameCharacter();
+			return;
+		}
+		handleNameKeyboardKey(key.dataset.key);
+	});
+
+	const backspaceKey = keyboard.querySelector('[data-key="backspace"]');
+	backspaceKey.addEventListener("pointerdown", () => {
+		backspacePointerActivation = true;
+		deleteNameCharacter();
+		backspaceRepeatTimeout = setTimeout(() => {
+			backspaceRepeatInterval = setInterval(deleteNameCharacter, 80);
+		}, 400);
+	});
+	backspaceKey.addEventListener("pointerup", () => {
+		stopBackspaceRepeat();
+		setTimeout(() => { backspacePointerActivation = false; }, 250);
+	});
+	backspaceKey.addEventListener("pointerleave", () => {
+		stopBackspaceRepeat();
+		backspacePointerActivation = false;
+	});
+	backspaceKey.addEventListener("pointercancel", () => {
+		stopBackspaceRepeat();
+		backspacePointerActivation = false;
+	});
+
+	setupKeyPreviewAndLongPress(keyboard);
+	document.getElementById("visitorName").addEventListener("click", showNameKeyboard);
+	updateClearKey();
+	updateNameCaret();
+}
+
+// ---- Phone-style key preview bubble + long-press n for ñ ----
+let suppressKeyClick = false;
+let longPressTimer = null;
+let longPressFired = false;
+let pressedLetterKey = null;
+const LONG_PRESS_MS = 450;
+
+function setupKeyPreviewAndLongPress(keyboard) {
+	const preview = document.createElement("div");
+	preview.className = "key-preview";
+	preview.id = "keyPreview";
+	preview.setAttribute("aria-hidden", "true");
+	keyboard.appendChild(preview);
+
+	keyboard.addEventListener("contextmenu", (e) => e.preventDefault());
+
+	keyboard.addEventListener("pointerdown", (e) => {
+		const key = e.target.closest("[data-key]");
+		if (!key || key.disabled || !/^[a-z]$/.test(key.dataset.key)) return;
+		pressedLetterKey = key;
+		longPressFired = false;
+		showKeyPreview(key, key.textContent, false);
+		clearTimeout(longPressTimer);
+		if (key.dataset.key === "n") {
+			longPressTimer = setTimeout(() => {
+				longPressFired = true;
+				showKeyPreview(key, nameKeyboardUppercase ? "Ñ" : "ñ", true);
+			}, LONG_PRESS_MS);
+		}
+	});
+
+	const finishPress = (cancelled) => {
+		clearTimeout(longPressTimer);
+		longPressTimer = null;
+		if (pressedLetterKey && longPressFired && !cancelled) {
+			suppressKeyClick = true;
+			setTimeout(() => { suppressKeyClick = false; }, 300);
+			handleNameKeyboardKey("enye");
+		}
+		longPressFired = false;
+		pressedLetterKey = null;
+		hideKeyPreview();
+	};
+	document.addEventListener("pointerup", () => finishPress(false));
+	document.addEventListener("pointercancel", () => finishPress(true));
+}
+
+function showKeyPreview(keyEl, text, isAlt) {
+	const keyboard = document.getElementById("nameKeyboard");
+	const preview = document.getElementById("keyPreview");
+	if (!preview) return;
+	const kb = keyboard.getBoundingClientRect();
+	const k = keyEl.getBoundingClientRect();
+	const width = k.width + 18;
+	preview.textContent = text;
+	preview.classList.toggle("is-alt", !!isAlt);
+	preview.style.width = `${width}px`;
+	preview.style.left = `${k.left - kb.left - 9}px`;
+	preview.style.top = `${k.top - kb.top - 76}px`;
+	preview.classList.add("show");
+}
+
+function hideKeyPreview() {
+	const preview = document.getElementById("keyPreview");
+	if (preview) preview.classList.remove("show");
+}
+
+function createNameKeyboardKey(value, label, extraClass = "", iconClass = "") {
+	const key = document.createElement("button");
+	key.type = "button";
+	key.className = `keyboard-key ${extraClass}`.trim();
+	key.dataset.key = value;
+	if (iconClass) {
+		key.setAttribute("aria-label", label);
+		const icon = document.createElement("i");
+		icon.className = iconClass;
+		icon.setAttribute("aria-hidden", "true");
+		key.appendChild(icon);
+	} else {
+		key.textContent = label;
+	}
+	return key;
+}
+
+function showNameKeyboard() {
+	const keyboard = document.getElementById("nameKeyboard");
+	if (!keyboard.hidden && keyboard.classList.contains("is-opening")) return;
+	clearTimeout(nameKeyboardCloseTimeout);
+	nameKeyboardCloseTimeout = null;
+	keyboard.hidden = false;
+	keyboard.classList.remove("is-closing");
+	const screen = document.getElementById("screen3");
+	screen.classList.remove("keyboard-closing");
+	screen.classList.add("keyboard-open");
+	screen.querySelector(".screen-body").scrollTop = 0;
+	const input = document.getElementById("visitorName");
+	input.classList.add("is-active");
+	input.classList.remove("name-saved");
+	updateNameKeyboardCase();
+	updateNameCaret();
+	void keyboard.offsetWidth;
+	keyboard.classList.add("is-opening");
+	resetIdle();
+}
+
+function hideNameKeyboard({ immediate = false, clearName = false } = {}) {
+	const keyboard = document.getElementById("nameKeyboard");
+	const input = document.getElementById("visitorName");
+	if (clearName) {
+		input.value = "";
+		updateNameCaret();
+		updateClearKey();
+		nameKeyboardUppercase = true;
+		updateNameKeyboardCase();
+	}
+	if (keyboard.hidden) {
+		input.classList.remove("is-active");
+		document.getElementById("screen3").classList.remove("keyboard-open", "keyboard-closing");
+		return;
+	}
+	if (keyboard.classList.contains("is-closing")) return;
+
+	clearTimeout(nameKeyboardCloseTimeout);
+	stopBackspaceRepeat();
+	if (immediate || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+		keyboard.hidden = true;
+		keyboard.classList.remove("is-opening", "is-closing");
+		document.getElementById("screen3").classList.remove("keyboard-open", "keyboard-closing");
+		input.classList.remove("is-active");
+		return;
+	}
+
+	keyboard.classList.remove("is-opening");
+	keyboard.classList.add("is-closing");
+	const screen = document.getElementById("screen3");
+	screen.classList.remove("keyboard-open");
+	screen.classList.add("keyboard-closing");
+	// Keep this timeout in sync with the 220ms .is-closing transition in index.css.
+	nameKeyboardCloseTimeout = setTimeout(() => {
+		keyboard.hidden = true;
+		keyboard.classList.remove("is-closing");
+		input.classList.remove("is-active");
+		screen.classList.remove("keyboard-closing");
+		if (input.value.trim()) {
+			input.classList.remove("name-saved");
+			void input.offsetWidth;
+			input.classList.add("name-saved");
+		}
+		nameKeyboardCloseTimeout = null;
+	}, 220);
+}
+
+function updateNameKeyboardCase() {
+	document.querySelectorAll("#nameKeyboard [data-key]").forEach((key) => {
+		if (/^[a-z]$/.test(key.dataset.key)) {
+			key.textContent = nameKeyboardUppercase
+				? key.dataset.key.toUpperCase()
+				: key.dataset.key;
+		}
+		if (key.dataset.key === "shift") {
+			key.classList.toggle("is-active", nameKeyboardUppercase);
+			key.setAttribute("aria-pressed", String(nameKeyboardUppercase));
+		}
+	});
+}
+
+function handleNameKeyboardKey(key) {
+	const input = document.getElementById("visitorName");
+	let insertedCharacter = "";
+	if (/^[a-z]$/.test(key)) {
+		insertedCharacter = nameKeyboardUppercase ? key.toUpperCase() : key;
+	} else if (key === "enye") {
+		insertedCharacter = nameKeyboardUppercase ? "Ñ" : "ñ";
+	} else if (key === "period") {
+		insertedCharacter = ".";
+	} else if (key === "comma") {
+		insertedCharacter = ",";
+	} else if (key === "apostrophe") {
+		insertedCharacter = "'";
+	} else if (key === "hyphen") {
+		insertedCharacter = "-";
+	}
+
+	if (insertedCharacter) {
+		appendNameCharacter(insertedCharacter);
+		nameKeyboardUppercase = false;
+		updateNameKeyboardCase();
+	} else {
+		switch (key) {
+			case "space":
+				if (input.value.length < input.maxLength && input.value && !/\s$/.test(input.value)) {
+					appendNameCharacter(" ");
+					nameKeyboardUppercase = true;
+					updateNameKeyboardCase();
+				}
+				break;
+			case "backspace":
+				deleteNameCharacter();
+				break;
+			case "clear":
+				input.value = "";
+				nameKeyboardUppercase = true;
+				updateNameKeyboardCase();
+				updateNameCaret();
+				updateClearKey();
+				break;
+			case "shift":
+				nameKeyboardUppercase = !nameKeyboardUppercase;
+				updateNameKeyboardCase();
+				break;
+			case "done":
+				hideNameKeyboard();
+				break;
+		}
+	}
+
+	resetIdle();
+}
+
+function appendNameCharacter(character) {
+	const input = document.getElementById("visitorName");
+	if (input.value.length >= input.maxLength) return;
+	input.value += character;
+	updateNameCaret();
+	updateClearKey();
+}
+
+function deleteNameCharacter() {
+	const input = document.getElementById("visitorName");
+	if (input.value) input.value = Array.from(input.value).slice(0, -1).join("");
+	nameKeyboardUppercase = input.value === "" || /[.]\s*$/.test(input.value) || /\s$/.test(input.value);
+	updateNameKeyboardCase();
+	updateNameCaret();
+	updateClearKey();
+	resetIdle();
+}
+
+function stopBackspaceRepeat() {
+	clearTimeout(backspaceRepeatTimeout);
+	clearInterval(backspaceRepeatInterval);
+	backspaceRepeatTimeout = null;
+	backspaceRepeatInterval = null;
+}
+
+function updateClearKey() {
+	const clearKey = document.querySelector('#nameKeyboard [data-key="clear"]');
+	if (clearKey) clearKey.disabled = document.getElementById("visitorName").value.length === 0;
+}
+
+function updateNameCaret() {
+	const input = document.getElementById("visitorName");
+	const caret = document.getElementById("visitorNameCaret");
+	if (!input || !caret) return;
+	const canvas = updateNameCaret.canvas || (updateNameCaret.canvas = document.createElement("canvas"));
+	const context = canvas.getContext("2d");
+	if (!context) return;
+	context.font = getComputedStyle(input).font;
+	const textWidth = context.measureText(input.value).width;
+	const leftPadding = parseFloat(getComputedStyle(input).paddingLeft) || 0;
+	caret.style.left = `${Math.min(leftPadding + textWidth, input.clientWidth - 12)}px`;
+}
+
+function nameKeyboardIsOpen() {
+	return !document.getElementById("nameKeyboard").hidden;
 }
 
 function selectPriority(isPriority) {
@@ -538,6 +874,7 @@ function renderWaitEstimate(o, targetElId, apiData) {
 }
 
 function confirmQueue() {
+	hideNameKeyboard({ immediate: true });
 	const btn = document.getElementById("confirmBtn");
 	btn.disabled = true;
 	btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
@@ -549,7 +886,7 @@ function confirmQueue() {
 	fetch("api/issue_ticket.php", {
 		method: "POST",
 		headers: { "Content-Type": "application/x-www-form-urlencoded" },
-		body: `office_id=${o.id}&service_name=${encodeURIComponent(s ? s.name : "")}&student_level=${encodeURIComponent(studentLevel || "")}&is_priority=${state.isPriority ? 1 : 0}&csrf_token=${encodeURIComponent(CSRF_TOKEN)}`,
+		body: `office_id=${o.id}&service_name=${encodeURIComponent(s ? s.name : "")}&is_priority=${state.isPriority ? 1 : 0}&visitor_name=${encodeURIComponent(document.getElementById("visitorName").value.trim())}&csrf_token=${encodeURIComponent(CSRF_TOKEN)}`,
 	})
 		.then((r) => r.json())
 		.then((data) => {
@@ -680,10 +1017,15 @@ function showTicket(data) {
 	document.getElementById("s4OfficeName").textContent = o.name;
 	document.getElementById("s4ServiceName").textContent = s
 		? s.name
-		: o.mode === "level-based"
-			? (studentLevel === "shs" ? "SHS" : "College")
-			: "General Queue";
-	renderWindowBadge("s4WindowLabel", null);
+		: "General Queue";
+	const visitorNameEl = document.getElementById("s4VisitorName");
+	const visitorName = (data.visitor_name || "").trim();
+	visitorNameEl.textContent = visitorName ? `For: ${visitorName}` : "";
+	visitorNameEl.style.display = visitorName ? "" : "none";
+	renderWindowBadge(
+		"s4WindowLabel",
+		data.window_number ?? data.window_id ?? null,
+	);
 	document.getElementById("s4TicketNumber").textContent = data.ticket_number;
 	updatePriorityPills();
 
@@ -772,6 +1114,18 @@ function resetKiosk() {
 	location.reload();
 }
 
+function backToStep1() {
+	clearInterval(cdTimer);
+	hideNameKeyboard({ immediate: true });
+	state.office = null;
+	state.service = null;
+	state.isPriority = false;
+	state.history = [0];
+	document.getElementById("visitorName").value = "";
+	updatePriorityPills();
+	showScreen(0);
+}
+
 let idleTimer = null,
 	s4Timer = null;
 const IDLE_MS =
@@ -787,8 +1141,11 @@ function resetIdle() {
 		s4Timer = setTimeout(() => resetKiosk(), S4_IDLE_MS);
 	} else {
 		idleTimer = setTimeout(() => {
+			if (state.screen === 3) {
+				hideNameKeyboard({ clearName: true });
+			}
 			document.getElementById("idleOverlay").classList.add("show");
-		}, IDLE_MS);
+		}, nameKeyboardIsOpen() ? IDLE_MS * 2 : IDLE_MS);
 	}
 }
 
@@ -843,7 +1200,5 @@ function checkAndPrepareConfirm() {
 
 
 renderOffices();
-setInterval(() => {
-	if (state.screen === 1) renderOffices();
-}, 30000);
+buildNameKeyboard();
 resetIdle();

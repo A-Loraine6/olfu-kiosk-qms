@@ -29,23 +29,32 @@ if (!verifyCsrfToken(requestString($_POST, 'csrf_token', 255, true) ?? '')) {
 $office_id    = requestInt($_POST, 'office_id');
 $serviceInput = requestString($_POST, 'service_name', 100);
 $service_name = $serviceInput === '' ? '' : ($serviceInput === null ? null : validServiceName($serviceInput, 100));
-$studentLevelInput = requestString($_POST, 'student_level', 20);
-$student_level = ($studentLevelInput === null || $studentLevelInput === '')
+$visitorNameInput = requestString($_POST, 'visitor_name', 100);
+$visitor_name = $visitorNameInput === '' || $visitorNameInput === null
     ? null
-    : requestEnum(['student_level' => $studentLevelInput], 'student_level', ['shs', 'college']);
+    : preg_replace('/[\s\p{Z}]+/u', ' ', trim($visitorNameInput));
+if ($visitor_name !== null) {
+    $visitor_name = trim($visitor_name);
+}
 $is_priority  = requestBool($_POST, 'is_priority', false);
 
-if ($office_id === null || $service_name === null || $is_priority === null
-    || ($studentLevelInput !== null && $studentLevelInput !== '' && $student_level === null)) {
+if (
+    $office_id === null
+    || $service_name === null
+    || $visitorNameInput === null
+    || ($visitorNameInput !== '' && preg_match("~^[\\p{L}\\s'.,-]*$~u", $visitorNameInput) !== 1)
+    || ($visitorNameInput !== '' && $visitor_name === null)
+    || $is_priority === null
+) {
     ob_end_clean();
     http_response_code(400);
-    echo json_encode(['success' => false, 'code' => 'missing_office', 'message' => 'Office ID is required']);
+    echo json_encode(['success' => false, 'code' => 'invalid_request', 'message' => 'Please check the ticket details and try again.']);
     exit;
 }
 
 try {
     $generator = new TicketGenerator($db);
-    $result    = $generator->issueTicket($office_id, $service_name, $is_priority, $student_level);
+    $result    = $generator->issueTicket($office_id, $service_name, $is_priority, $visitor_name);
 
     ob_end_clean();
     echo json_encode($result);

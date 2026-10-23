@@ -793,8 +793,9 @@ function renderServingCard(ticket, showNew = false) {
     }
   }
 
-  if (ticket.student_id) {
-    studentEl.innerHTML = `<i class="fas fa-user"></i> ${escHtml(ticket.student_id)}`;
+  const visitorName = ticket.visitor_name || ticket.student_id;
+  if (visitorName) {
+    studentEl.innerHTML = `<i class="fas fa-user"></i> ${escHtml(visitorName)}`;
     studentEl.style.display = "";
   } else {
     studentEl.style.display = "none";
@@ -903,8 +904,9 @@ function renderTicketRow(t, index) {
       ? ""
       : `<span class="ticket-pos${isFirst ? " pos-first" : ""}">${index + 1}</span>`;
 
-  const studentHtml = t.student_id
-    ? `<div class="ticket-student">${escHtml(t.student_id)}</div>`
+  const visitorName = t.visitor_name || t.student_id;
+  const studentHtml = visitorName
+    ? `<div class="ticket-student"><i class="fas fa-user"></i> ${escHtml(visitorName)}</div>`
     : "";
 
   const typeHtml = t.transaction_type
