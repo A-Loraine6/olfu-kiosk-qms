@@ -10,12 +10,11 @@ if (!isLoggedIn()) {
 }
 
 $currentUser = getCurrentUser();
-if (strtolower(trim((string) ($currentUser['role'] ?? ''))) !== 'staff') {
-    header('Location: ' . BASE_URL . 'dashboard.php');
-    exit;
-}
-
-if (!hasPermission('manage_queue') && !hasPermission('view_queue')) {
+if (
+    strtolower(trim((string) ($currentUser['role'] ?? ''))) !== 'staff'
+    && !hasPermission('manage_queue')
+    && !hasPermission('view_queue')
+) {
     header('Location: ' . BASE_URL . 'dashboard.php');
     exit;
 }
@@ -32,6 +31,7 @@ $staffWindowNumber = (int) ($currentUser['window_number'] ?? 0);
 $csrf_token      = getCsrfToken();
 
 $transactionTypes = [];
+$queueLevels = ['shs', 'college'];
 if ($queueMode === 'service-based') {
     error_log("Staff ID: {$currentUser['id']}, Window: $staffWindowNumber");
 
@@ -39,9 +39,18 @@ if ($queueMode === 'service-based') {
         $stmt = $db->prepare("
             SELECT tt.id, tt.name, tt.category
             FROM transaction_types tt
-            INNER JOIN service_windows sw ON sw.service_id = tt.id
             WHERE tt.office_id = ? AND tt.is_active = 1 AND tt.is_deleted = 0
-            AND sw.window_number = ?
+            AND (
+                NOT EXISTS (
+                    SELECT 1 FROM service_windows sw
+                    WHERE sw.service_id = tt.id AND sw.office_id = tt.office_id
+                )
+                OR EXISTS (
+                    SELECT 1 FROM service_windows sw
+                    WHERE sw.service_id = tt.id AND sw.office_id = tt.office_id
+                      AND sw.window_number = ?
+                )
+            )
             ORDER BY tt.name ASC
         ");
         $stmt->bind_param('ii', $staffOfficeId, $staffWindowNumber);
@@ -57,6 +66,24 @@ if ($queueMode === 'service-based') {
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) $transactionTypes[] = $row;
+} elseif ($queueMode === 'level-based' && $staffWindowNumber > 0) {
+    $levelStmt = $db->prepare("
+        SELECT student_level
+        FROM window_levels
+        WHERE office_id = ? AND window_number = ?
+        LIMIT 1
+    ");
+    $levelStmt->bind_param('ii', $staffOfficeId, $staffWindowNumber);
+    $levelStmt->execute();
+    $windowLevel = $levelStmt->get_result()->fetch_assoc()['student_level'] ?? null;
+    $levelStmt->close();
+    if ($windowLevel === 'shs') {
+        $queueLevels = ['shs'];
+    } elseif ($windowLevel === 'college') {
+        $queueLevels = ['college'];
+    } elseif ($windowLevel !== 'both') {
+        $queueLevels = [];
+    }
 }
 
 $transferOffices = [];
@@ -96,8 +123,13 @@ while ($officeRow = $transferResult->fetch_assoc()) {
                 <div class="header-left">
                     <h2 class="header-page-title">
                         <i class="fas fa-ticket-alt"></i>
-                        Queue Management
+                        <?php echo $canManageQueue ? 'Queue Management' : 'Queue Overview'; ?>
                     </h2>
+                    <?php if (!$canManageQueue): ?>
+                        <span class="office-badge" style="background:rgba(26,111,170,0.08);color:#1a6faa;border-color:rgba(26,111,170,0.2);">
+                            <i class="fas fa-eye"></i> View only
+                        </span>
+                    <?php endif; ?>
                     <span class="office-badge">
                         <i class="fas fa-building"></i>
                         <?php echo htmlspecialchars($officeName); ?>
@@ -105,6 +137,10 @@ while ($officeRow = $transferResult->fetch_assoc()) {
                     <?php if ($queueMode === 'service-based'): ?>
                         <span class="office-badge" style="background:rgba(26,111,170,0.08);color:#1a6faa;border-color:rgba(26,111,170,0.2);">
                             <i class="fas fa-layer-group"></i> Service-Based
+                        </span>
+                    <?php elseif ($queueMode === 'level-based'): ?>
+                        <span class="office-badge" style="background:rgba(126,87,194,0.08);color:#7e57c2;border-color:rgba(126,87,194,0.2);">
+                            <i class="fas fa-graduation-cap"></i> Level-Based
                         </span>
                     <?php else: ?>
                         <span class="office-badge" style="background:rgba(42,157,92,0.08);color:#2a9d5c;border-color:rgba(42,157,92,0.2);">
@@ -121,10 +157,11 @@ while ($officeRow = $transferResult->fetch_assoc()) {
             </header>
 
             <main class="dashboard-main">
-                <div class="dashboard-content queue-layout">
+                <div class="dashboard-content queue-layout<?php echo $canManageQueue ? '' : ' queue-layout-readonly'; ?>">
 
                     <div class="queue-col-main">
 
+                        <?php if ($canManageQueue): ?>
                         <div class="serving-card" id="servingCard">
                             <div class="serving-card-bg"></div>
                             <div class="serving-card-content">
@@ -142,9 +179,11 @@ while ($officeRow = $transferResult->fetch_assoc()) {
                                         <div class="refresh-ring-icon"><i class="fas fa-sync-alt"></i></div>
                                     </div>
                                 </div>
-
                                 <div class="serving-ticket-wrap">
-                                    <div class="serving-ticket is-idle" id="servingTicket">No ticket</div>
+                                    <div class="serving-ticket-level-wrap">
+                                        <div class="serving-ticket is-idle" id="servingTicket">No ticket</div>
+                                        <span class="ticket-level-badge" id="servingLevelBadge" style="display:none;"></span>
+                                    </div>
                                     <span class="new-badge" id="newBadge" style="display:none;">NEW</span>
                                 </div>
 
@@ -178,7 +217,8 @@ while ($officeRow = $transferResult->fetch_assoc()) {
                                 <?php endif; ?>
                             </div>
                         </div>
-                        <?php if ($queueMode === 'service-based'): ?>
+                        <?php endif; ?>
+                        <?php if ($queueMode === 'service-based' && $canManageQueue): ?>
                             <div class="overflow-toggle-row" id="overflowRow">
                                 <div class="overflow-toggle-info">
                                     <span class="overflow-toggle-label">
@@ -251,6 +291,13 @@ while ($officeRow = $transferResult->fetch_assoc()) {
                                             <option value="">All Services</option>
                                             <?php foreach ($transactionTypes as $tt): ?>
                                                 <option value="<?= $tt['id']; ?>"><?= htmlspecialchars($tt['name']); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    <?php elseif ($queueMode === 'level-based'): ?>
+                                        <select id="typeFilter" class="queue-type-filter" onchange="applyTypeFilter()">
+                                            <option value="">All Levels</option>
+                                            <?php foreach ($queueLevels as $level): ?>
+                                                <option value="<?= htmlspecialchars($level); ?>"><?= $level === 'shs' ? 'SHS' : 'College'; ?></option>
                                             <?php endforeach; ?>
                                         </select>
                                     <?php endif; ?>
@@ -372,11 +419,20 @@ while ($officeRow = $transferResult->fetch_assoc()) {
                     </select>
                 </div>
 
+                <div class="form-group" id="transferLevelGroup" style="display:none;">
+                    <label for="transferLevelSelect"><i class="fas fa-graduation-cap"></i> Student level at destination</label>
+                    <select id="transferLevelSelect">
+                        <option value="">Select level</option>
+                        <option value="shs">SHS</option>
+                        <option value="college">College</option>
+                    </select>
+                </div>
+
                 <div class="form-group">
                     <label for="transferModeSelect"><i class="fas fa-list-ol"></i> Queue placement</label>
                     <select id="transferModeSelect">
                         <option value="top">Move to top of target queue</option>
-                        <option value="end">Add to end of target queue</option>
+                        <option value="bottom">Add to end of target queue</option>
                     </select>
                 </div>
             </div>

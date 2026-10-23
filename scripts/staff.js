@@ -239,7 +239,9 @@ async function fetchFilteredRows() {
   const data = await ajax({
     action: "get_staff_list",
     search: document.getElementById("searchInput").value,
-    office: document.getElementById("filterOffice").value,
+    office: IS_DEPARTMENT_HEAD
+      ? ""
+      : document.getElementById("filterOffice").value,
     status: document.getElementById("filterStatus").value,
     role:   document.getElementById("filterRole").value,
     page: currentPage,
@@ -343,14 +345,17 @@ async function openEditStaffModal(staffId) {
     document.getElementById("edit_staff_id").value = s.id;
     document.getElementById("edit_full_name").value = s.full_name;
     document.getElementById("edit_email").value = s.email;
-    document.getElementById("edit_office").value = s.office ?? "";
-    document.getElementById("edit_role").value = s.role_id ?? "";
+    if (!IS_DEPARTMENT_HEAD) {
+      document.getElementById("edit_office").value = s.office ?? "";
+      document.getElementById("edit_role").value = s.role_id ?? "";
+    }
 
     await loadWindowOptions(
-      "edit_office",
+      IS_DEPARTMENT_HEAD ? null : "edit_office",
       "edit_window",
       "edit_window_group",
       s.id,
+      IS_DEPARTMENT_HEAD ? STAFF_OFFICE_NAME : null,
     );
     if (s.window_number)
       document.getElementById("edit_window").value = s.window_number;
@@ -395,6 +400,13 @@ function openDeleteModal(staffId) {
 }
 
 async function submitAddStaff() {
+  const fullNameInput = document.getElementById("add_full_name");
+  fullNameInput.value = fullNameInput.value.trim();
+  if (!fullNameInput.checkValidity()) {
+    showToast("Full name must be 3 to 100 characters and use only letters, spaces, periods, hyphens, or apostrophes.", "error");
+    return;
+  }
+
   setBtnLoading("addStaffBtn", true, '<i class="fas fa-plus"></i> Add Staff');
   const data = await ajax({
     action: "add_staff",
@@ -425,20 +437,30 @@ async function submitAddStaff() {
 }
 
 async function submitEditStaff() {
+  const fullNameInput = document.getElementById("edit_full_name");
+  fullNameInput.value = fullNameInput.value.trim();
+  if (!fullNameInput.checkValidity()) {
+    showToast("Full name must be 3 to 100 characters and use only letters, spaces, periods, hyphens, or apostrophes.", "error");
+    return;
+  }
+
   setBtnLoading(
     "editStaffBtn",
     true,
     '<i class="fas fa-save"></i> Save Changes',
   );
-  const data = await ajax({
+  const editData = {
     action: "edit_staff",
     staff_id: document.getElementById("edit_staff_id").value,
     full_name: document.getElementById("edit_full_name").value,
     email: document.getElementById("edit_email").value,
-    office: document.getElementById("edit_office").value,
     window_number: document.getElementById("edit_window").value,
-    role_id: document.getElementById("edit_role").value,
-  });
+  };
+  if (!IS_DEPARTMENT_HEAD) {
+    editData.office = document.getElementById("edit_office").value;
+    editData.role_id = document.getElementById("edit_role").value;
+  }
+  const data = await ajax(editData);
   setBtnLoading(
     "editStaffBtn",
     false,
@@ -528,8 +550,11 @@ async function loadWindowOptions(
   windowSelectId,
   groupId,
   staffId = null,
+  officeOverride = null,
 ) {
-  const officeVal = document.getElementById(officeSelectId).value;
+  const officeVal =
+    officeOverride ??
+    (officeSelectId ? document.getElementById(officeSelectId)?.value : "");
   const windowSel = document.getElementById(windowSelectId);
   const group = document.getElementById(groupId);
 

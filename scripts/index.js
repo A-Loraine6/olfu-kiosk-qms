@@ -28,6 +28,7 @@ let state = {
 	screen: 0,
 	office: null,
 	service: null,
+	studentLevel: null,
 	history: [0],
 	isPriority: false,
 };
@@ -557,7 +558,10 @@ setInterval(updateClocks, 1000);
 
 function getTotalSteps() {
 	const o = state.office;
-	return o && o.mode === "service-based" && o.services && o.services.length
+	return o && (
+		o.mode === "level-based" ||
+		(o.mode === "service-based" && o.services && o.services.length)
+	)
 		? 4
 		: 3;
 }
@@ -603,14 +607,20 @@ const ICONS = {
 	ADM: "fa-user-graduate",
 };
 
-function isOfficeClosed(office) {
-	const now = new Date();
-	const [closeH, closeM] = office.close_time.split(":").map(Number);
-	const [openH, openM] = office.open_time.split(":").map(Number);
-	const closeMinutes = closeH * 60 + closeM;
-	const openMinutes = openH * 60 + openM;
-	const nowMinutes = now.getHours() * 60 + now.getMinutes();
-	return nowMinutes < openMinutes || nowMinutes >= closeMinutes;
+function isOfficeClosed(office, now = getManilaTime()) {
+	const openTime = office.open_time.slice(0, 5);
+	const closeTime = office.close_time.slice(0, 5);
+	const cutoffPassed = office.queue_cutoff && now >= office.queue_cutoff.slice(0, 5);
+	return now < openTime || now >= closeTime || cutoffPassed;
+}
+
+function getManilaTime() {
+	return new Date().toLocaleTimeString("en-PH", {
+		hour: "2-digit",
+		minute: "2-digit",
+		hour12: false,
+		timeZone: "Asia/Manila",
+	});
 }
 
 function formatTime12(hhmm) {
@@ -622,15 +632,9 @@ function formatTime12(hhmm) {
 }
 
 function isOfficeAcceptingQueue(office) {
-	const now = new Date();
-	const hhmm = now.toLocaleTimeString("en-PH", {
-		hour: "2-digit",
-		minute: "2-digit",
-		hour12: false,
-		timeZone: "Asia/Manila",
-	});
+	const hhmm = getManilaTime();
 
-	if (office.queue_cutoff && hhmm >= office.queue_cutoff) {
+	if (office.queue_cutoff && hhmm >= office.queue_cutoff.slice(0, 5)) {
 		return {
 			ok: false,
 			code: "cutoff",
@@ -643,14 +647,8 @@ function isOfficeAcceptingQueue(office) {
 
 function getBreakInfo(office) {
 	if (!office.break_start || !office.break_end) return { onBreak: false };
-	const now = new Date();
-	const hhmm = now.toLocaleTimeString("en-PH", {
-		hour: "2-digit",
-		minute: "2-digit",
-		hour12: false,
-		timeZone: "Asia/Manila",
-	});
-	if (hhmm >= office.break_start && hhmm < office.break_end) {
+	const hhmm = getManilaTime();
+	if (hhmm >= office.break_start.slice(0, 5) && hhmm < office.break_end.slice(0, 5)) {
 		return { onBreak: true, breakEnd: office.break_end };
 	}
 	return { onBreak: false };
@@ -672,14 +670,18 @@ function renderOffices() {
 	OFFICES.forEach((o) => {
 		const w = o.waiting;
 		const icon = ICONS[o.code] || "fa-building";
-		const closed = isOfficeClosed(o);
+		const now = getManilaTime();
+		const closed = isOfficeClosed(o, now);
 		const breakInfo = getBreakInfo(o);
+		const cutoffPassed = o.queue_cutoff && now >= o.queue_cutoff.slice(0, 5);
 		const btn = document.createElement("button");
 		btn.className = "office-card" + (closed ? " office-closed" : "");
 		btn.disabled = closed;
 
 		let badgeHtml;
-		if (closed) {
+		if (cutoffPassed) {
+			badgeHtml = '<i class="fas fa-clock" style="font-size:10px"></i> Cut-off passed';
+		} else if (closed) {
 			badgeHtml = '<i class="fas fa-lock" style="font-size:10px"></i> Closed';
 		} else if (breakInfo.onBreak) {
 			badgeHtml = `<i class="fas fa-coffee" style="font-size:10px"></i> On break until ${formatTime12(breakInfo.breakEnd)}`;
@@ -704,6 +706,7 @@ function renderOffices() {
 function selectOffice(o) {
 	state.office = o;
 	state.service = null;
+	state.studentLevel = null;
 	state.history = [0, 1];
 
 	const check = isOfficeAcceptingQueue(o);
@@ -714,7 +717,11 @@ function selectOffice(o) {
 
 	updatePriorityPills();
 
-	if (o.mode === "service-based" && o.services && o.services.length) {
+	if (o.mode === "level-based") {
+		renderLevels(o);
+		state.history.push(2);
+		showScreen(2);
+	} else if (o.mode === "service-based" && o.services && o.services.length) {
 		renderServices(o);
 		state.history.push(2);
 		showScreen(2);
@@ -737,9 +744,11 @@ function updatePriorityPills() {
 }
 
 function renderServices(o) {
+	document.getElementById("s2Title").textContent = "Select a Service";
 	document.getElementById("s2OfficeName").textContent = o.name;
 	const grid = document.getElementById("serviceGrid");
 	grid.innerHTML = "";
+	grid.classList.remove("level-grid");
 	o.services.forEach((s) => {
 		const btn = document.createElement("button");
 		btn.className = "service-card";
@@ -749,6 +758,38 @@ function renderServices(o) {
 		btn.addEventListener("click", () => selectService(s));
 		grid.appendChild(btn);
 	});
+}
+
+function renderLevels(o) {
+	document.getElementById("s2Title").textContent = "Select your student level";
+	document.getElementById("s2OfficeName").textContent = o.name;
+	const grid = document.getElementById("serviceGrid");
+	grid.innerHTML = "";
+	grid.classList.add("level-grid");
+	[
+		{ value: "shs", label: "SHS", desc: "Senior High School", icon: "fa-graduation-cap" },
+		{ value: "college", label: "College", desc: "Undergraduate / Graduate", icon: "fa-graduation-cap" },
+	].forEach((level) => {
+		const btn = document.createElement("button");
+		btn.className = "level-card";
+		btn.innerHTML = `
+			<div class="level-card-icon"><i class="fas ${level.icon}"></i></div>
+			<div class="level-card-name">${level.label}</div>
+			<div class="level-card-desc">${level.desc}</div>`;
+		btn.addEventListener("click", () => selectStudentLevel(level.value));
+		grid.appendChild(btn);
+	});
+}
+
+function selectStudentLevel(level) {
+	if (level !== "shs" && level !== "college") return;
+	const check = isOfficeAcceptingQueue(state.office);
+	if (!check.ok) {
+		showBlockedMessage(check.code, check.reason);
+		return;
+	}
+	state.studentLevel = level;
+	checkAndPrepareConfirm();
 }
 
 function selectService(s) {
@@ -764,17 +805,18 @@ function selectService(s) {
 function prepareConfirm() {
 	const o = state.office,
 		s = state.service;
+	const studentLevel = state.studentLevel;
 	document.getElementById("s3OfficeName").textContent = o.name;
-	document.getElementById("s3ServiceName").textContent = s
-		? s.name
-		: "General Queue";
+	document.getElementById("s3ServiceName").textContent = o.mode === "level-based"
+		? (studentLevel === "shs" ? "SHS" : "College")
+		: (s ? s.name : "General Queue");
 	document.getElementById("s3QueuePreview").textContent = "—";
 	updatePriorityPills();
 
 	fetch("api/preview_ticket.php", {
 		method: "POST",
 		headers: { "Content-Type": "application/x-www-form-urlencoded" },
-		body: `office_id=${o.id}&is_priority=${state.isPriority ? 1 : 0}&csrf_token=${encodeURIComponent(CSRF_TOKEN)}`,
+		body: `office_id=${o.id}&service_name=${encodeURIComponent(s ? s.name : "")}&student_level=${encodeURIComponent(studentLevel || "")}&is_priority=${state.isPriority ? 1 : 0}&csrf_token=${encodeURIComponent(CSRF_TOKEN)}`,
 	})
 		.then((r) => r.json())
 		.then((data) => {
@@ -839,6 +881,7 @@ function confirmQueue() {
 
 	const o = state.office,
 		s = state.service;
+	const studentLevel = state.studentLevel;
 
 	fetch("api/issue_ticket.php", {
 		method: "POST",
@@ -970,6 +1013,7 @@ function renderWindowBadge(elId, windowNumber) {
 function showTicket(data) {
 	const o = state.office,
 		s = state.service;
+	const studentLevel = data.student_level || state.studentLevel;
 	document.getElementById("s4OfficeName").textContent = o.name;
 	document.getElementById("s4ServiceName").textContent = s
 		? s.name
@@ -1123,11 +1167,13 @@ function esc(str) {
 
 function checkAndPrepareConfirm() {
 	const o = state.office;
+	const s = state.service;
+	const studentLevel = state.studentLevel;
 
 	fetch("api/preview_ticket.php", {
 		method: "POST",
 		headers: { "Content-Type": "application/x-www-form-urlencoded" },
-		body: `office_id=${o.id}&is_priority=${state.isPriority ? 1 : 0}&csrf_token=${encodeURIComponent(CSRF_TOKEN)}`,
+		body: `office_id=${o.id}&service_name=${encodeURIComponent(s ? s.name : "")}&student_level=${encodeURIComponent(studentLevel || "")}&is_priority=${state.isPriority ? 1 : 0}&csrf_token=${encodeURIComponent(CSRF_TOKEN)}`,
 	})
 		.then((r) => r.json())
 		.then((data) => {
@@ -1136,9 +1182,10 @@ function checkAndPrepareConfirm() {
 				showBlockedMessage(code, data.message || "Unable to proceed.");
 				return;
 			}
-			const s = state.service;
 			document.getElementById("s3OfficeName").textContent = o.name;
-			document.getElementById("s3ServiceName").textContent = s ? s.name : "General Queue";
+			document.getElementById("s3ServiceName").textContent = o.mode === "level-based"
+				? (studentLevel === "shs" ? "SHS" : "College")
+				: (s ? s.name : "General Queue");
 			document.getElementById("s3QueuePreview").textContent = data.preview_ticket;
 			updatePriorityPills();
 

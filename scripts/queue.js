@@ -9,6 +9,8 @@ let refreshCountdown = 0;
 let refreshRingInterval = null;
 let newBadgeTimeout = null;
 let transferTargetQueueMode = "unified";
+let sessionExpired = false;
+let modeReloadPending = false;
 
 const AUTO_REFRESH_MS = 15000;
 const TIMER_WARN_SECS = 300;
@@ -22,18 +24,39 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function initQueue() {
-  typeFilterId = localStorage.getItem("queueTypeFilter") || "";
+  const filterStorageKey =
+    QUEUE_MODE === "level-based" ? "queueLevelFilter" : "queueTypeFilter";
+  typeFilterId = localStorage.getItem(filterStorageKey) || "";
   const typeFilterEl = document.getElementById("typeFilter");
   if (typeFilterEl) {
+    const hasSavedOption = Array.from(typeFilterEl.options).some(
+      (option) => option.value === typeFilterId,
+    );
+    if (typeFilterId && !hasSavedOption) {
+      typeFilterId = "";
+      localStorage.setItem(filterStorageKey, "");
+    }
     typeFilterEl.value = typeFilterId;
   }
 
-  loadActiveTicket().then(() => {
-    loadOverflowState();
+  const activeTicketPromise = CAN_MANAGE_QUEUE
+    ? loadActiveTicket()
+    : Promise.resolve();
+  activeTicketPromise.then(() => {
+    if (CAN_MANAGE_QUEUE) loadOverflowState();
     loadAllTabCounts();
     loadQueue();
     loadStats();
   });
+}
+
+function addQueueFilter(params) {
+  if (!typeFilterId) return;
+  if (QUEUE_MODE === "level-based") {
+    params.level_filter = typeFilterId;
+  } else if (QUEUE_MODE === "service-based") {
+    params.type_filter = typeFilterId;
+  }
 }
 
 async function loadAllTabCounts() {
@@ -45,11 +68,11 @@ async function loadAllTabCounts() {
         office_id: OFFICE_ID,
         tab: tab,
       };
-      if (typeFilterId) params.type_filter = typeFilterId;
+      addQueueFilter(params);
 
       const res = await apiFetch("api/queue_handler.php", params);
       if (res.success) {
-        const count = res.tickets?.length ?? 0;
+        const count = res.tab_count ?? res.tickets?.length ?? 0;
         updateTabCount(tab, count);
       }
     });
@@ -188,6 +211,7 @@ function switchQueueTabByShortcut(tab) {
 }
 
 function startRefreshCountdown() {
+  if (sessionExpired) return;
   clearInterval(refreshRingInterval);
   clearTimeout(autoRefreshTimer);
 
@@ -262,15 +286,20 @@ async function loadQueue() {
       office_id: OFFICE_ID,
       tab: currentTab,
     };
-    if (typeFilterId) params.type_filter = typeFilterId;
+    addQueueFilter(params);
 
     const res = await apiFetch("api/queue_handler.php", params);
     showQueueLoading(false);
 
     if (res.success) {
+      if (res.queue_mode && res.queue_mode !== QUEUE_MODE && !modeReloadPending) {
+        modeReloadPending = true;
+        window.location.reload();
+        return;
+      }
       renderQueueList(res.tickets || []);
 
-      const count = res.tickets?.length ?? 0;
+      const count = res.tab_count ?? res.tickets?.length ?? 0;
       const badge = document.getElementById("queueCountBadge");
       if (badge) {
         badge.textContent = count;
@@ -294,6 +323,9 @@ async function loadStats() {
     const res = await apiFetch("api/queue_handler.php", {
       action: "get_stats",
       office_id: OFFICE_ID,
+      ...(QUEUE_MODE === "level-based" && typeFilterId
+        ? { level_filter: typeFilterId }
+        : {}),
     });
     if (res.success) {
       setStatVal("statServed", res.served ?? 0);
@@ -421,22 +453,28 @@ function onTransferTargetTypeChange() {
   const departmentGroup = document.getElementById("transferOfficeSelect")?.closest(".form-group");
   const windowGroup = document.getElementById("transferWindowGroup");
   const serviceGroup = document.getElementById("transferServiceGroup");
+  const levelGroup = document.getElementById("transferLevelGroup");
   const isWindowTransfer = targetType === "window";
 
   if (departmentGroup) departmentGroup.style.display = isWindowTransfer ? "none" : "";
   if (windowGroup) windowGroup.style.display = isWindowTransfer ? "" : "none";
   if (serviceGroup && isWindowTransfer) serviceGroup.style.display = "none";
+  if (levelGroup && isWindowTransfer) levelGroup.style.display = "none";
 }
 
 function resetTransferServiceField() {
   transferTargetQueueMode = "unified";
   const group = document.getElementById("transferServiceGroup");
   const serviceSelect = document.getElementById("transferServiceSelect");
+  const levelGroup = document.getElementById("transferLevelGroup");
+  const levelSelect = document.getElementById("transferLevelSelect");
   if (group) group.style.display = "none";
+  if (levelGroup) levelGroup.style.display = "none";
   if (serviceSelect) {
     serviceSelect.innerHTML = '<option value="">Select service</option>';
     serviceSelect.value = "";
   }
+  if (levelSelect) levelSelect.value = "";
 }
 
 async function onTransferOfficeChange() {
@@ -468,6 +506,9 @@ async function onTransferOfficeChange() {
           .map((s) => `<option value="${s.id}">${escHtml(s.name)}</option>`)
           .join("");
       group.style.display = "";
+    } else if (transferTargetQueueMode === "level-based") {
+      const levelGroup = document.getElementById("transferLevelGroup");
+      if (levelGroup) levelGroup.style.display = "";
     }
   } catch (e) {
     showToast("Network error while loading destination services.", "error");
@@ -480,6 +521,7 @@ async function submitTransfer() {
   const mode = document.getElementById("transferModeSelect");
   const confirmBtn = document.getElementById("transferConfirmBtn");
   const serviceSelect = document.getElementById("transferServiceSelect");
+  const levelSelect = document.getElementById("transferLevelSelect");
   const windowSelect = document.getElementById("transferWindowSelect");
   if (!select || !mode || !confirmBtn || !windowSelect) return;
 
@@ -501,6 +543,14 @@ async function submitTransfer() {
       return;
     }
   }
+  const targetLevel =
+    targetType === "department" && transferTargetQueueMode === "level-based"
+      ? levelSelect?.value || ""
+      : "";
+  if (targetType === "department" && transferTargetQueueMode === "level-based" && !targetLevel) {
+    showToast("Please choose SHS or College for the destination department.", "error");
+    return;
+  }
 
   confirmBtn.disabled = true;
   const prevText = confirmBtn.innerHTML;
@@ -519,6 +569,7 @@ async function submitTransfer() {
     } else {
       params.target_office_id = targetOfficeId;
       if (targetServiceId) params.target_service_id = targetServiceId;
+      if (targetLevel) params.target_level = targetLevel;
     }
 
     const res = await apiFetch("api/queue_handler.php", params);
@@ -699,8 +750,14 @@ async function resumeTicket(ticketId) {
   }
 }
 
+function levelBadgeHtml(level) {
+  if (level !== "shs" && level !== "college") return "";
+  return `<span class="ticket-level-badge">${level === "shs" ? "SHS" : "College"}</span>`;
+}
+
 function renderServingCard(ticket, showNew = false) {
   const ticketEl = document.getElementById("servingTicket");
+  const levelBadgeEl = document.getElementById("servingLevelBadge");
   const studentEl = document.getElementById("servingStudent");
   const typeEl = document.getElementById("servingType");
   const windowEl = document.getElementById("servingWindow");
@@ -713,6 +770,11 @@ function renderServingCard(ticket, showNew = false) {
   ticketEl.classList.remove("is-idle", "pulse");
   void ticketEl.offsetWidth;
   ticketEl.classList.add("pulse");
+  if (levelBadgeEl) {
+    const hasLevel = ticket.student_level === "shs" || ticket.student_level === "college";
+    levelBadgeEl.textContent = ticket.student_level === "shs" ? "SHS" : "College";
+    levelBadgeEl.style.display = hasLevel ? "inline-flex" : "none";
+  }
 
   cardEl.classList.add("has-ticket");
 
@@ -740,7 +802,10 @@ function renderServingCard(ticket, showNew = false) {
   }
 
   if (ticket.transaction_type) {
-    typeEl.innerHTML = `<i class="fas fa-tag" style="font-size:10px;opacity:0.7;"></i> ${escHtml(ticket.transaction_type)}`;
+    const serviceText = ticket.transaction_type
+      ? `<i class="fas fa-tag" style="font-size:10px;opacity:0.7;"></i> ${escHtml(ticket.transaction_type)}`
+      : "";
+    typeEl.innerHTML = serviceText;
     typeEl.style.display = "";
   } else {
     typeEl.style.display = "none";
@@ -761,10 +826,15 @@ function renderServingCard(ticket, showNew = false) {
 
 function clearServingCard() {
   const ticketEl = document.getElementById("servingTicket");
+  const levelBadgeEl = document.getElementById("servingLevelBadge");
   const cardEl = document.getElementById("servingCard");
   const studentEl = document.getElementById("servingStudent");
 
   ticketEl.textContent = "No ticket";
+  if (levelBadgeEl) {
+    levelBadgeEl.textContent = "";
+    levelBadgeEl.style.display = "none";
+  }
   ticketEl.classList.remove("pulse");
   ticketEl.classList.add("is-idle");
   cardEl.classList.remove("has-ticket");
@@ -840,8 +910,13 @@ function renderTicketRow(t, index) {
     : "";
 
   const typeHtml = t.transaction_type
-    ? `<div class="ticket-type"><i class="fas fa-tag" style="font-size:9px;margin-right:3px;opacity:0.6;"></i>${escHtml(t.transaction_type)}</div>`
+    ? `<div class="ticket-type">${t.transaction_type ? `<i class="fas fa-tag" style="font-size:9px;margin-right:3px;opacity:0.6;"></i>${escHtml(t.transaction_type)}` : ""}</div>`
     : "";
+  const ticketNumberHtml = `
+    <div class="ticket-number-level-wrap">
+      <span class="ticket-num">${escHtml(t.ticket_number)}</span>
+      ${levelBadgeHtml(t.student_level)}
+    </div>`;
 
   const statusChip = isDone
     ? `<span class="ticket-status-chip chip-done"><i class="fas fa-check"></i> Done</span>`
@@ -854,7 +929,7 @@ function renderTicketRow(t, index) {
           : "";
 
   let actionsHtml = "";
-  if (!isDone && !isCancelled) {
+  if (CAN_MANAGE_QUEUE && !isDone && !isCancelled) {
     if (isSkipped) {
       actionsHtml = `
         <div class="ticket-actions-inline">
@@ -897,7 +972,7 @@ function renderTicketRow(t, index) {
   return `
     <div class="${rowClass}" id="ticketRow_${t.id}">
       ${pos}
-      <span class="ticket-num">${escHtml(t.ticket_number)}</span>
+      ${ticketNumberHtml}
       <div class="ticket-info">
         ${studentHtml}
         ${typeHtml}
@@ -919,7 +994,9 @@ function switchTab(tab, el) {
 
 function applyTypeFilter() {
   typeFilterId = document.getElementById("typeFilter")?.value || "";
-  localStorage.setItem("queueTypeFilter", typeFilterId);
+  const filterStorageKey =
+    QUEUE_MODE === "level-based" ? "queueLevelFilter" : "queueTypeFilter";
+  localStorage.setItem(filterStorageKey, typeFilterId);
   loadQueue();
 }
 
@@ -1017,14 +1094,30 @@ function showQueueError(msg) {
 }
 
 async function apiFetch(url, params = {}) {
+  if (sessionExpired) return { success: false };
+
   const body = new URLSearchParams({ ...params, csrf_token: CSRF_TOKEN });
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString(),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  if (res.status === 401) {
+    sessionExpired = true;
+    clearTimeout(autoRefreshTimer);
+    clearInterval(refreshRingInterval);
+    stopTimer();
+    autoRefreshTimer = null;
+    refreshRingInterval = null;
+    showToast("Session expired. Redirecting to login…", "error");
+    setTimeout(() => {
+      window.location.href = "login.php";
+    }, 1500);
+    return { success: false };
+  }
+  const data = await res.json();
+  if (!res.ok && res.status !== 403) throw new Error(`HTTP ${res.status}`);
+  return data;
 }
 
 function showToast(message, type = "success") {

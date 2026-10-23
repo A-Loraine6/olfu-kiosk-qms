@@ -82,13 +82,13 @@ switch ($action) {
     case 'update_profile': {
             $fullNameInput   = requestString($body, 'full_name', 100, true);
             $emailInput      = requestString($body, 'email', 100, true);
-            $fullName        = $fullNameInput === null ? null : validName($fullNameInput);
+            $fullName        = $fullNameInput === null ? null : validFullName($fullNameInput);
             $email           = $emailInput === null ? null : validEmail($emailInput, 100);
             $confirmPassword = is_string($body['confirm_password'] ?? null)
                 ? validPassword($body['confirm_password']) : null;
 
             if ($fullName === null) {
-                echo json_encode(['success' => false, 'message' => 'Full name is required.']);
+                echo json_encode(['success' => false, 'message' => 'Full name must be 3 to 100 characters and use only letters, spaces, periods, hyphens, or apostrophes.']);
                 exit;
             }
             if ($email === null || !filter_var($email, FILTER_VALIDATE_EMAIL)) {

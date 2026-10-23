@@ -252,8 +252,8 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
                     <i class="fas fa-arrow-left"></i> Back
                 </button>
                 <div style="text-align:center">
-                    <div class="eyebrow">Step</div>
-                    <h1 class="screen-title">Select a Service</h1>
+                    <div class="eyebrow">Step 3 of 4</div>
+                    <h1 class="screen-title" id="s2Title">Select a Service</h1>
                     <div style="margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
                         <div class="office-label-pill">
                             <i class="fas fa-building" style="font-size:12px"></i>

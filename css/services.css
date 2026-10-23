@@ -109,6 +109,67 @@
   color: var(--text-3);
 }
 
+.queue-mode-select {
+  width: 100%;
+  max-width: none;
+}
+
+.office-mode-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.office-levels-open {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  transition: all var(--t) var(--ease);
+}
+
+.office-levels-open:hover {
+  background: var(--primary-ghost);
+  border-color: var(--primary);
+}
+
+.modal-content.window-levels-modal {
+  max-width: 480px;
+}
+
+.window-levels-hint {
+  margin: 0 0 14px;
+  color: var(--text-3);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.window-levels-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.window-level-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.window-level-row select {
+  max-width: 240px;
+}
+
 .queue-mode-toggle-wrap {
   display: flex;
   align-items: center;
@@ -163,6 +224,7 @@
 .office-mode-footer {
   border-top: 1px solid var(--border);
   padding-top: 10px;
+  margin-top: auto;
 }
 
 .svc-count-badge {
@@ -325,6 +387,7 @@
 }
 
 .services-table-wrap {
+  position: relative;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
@@ -566,8 +629,11 @@
   background: var(--surface);
   padding: 20px 32px 16px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 0;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .modal-header h2 {
@@ -608,7 +674,12 @@
   font-size: 14px;
   color: var(--text-2);
   line-height: 1.6;
-  margin-bottom: 8px;
+  padding: 20px 32px;
+  margin-bottom: 0;
+}
+
+.modal-body-scroll .modal-body {
+  padding: 0;
 }
 
 .modal-body p + p {
@@ -628,8 +699,10 @@
   background: var(--surface);
   padding: 16px 32px 20px;
   border-top: 1px solid var(--border);
-  margin-top: 0;
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .modal-body-scroll {

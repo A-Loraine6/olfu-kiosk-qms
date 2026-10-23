@@ -101,11 +101,14 @@ $csrf_token = getCsrfToken();
                                 <div class="ticket-office" id="officeName"></div>
                                 <div class="ticket-service" id="serviceName"></div>
                                 <div class="ticket-window" id="windowBadge" style="display:none"></div>
-                                <div class="ticket-number" id="ticketNumber" role="img" aria-label="Your ticket number"></div>
+                                <div class="ticket-number-level-wrap">
+                                    <div class="ticket-number" id="ticketNumber" role="img" aria-label="Your ticket number"></div>
+                                    <span class="ticket-level" id="studentLevel" style="display:none"></span>
+                                </div>
 
                                 <div class="stat-row" id="statRow">
                                     <div class="stat-box">
-                                        <div class="stat-label">People ahead</div>
+                                        <div class="stat-label">Position in queue</div>
                                         <div class="stat-value highlight" id="peopleAhead">—</div>
                                     </div>
                                     <div class="stat-box">

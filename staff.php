@@ -15,6 +15,7 @@ $csrf_token  = getCsrfToken();
 $canAdd    = hasPermission('add_staff');
 $canEdit   = hasPermission('edit_staff');
 $isAdmin   = ($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin';
+$isDepartmentHead = isDepartmentHeadUser($currentUser);
 $isOfficeScoped = in_array(strtolower(trim((string) ($_SESSION['role'] ?? ''))), [
     'supervisor',
     'department head',
@@ -134,7 +135,7 @@ $pageLimit = 10;
                             <div class="search-wrap">
                                 <i class="fas fa-search search-icon"></i>
                                 <input type="text" id="searchInput" class="filter-input search-input"
-                                    placeholder="Search name, email, office…"
+                                    placeholder="<?php echo $isDepartmentHead ? 'Search name or email…' : 'Search name, email, office…'; ?>"
                                     autocomplete="off">
                                 <button class="search-clear" id="searchClear" onclick="clearSearch()" title="Clear">
                                     <i class="fas fa-times"></i>
@@ -142,16 +143,22 @@ $pageLimit = 10;
                             </div>
 
                             <div class="filter-group">
-                                <select id="filterOffice" class="filter-select" onchange="applyFilters()" <?php echo !$canManage ? 'disabled' : ''; ?>>
-                                    <?php if ($canManage): ?>
-                                        <option value="">All Offices</option>
-                                    <?php endif; ?>
-                                    <?php foreach ($offices as $o): ?>
-                                        <option value="<?php echo htmlspecialchars($o); ?>" <?php echo !$canManage ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($o); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
+                                <?php if ($isDepartmentHead): ?>
+                                    <span class="filter-select" aria-label="Office filter">
+                                        Office: <?php echo htmlspecialchars($offices[0] ?? 'Not assigned'); ?>
+                                    </span>
+                                <?php else: ?>
+                                    <select id="filterOffice" class="filter-select" onchange="applyFilters()" <?php echo !$canManage ? 'disabled' : ''; ?>>
+                                        <?php if ($canManage): ?>
+                                            <option value="">All Offices</option>
+                                        <?php endif; ?>
+                                        <?php foreach ($offices as $o): ?>
+                                            <option value="<?php echo htmlspecialchars($o); ?>" <?php echo !$canManage ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($o); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                <?php endif; ?>
                                 <select id="filterRole" class="filter-select" onchange="applyFilters()">
                                     <option value="">All Roles</option>
                                     <?php foreach ($roles as $r): ?>
@@ -288,7 +295,9 @@ $pageLimit = 10;
             <div class="modal-body-scroll">
                 <div class="form-group">
                     <label for="add_full_name">Full Name <span class="required">*</span></label>
-                    <input type="text" id="add_full_name" placeholder="Enter full name">
+                    <input type="text" id="add_full_name" placeholder="Enter full name" required minlength="3" maxlength="100"
+                        pattern="(?:\p{L}\p{M}*)+(?:(?: +|[\-'])(?:\p{L}\p{M}*)+|\. *(?:\p{L}\p{M}*)+)*\.?"
+                        title="Use letters, spaces, periods, hyphens, or apostrophes.">
                 </div>
 
                 <div class="form-group">
@@ -361,40 +370,44 @@ $pageLimit = 10;
                 <input type="hidden" id="edit_staff_id">
                 <div class="form-group">
                     <label for="edit_full_name">Full Name <span class="required">*</span></label>
-                    <input type="text" id="edit_full_name">
+                    <input type="text" id="edit_full_name" required minlength="3" maxlength="100"
+                        pattern="(?:\p{L}\p{M}*)+(?:(?: +|[\-'])(?:\p{L}\p{M}*)+|\. *(?:\p{L}\p{M}*)+)*\.?"
+                        title="Use letters, spaces, periods, hyphens, or apostrophes.">
                 </div>
                 <div class="form-group">
                     <label for="edit_email">Email <span class="required">*</span></label>
                     <input type="email" id="edit_email">
                 </div>
-                <div class="form-group">
-                    <label for="edit_role">Role <span class="required">*</span></label>
-                    <select id="edit_role">
-                        <?php foreach ($roles as $r): ?>
-                            <?php if ($r['id'] != 1): ?>
-                                <option value="<?php echo $r['id']; ?>">
-                                    <?php echo htmlspecialchars(ucfirst($r['name'])); ?>
-                                </option>
+                <?php if (!$isDepartmentHead): ?>
+                    <div class="form-group">
+                        <label for="edit_role">Role <span class="required">*</span></label>
+                        <select id="edit_role">
+                            <?php foreach ($roles as $r): ?>
+                                <?php if ($r['id'] != 1): ?>
+                                    <option value="<?php echo $r['id']; ?>">
+                                        <?php echo htmlspecialchars(ucfirst($r['name'])); ?>
+                                    </option>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_office">Office <span class="required">*</span></label>
+                        <select id="edit_office"
+                            <?php echo $isOfficeScoped ? 'disabled' : ''; ?>
+                            onchange="loadWindowOptions('edit_office', 'edit_window', 'edit_window_group')">
+                            <?php if (!$isOfficeScoped): ?>
+                                <option value="" disabled>Select Office</option>
                             <?php endif; ?>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="edit_office">Office <span class="required">*</span></label>
-                    <select id="edit_office"
-                        <?php echo $isOfficeScoped ? 'disabled' : ''; ?>
-                        onchange="loadWindowOptions('edit_office', 'edit_window', 'edit_window_group')">
-                        <?php if (!$isOfficeScoped): ?>
-                            <option value="" disabled>Select Office</option>
+                            <?php foreach ($offices as $o): ?>
+                                <option value="<?php echo htmlspecialchars($o); ?>"><?php echo htmlspecialchars($o); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <?php if ($isOfficeScoped): ?>
+                            <span class="field-hint"><i class="fas fa-lock"></i> Locked to your office</span>
                         <?php endif; ?>
-                        <?php foreach ($offices as $o): ?>
-                            <option value="<?php echo htmlspecialchars($o); ?>"><?php echo htmlspecialchars($o); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <?php if ($isOfficeScoped): ?>
-                        <span class="field-hint"><i class="fas fa-lock"></i> Locked to your office</span>
-                    <?php endif; ?>
-                </div>
+                    </div>
+                <?php endif; ?>
                 <div class="form-group" id="edit_window_group" style="display:none;">
                     <label for="edit_window">Window</label>
                     <select id="edit_window">
@@ -575,6 +588,8 @@ $pageLimit = 10;
         const CAN_DELETE = <?php echo json_encode($canDelete); ?>;
         const CAN_TOGGLE = <?php echo json_encode($canToggle); ?>;
         const IS_OFFICE_SCOPED = <?php echo json_encode($isOfficeScoped); ?>;
+        const IS_DEPARTMENT_HEAD = <?php echo json_encode($isDepartmentHead); ?>;
+        const STAFF_OFFICE_NAME = <?php echo json_encode($isDepartmentHead ? ($offices[0] ?? '') : ''); ?>;
     </script>
 </body>
 

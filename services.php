@@ -24,6 +24,12 @@ $officeInfo        = ($isOfficeScoped && $staffOfficeId) ? getOfficeInfo($db, $s
 $staffOfficeName   = $officeInfo['name'] ?? null;
 
 $offices  = getAllOffices($db->getConnection());
+if ($isOfficeScoped) {
+    $offices = array_values(array_filter(
+        $offices,
+        static fn(array $office): bool => (int) $office['id'] === (int) $staffOfficeId
+    ));
+}
 $services = $isOfficeScoped
     ? getAllServicesWithOffice($db->getConnection(), $staffOfficeId)
     : getAllServicesWithOffice($db->getConnection());
@@ -35,6 +41,16 @@ $pageLimit = 10;
 $servicesByOffice = [];
 foreach ($services as $svc) {
     $servicesByOffice[$svc['office_id']][] = $svc;
+}
+$windowLevelsByOffice = [];
+$windowLevelResult = $db->query("
+    SELECT office_id, window_number, student_level
+    FROM window_levels
+");
+if ($windowLevelResult) {
+    while ($row = $windowLevelResult->fetch_assoc()) {
+        $windowLevelsByOffice[(int) $row['office_id']][(int) $row['window_number']] = $row['student_level'];
+    }
 }
 
 function getCategoryColor(?string $cat): string
@@ -134,29 +150,39 @@ function getCategoryColor(?string $cat): string
                                 <div class="office-mode-card" id="office-card-<?php echo $office['id']; ?>">
                                     <div class="office-mode-header">
                                         <div class="office-mode-icon"><i class="fas fa-building"></i></div>
-                                        <div>
+                                        <div class="office-mode-title">
                                             <div class="office-mode-name"><?php echo htmlspecialchars($office['name']); ?></div>
                                             <?php if ($office['code']): ?>
                                                 <div class="office-mode-code"><?php echo htmlspecialchars($office['code']); ?></div>
                                             <?php endif; ?>
                                         </div>
+                                        <?php if ($isAdmin): ?>
+                                            <button type="button" class="office-levels-open"
+                                                id="office-levels-<?php echo $office['id']; ?>"
+                                                title="Assign Window Levels"
+                                                aria-label="Assign Window Levels"
+                                                style="<?php echo $office['queue_mode'] === 'level-based' ? '' : 'display:none;'; ?>"
+                                                onclick="openModal('windowLevelsModal-<?php echo $office['id']; ?>')">
+                                                <i class="fas fa-sliders"></i>
+                                            </button>
+                                        <?php endif; ?>
                                     </div>
 
                                     <div class="office-mode-body">
                                         <div class="queue-mode-label">Queue Mode</div>
-                                        <div class="queue-mode-toggle-wrap">
-                                            <span class="queue-mode-value <?php echo $office['queue_mode'] === 'service-based' ? 'mode-service' : 'mode-unified'; ?>"
-                                                id="office-mode-label-<?php echo $office['id']; ?>">
-                                                <?php echo e($office['queue_mode'] === 'service-based' ? 'Service-Based' : 'Unified'); ?>
-                                            </span>
-                                            <button type="button" class="btn-mode-toggle"
-                                                title="Switch queue mode"
-                                                onclick="toggleQueueMode(<?php echo $office['id']; ?>, this)">
-                                                <i class="fas fa-exchange-alt"></i>
-                                            </button>
-                                        </div>
+                                        <select class="filter-select queue-mode-select"
+                                            id="office-mode-select-<?php echo $office['id']; ?>"
+                                            data-current-mode="<?php echo htmlspecialchars($office['queue_mode']); ?>"
+                                            onchange="openQueueModeConfirmation(<?php echo $office['id']; ?>, this)">
+                                            <option value="unified" <?php echo $office['queue_mode'] === 'unified' ? 'selected' : ''; ?>>Unified</option>
+                                            <option value="service-based" <?php echo $office['queue_mode'] === 'service-based' ? 'selected' : ''; ?>>Service-Based</option>
+                                            <option value="level-based" <?php echo $office['queue_mode'] === 'level-based' ? 'selected' : ''; ?>
+                                                <?php echo !$isAdmin ? 'disabled' : ''; ?>>Level-Based</option>
+                                        </select>
                                         <p class="queue-mode-desc" id="office-mode-desc-<?php echo $office['id']; ?>">
-                                            <?php if ($office['queue_mode'] === 'service-based'): ?>
+                                            <?php if ($office['queue_mode'] === 'level-based'): ?>
+                                                Kiosk asks for SHS or College; windows serve their assigned level.
+                                            <?php elseif ($office['queue_mode'] === 'service-based'): ?>
                                                 Kiosk shows service selection before issuing a number.
                                             <?php else: ?>
                                                 Kiosk issues a number directly without service selection.
@@ -173,6 +199,45 @@ function getCategoryColor(?string $cat): string
                                 </div>
                             <?php endforeach; ?>
                         </div>
+                        <?php if ($isAdmin): ?>
+                            <?php foreach ($offices as $office): ?>
+                                <div id="windowLevelsModal-<?php echo $office['id']; ?>" class="modal">
+                                    <div class="modal-content modal-sm window-levels-modal">
+                                        <div class="modal-header">
+                                            <h2><i class="fas fa-sliders"></i> Window Levels — <?php echo htmlspecialchars($office['name']); ?></h2>
+                                            <button type="button" class="modal-close"
+                                                onclick="closeModal('windowLevelsModal-<?php echo $office['id']; ?>')"
+                                                aria-label="Close">&times;</button>
+                                        </div>
+                                        <div class="modal-body-scroll">
+                                            <p class="window-levels-hint">Choose which student level each window can serve.</p>
+                                            <div class="window-levels-list">
+                                                <?php for ($windowNumber = 1; $windowNumber <= max(1, (int) $office['window_count']); $windowNumber++):
+                                                    $assignedLevel = $windowLevelsByOffice[$office['id']][$windowNumber] ?? 'both'; ?>
+                                                    <label class="window-level-row" for="office-<?php echo $office['id']; ?>-window-<?php echo $windowNumber; ?>">
+                                                        <span>Window <?php echo $windowNumber; ?></span>
+                                                        <select class="filter-select"
+                                                            id="office-<?php echo $office['id']; ?>-window-<?php echo $windowNumber; ?>">
+                                                            <option value="shs" <?php echo $assignedLevel === 'shs' ? 'selected' : ''; ?>>SHS</option>
+                                                            <option value="college" <?php echo $assignedLevel === 'college' ? 'selected' : ''; ?>>College</option>
+                                                            <option value="both" <?php echo $assignedLevel === 'both' ? 'selected' : ''; ?>>Both</option>
+                                                        </select>
+                                                    </label>
+                                                <?php endfor; ?>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn-outline"
+                                                onclick="closeModal('windowLevelsModal-<?php echo $office['id']; ?>')">Cancel</button>
+                                            <button type="button" class="btn-primary"
+                                                onclick="saveWindowLevels(<?php echo $office['id']; ?>, <?php echo max(1, (int) $office['window_count']); ?>, this)">
+                                                <i class="fas fa-save"></i> Save Assignments
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     <?php endif; ?>
 
                     <h2 class="section-title">
@@ -312,10 +377,9 @@ function getCategoryColor(?string $cat): string
                                 <?php endif; ?>
                             </tbody>
                         </table>
-                        </div>
-
-                        <div class="table-loading" id="tableLoading">
-                            <div class="table-spinner"></div>
+                            <div class="table-loading" id="tableLoading">
+                                <div class="table-spinner"></div>
+                            </div>
                         </div>
 
                         <div class="pagination-bar" id="paginationBar">
@@ -339,6 +403,27 @@ function getCategoryColor(?string $cat): string
     </div>
 
     <div id="toast-container"></div>
+
+    <div id="queueModeConfirmModal" class="modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2><i class="fas fa-exchange-alt"></i> Confirm Queue Mode Change</h2>
+                <button type="button" class="modal-close" onclick="closeQueueModeModal()" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p><strong id="queueModeOfficeName"></strong></p>
+                <p><span id="queueModeCurrentLabel"></span> &rarr; <span id="queueModeNextLabel"></span></p>
+                <p id="queueModeDescription"></p>
+                <p class="modal-warning" id="queueModeWindowWarning" style="display:none;"></p>
+                <p class="modal-warning" id="queueModeError" style="display:none;"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-outline" id="queueModeCancelBtn" onclick="closeQueueModeModal()">Cancel</button>
+                <button type="button" class="btn-primary" id="queueModeConfirmBtn" onclick="confirmQueueModeChange()" data-action="confirm">Confirm</button>
+                <button type="button" class="btn-outline" id="queueModeCloseBtn" onclick="closeQueueModeModal()" style="display:none;">Close</button>
+            </div>
+        </div>
+    </div>
 
     <div id="addServiceModal" class="modal">
         <div class="modal-content">

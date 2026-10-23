@@ -113,11 +113,13 @@ function cancelEdit() {
 }
 
 async function submitEditProfile() {
-	const fullName = document.getElementById("edit_full_name").value.trim();
+	const fullNameInput = document.getElementById("edit_full_name");
+	const fullName = fullNameInput.value.trim();
+	fullNameInput.value = fullName;
 	const email = document.getElementById("edit_email").value.trim();
 
-	if (!fullName) {
-		showToast("Full name is required.", "error");
+	if (!fullNameInput.checkValidity()) {
+		showToast("Full name must be 3 to 100 characters and use only letters, spaces, periods, hyphens, or apostrophes.", "error");
 		return;
 	}
 	if (!email) {
@@ -144,11 +146,18 @@ function closeConfirmModal() {
 }
 
 async function confirmAndSaveProfile() {
-	const fullName = document.getElementById("edit_full_name").value.trim();
+	const fullNameInput = document.getElementById("edit_full_name");
+	const fullName = fullNameInput.value.trim();
+	fullNameInput.value = fullName;
 	const email = document.getElementById("edit_email").value.trim();
 	const confirmPassword = document.getElementById(
 		"confirm_identity_password",
 	).value;
+
+	if (!fullNameInput.checkValidity()) {
+		showToast("Full name must be 3 to 100 characters and use only letters, spaces, periods, hyphens, or apostrophes.", "error");
+		return;
+	}
 
 	if (!confirmPassword) {
 		showToast("Please enter your password.", "error");

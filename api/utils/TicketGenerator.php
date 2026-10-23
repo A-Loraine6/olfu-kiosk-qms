@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__ . '/QueueEligibility.php';
+require_once __DIR__ . '/TicketEvents.php';
+
 class TicketGenerator
 {
     private Database $db;
@@ -11,7 +14,13 @@ class TicketGenerator
         $this->db = $db;
     }
 
-    private function checkAvailability(array $office, int $office_id): array
+    private function checkAvailability(
+        array $office,
+        int $office_id,
+        ?string $service_name,
+        bool $is_priority,
+        ?string $student_level = null
+    ): array
     {
         $todayDate = date('Y-m-d');
         $nowTs     = time();
@@ -44,10 +53,38 @@ class TicketGenerator
             ];
         }
 
-        $peopleAhead    = $this->countWaiting($office_id, $todayDate);
-        $avgServiceSecs = $this->getAverageServiceSeconds($office_id, $todayDate);
+        $serviceBased = ($office['queue_mode'] ?? 'unified') === 'service-based';
+        $levelBased = ($office['queue_mode'] ?? 'unified') === 'level-based';
+        $laneService = $serviceBased ? $service_name : null;
+        $servingWindows = $serviceBased && $laneService !== null
+            ? $this->getServiceWindowNumbers($office_id, $laneService, (int) $office['window_count'])
+            : ($levelBased && $student_level !== null
+                ? $this->getLevelWindowNumbers($office_id, $student_level)
+                : range(1, max(1, (int) $office['window_count'])));
+        if ($levelBased && !$servingWindows) {
+            return [
+                'ok' => false,
+                'code' => 'no_eligible_windows',
+                'message' => 'No windows are assigned to serve this student level.',
+            ];
+        }
+        $peopleAhead = $this->countWaiting(
+            $office_id,
+            $todayDate,
+            null,
+            $laneService,
+            $is_priority,
+            ($serviceBased || $levelBased) ? $servingWindows : [],
+            $levelBased ? $student_level : null
+        );
+        $avgServiceSecs = $this->getAverageServiceSeconds(
+            $office_id,
+            $todayDate,
+            $laneService,
+            $levelBased ? $student_level : null
+        );
         $anchorTs       = $onBreak ? $breakEndTs : $nowTs;
-        $estWaitSecs    = $peopleAhead * $avgServiceSecs;
+        $estWaitSecs    = $peopleAhead * $avgServiceSecs / max(1, count($servingWindows));
         $estReadyTs     = $anchorTs + $estWaitSecs;
         $estWaitMins    = (int) ceil(max(0, $estReadyTs - $nowTs) / 60);
 
@@ -77,18 +114,31 @@ class TicketGenerator
             return ['success' => false, 'message' => 'Office not found'];
         }
 
-        $avail = $this->checkAvailability($office, $office_id);
+        $transaction_type = ($service_name !== '') ? $service_name : null;
+        $serviceBased = ($office['queue_mode'] ?? 'unified') === 'service-based';
+        $levelBased = ($office['queue_mode'] ?? 'unified') === 'level-based';
+        if ($levelBased) {
+            if (!in_array($student_level, ['shs', 'college'], true)) {
+                return ['success' => false, 'message' => 'Please select SHS or College.'];
+            }
+            $transaction_type = null;
+        } else {
+            $student_level = null;
+        }
+        if ($serviceBased && $transaction_type === null) {
+            return ['success' => false, 'message' => 'Please select a service for this department.'];
+        }
+        if ($transaction_type !== null && $this->resolveServiceId($office_id, $transaction_type) === null) {
+            return ['success' => false, 'message' => 'Selected service is not available for this office.'];
+        }
+
+        $avail = $this->checkAvailability($office, $office_id, $transaction_type, $is_priority, $student_level);
         if (!$avail['ok']) {
             return ['success' => false, 'code' => $avail['code'], 'message' => $avail['message']];
         }
 
-        $transaction_type = ($service_name !== '') ? $service_name : null;
-
         $window_id = null;
         if ($transaction_type !== null) {
-            if ($this->resolveServiceId($office_id, $transaction_type) === null) {
-                return ['success' => false, 'message' => 'Selected service is not available for this office.'];
-            }
             $window_id = $this->getServiceWindowIdIfSingle($office_id, $transaction_type);
         }
 
@@ -107,9 +157,42 @@ class TicketGenerator
             return ['success' => false, 'message' => 'Server busy — please try again'];
         }
 
+        $connection = $this->db->getConnection();
+        $transactionStarted = false;
         try {
-            $recheck = $this->checkAvailability($office, $office_id);
+            $office = $this->fetchOffice($office_id);
+            if (!$office) {
+                return ['success' => false, 'message' => 'Office not found.'];
+            }
+            $serviceBased = ($office['queue_mode'] ?? 'unified') === 'service-based';
+            $levelBased = ($office['queue_mode'] ?? 'unified') === 'level-based';
+            if ($levelBased && !in_array($student_level, ['shs', 'college'], true)) {
+                return ['success' => false, 'message' => 'Please select SHS or College.'];
+            }
+            if ($serviceBased && $transaction_type === null) {
+                return ['success' => false, 'message' => 'Please select a service for this department.'];
+            }
+            if (!$levelBased) {
+                $student_level = null;
+            } else {
+                $transaction_type = null;
+            }
+            if ($transaction_type !== null && $this->resolveServiceId($office_id, $transaction_type) === null) {
+                return ['success' => false, 'message' => 'Selected service is not available for this office.'];
+            }
+            $window_id = $transaction_type !== null
+                ? $this->getServiceWindowIdIfSingle($office_id, $transaction_type)
+                : null;
+
+            if (!$connection->begin_transaction()) {
+                throw new RuntimeException('Could not start ticket issuance transaction.');
+            }
+            $transactionStarted = true;
+
+            $recheck = $this->checkAvailability($office, $office_id, $transaction_type, $is_priority, $student_level);
             if (!$recheck['ok']) {
+                $connection->rollback();
+                $transactionStarted = false;
                 return ['success' => false, 'code' => $recheck['code'], 'message' => $recheck['message']];
             }
 
@@ -128,7 +211,34 @@ class TicketGenerator
             if (!$insert->execute()) {
                 throw new RuntimeException('Failed to insert ticket: ' . $insert->error);
             }
+            $ticketId = (int) $insert->insert_id;
             $insert->close();
+
+            recordTicketEvent(
+                $this->db,
+                $ticketId,
+                'ticket_issued',
+                null,
+                'waiting',
+                null,
+                $office_id,
+                $window_id,
+                [
+                    'ticket_number' => $ticketNumber,
+                    'transaction_type' => $transaction_type,
+                    'student_level' => $student_level,
+                    'is_priority' => $is_priority,
+                ]
+            );
+            if (!$connection->commit()) {
+                throw new RuntimeException('Could not commit ticket issuance.');
+            }
+            $transactionStarted = false;
+        } catch (Throwable $error) {
+            if ($transactionStarted) {
+                $connection->rollback();
+            }
+            throw $error;
         } finally {
             $unlockStmt = $this->db->prepare("SELECT RELEASE_LOCK(?)");
             $unlockStmt->bind_param('s', $lockName);
@@ -145,6 +255,7 @@ class TicketGenerator
             'waiting_count'  => $recheck['people_ahead'] + 1,
             'window_id'      => $window_id,
             'window_number'  => $window_id,
+            'student_level'  => $student_level,
             'is_priority'    => $is_priority,
             'est_wait_mins'  => $recheck['est_wait_mins'],
             'on_break'       => $recheck['on_break'],
@@ -154,14 +265,36 @@ class TicketGenerator
         ];
     }
 
-    public function previewNextTicketNumber(int $office_id, bool $is_priority = false): array
+    public function previewNextTicketNumber(
+        int $office_id,
+        bool $is_priority = false,
+        string $service_name = '',
+        ?string $student_level = null
+    ): array
     {
         $office = $this->fetchOffice($office_id);
         if (!$office) {
             return ['success' => false, 'code' => 'office_closed', 'message' => 'Office not found'];
         }
 
-        $avail = $this->checkAvailability($office, $office_id);
+        $transaction_type = $service_name !== '' ? $service_name : null;
+        $levelBased = ($office['queue_mode'] ?? 'unified') === 'level-based';
+        if ($levelBased) {
+            if (!in_array($student_level, ['shs', 'college'], true)) {
+                return ['success' => false, 'message' => 'Please select SHS or College.'];
+            }
+            $transaction_type = null;
+        } else {
+            $student_level = null;
+        }
+        if (($office['queue_mode'] ?? 'unified') === 'service-based' && $transaction_type === null) {
+            return ['success' => false, 'message' => 'Please select a service for this department.'];
+        }
+        if ($transaction_type !== null && $this->resolveServiceId($office_id, $transaction_type) === null) {
+            return ['success' => false, 'message' => 'Selected service is not available for this office.'];
+        }
+
+        $avail = $this->checkAvailability($office, $office_id, $transaction_type, $is_priority, $student_level);
         if (!$avail['ok']) {
             return ['success' => false, 'code' => $avail['code'], 'message' => $avail['message']];
         }
@@ -189,18 +322,40 @@ class TicketGenerator
         return $ts !== false ? $ts : null;
     }
 
-    private function getAverageServiceSeconds(int $office_id, string $today): float
+    private function getAverageServiceSeconds(
+        int $office_id,
+        string $today,
+        ?string $service_name,
+        ?string $student_level = null
+    ): float
     {
-        $stmt = $this->db->prepare("
-            SELECT AVG(TIMESTAMPDIFF(SECOND, served_at, completed_at)) AS avg_secs
+        $sql = "
+            SELECT AVG(
+                COALESCE(time_spent, 0) +
+                TIMESTAMPDIFF(SECOND, served_at, completed_at)
+            ) AS avg_secs
             FROM tickets
             WHERE office_id = ?
               AND status = 'completed'
               AND DATE(completed_at) = ?
               AND served_at IS NOT NULL
               AND completed_at IS NOT NULL
-        ");
-        $stmt->bind_param('is', $office_id, $today);
+        ";
+        if ($service_name !== null) {
+            $sql .= ' AND transaction_type = ?';
+            $types = 'iss';
+            $params = [$office_id, $today, $service_name];
+        } else {
+            $types = 'is';
+            $params = [$office_id, $today];
+        }
+        if ($student_level !== null) {
+            $sql .= ' AND student_level = ?';
+            $types .= 's';
+            $params[] = $student_level;
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -214,6 +369,7 @@ class TicketGenerator
     {
         $stmt = $this->db->prepare("
             SELECT id, name, code, queue_prefix, priority_prefix, queue_mode,
+                   window_count,
                    max_queue_limit, queue_start_num, daily_reset,
                    auto_close, open_time, close_time,
                    break_start, break_end, queue_cutoff
@@ -299,7 +455,15 @@ class TicketGenerator
         return sprintf('%s-%d', $prefix, $next);
     }
 
-    private function countWaiting(int $office_id, string $today, ?bool $is_priority = null): int
+    private function countWaiting(
+        int $office_id,
+        string $today,
+        ?bool $is_priority = null,
+        ?string $service_name = null,
+        ?bool $new_ticket_priority = null,
+        array $eligible_windows = [],
+        ?string $student_level = null
+    ): int
     {
         $sql = "
             SELECT COUNT(*) AS cnt
@@ -309,20 +473,90 @@ class TicketGenerator
               AND  DATE(created_at) = ?
         ";
 
+        $types = 'is';
+        $params = [$office_id, $today];
         if ($is_priority !== null) {
-            $sql .= " AND is_priority = ?";
-            $stmt = $this->db->prepare($sql);
-            $isPriorityInt = $is_priority ? 1 : 0;
-            $stmt->bind_param('isi', $office_id, $today, $isPriorityInt);
-        } else {
-            $stmt = $this->db->prepare($sql);
-            $stmt->bind_param('is', $office_id, $today);
+            $sql .= ' AND is_priority = ?';
+            $types .= 'i';
+            $params[] = $is_priority ? 1 : 0;
+        }
+        if ($service_name !== null) {
+            $sql .= ' AND transaction_type = ?';
+            $types .= 's';
+            $params[] = $service_name;
+        }
+        if ($student_level !== null) {
+            $sql .= ' AND student_level = ?';
+            $types .= 's';
+            $params[] = $student_level;
+        }
+        if ($new_ticket_priority !== null) {
+            $priority = $new_ticket_priority ? 1 : 0;
+            $sql .= " AND (
+                is_priority > ?
+                OR (is_priority = ? AND COALESCE(queue_order_at, created_at) <= NOW())
+            )";
+            $types .= 'ii';
+            $params[] = $priority;
+            $params[] = $priority;
+        }
+        if ($eligible_windows) {
+            $sql .= ' AND ' . queueTicketEligibleOnAnyWindowSql('tickets', $eligible_windows);
+            foreach ($eligible_windows as $windowNumber) {
+                $types .= 'iii';
+                $params[] = $windowNumber;
+                $params[] = $windowNumber;
+                $params[] = $windowNumber;
+            }
         }
 
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
         return (int)($row['cnt'] ?? 0);
+    }
+
+    private function getServiceWindowNumbers(int $office_id, string $service_name, int $office_window_count): array
+    {
+        $serviceId = $this->resolveServiceId($office_id, $service_name);
+        if ($serviceId === null) {
+            return [];
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT DISTINCT window_number
+            FROM service_windows
+            WHERE service_id = ? AND office_id = ?
+            ORDER BY window_number
+        ");
+        $stmt->bind_param('ii', $serviceId, $office_id);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        if (!$rows) {
+            return range(1, max(1, $office_window_count));
+        }
+
+        return array_map(static fn(array $row): int => (int) $row['window_number'], $rows);
+    }
+
+    private function getLevelWindowNumbers(int $office_id, string $student_level): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT window_number
+            FROM window_levels
+            WHERE office_id = ?
+              AND (student_level = ? OR student_level = 'both')
+            ORDER BY window_number
+        ");
+        $stmt->bind_param('is', $office_id, $student_level);
+        $stmt->execute();
+        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return array_map(static fn(array $row): int => (int) $row['window_number'], $rows);
     }
 
     public function withNextTicketNumber(int $office_id, bool $is_priority, callable $callback): mixed

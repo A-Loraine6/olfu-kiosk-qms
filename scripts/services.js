@@ -6,6 +6,8 @@ let currentLimit =
   typeof PAGINATION_LIMIT !== "undefined" ? PAGINATION_LIMIT : 10;
 let currentTotal = typeof TOTAL_SERVICES !== "undefined" ? TOTAL_SERVICES : 0;
 let currentTotalPages = Math.ceil(currentTotal / currentLimit) || 1;
+let pendingQueueModeChange = null;
+let queueModeRequestRunning = false;
 
 document.addEventListener("DOMContentLoaded", () => {
   fetchFilteredRows();
@@ -242,44 +244,213 @@ async function fetchFilteredRows() {
   if (requestId !== currentRequest) return;
   setTableLoading(false);
 
-  if (data.success) {
-    currentTotal = data.count;
-    currentTotalPages = data.totalPages;
-    currentPage = data.page;
+  if (!data.success) {
+    showToast(data.message || "Unable to load services.", "error");
+    return;
+  }
 
-    updateTable(data.html);
-    updateResultCount(currentTotal, currentLimit, currentPage);
-    renderPagination(
-      currentPage,
-      currentTotalPages,
-      currentTotal,
-      currentLimit,
-    );
+  currentTotal = data.count;
+  currentTotalPages = data.totalPages;
+  currentPage = data.page;
+
+  updateTable(data.html);
+  updateResultCount(currentTotal, currentLimit, currentPage);
+  renderPagination(
+    currentPage,
+    currentTotalPages,
+    currentTotal,
+    currentLimit,
+  );
+}
+
+const QUEUE_MODE_LABELS = {
+  unified: "Unified",
+  "service-based": "Service-Based",
+  "level-based": "Level-Based",
+};
+
+const QUEUE_MODE_DESCRIPTIONS = {
+  unified: "The kiosk will issue a number directly without service selection.",
+  "service-based": "The kiosk will ask visitors to choose a service before issuing a ticket.",
+  "level-based": "Tickets will be grouped by student level. The kiosk will ask SHS or College first. Each window needs a level assignment.",
+};
+
+async function openQueueModeConfirmation(officeId, select) {
+  if (
+    !select ||
+    queueModeRequestRunning ||
+    select.value === select.dataset.currentMode
+  ) return;
+
+  const targetMode = select.value;
+  queueModeRequestRunning = true;
+  select.disabled = true;
+  const data = await ajax({
+    action: "check_queue_mode",
+    office_id: officeId,
+    queue_mode: targetMode,
+  });
+  queueModeRequestRunning = false;
+  select.disabled = false;
+
+  if (!data.success) {
+    select.value = select.dataset.currentMode;
+    showToast(data.message || "Could not check the active queue.", "error");
+    return;
+  }
+
+  if (data.current_mode === targetMode) {
+    select.dataset.currentMode = targetMode;
+    select.value = targetMode;
+    showToast("This office is already using that queue mode.", "success");
+    return;
+  }
+
+  pendingQueueModeChange = { officeId, targetMode, currentMode: data.current_mode };
+  const modal = document.getElementById("queueModeConfirmModal");
+  modal.dataset.returnFocusId = select.id;
+  document.getElementById("queueModeOfficeName").textContent = data.office_name;
+  document.getElementById("queueModeCurrentLabel").textContent =
+    QUEUE_MODE_LABELS[data.current_mode] || data.current_mode;
+  document.getElementById("queueModeNextLabel").textContent =
+    QUEUE_MODE_LABELS[targetMode] || targetMode;
+  document.getElementById("queueModeDescription").textContent =
+    QUEUE_MODE_DESCRIPTIONS[targetMode];
+
+  const windowWarning = document.getElementById("queueModeWindowWarning");
+  const assignedCount = Number(data.assigned_window_count || 0);
+  const windowCount = Number(data.window_count || 0);
+  if (targetMode === "level-based" && assignedCount < windowCount) {
+    windowWarning.textContent = assignedCount === 0
+      ? "No windows have level assignments yet. They will be initialized to Both; assign each window after switching."
+      : `Only ${assignedCount} of ${windowCount} windows have level assignments. Unassigned windows will default to Both.`;
+    windowWarning.style.display = "";
+  } else {
+    windowWarning.textContent = "";
+    windowWarning.style.display = "none";
+  }
+
+  document.getElementById("queueModeError").style.display = "none";
+  setQueueModeModalBlocked(Number(data.blocking_count || 0));
+  openModal("queueModeConfirmModal");
+  const focusTarget = Number(data.blocking_count || 0) > 0
+    ? document.getElementById("queueModeCloseBtn")
+    : document.getElementById("queueModeConfirmBtn");
+  focusTarget.focus();
+}
+
+function setQueueModeModalBlocked(blockingCount) {
+  const error = document.getElementById("queueModeError");
+  const cancelButton = document.getElementById("queueModeCancelBtn");
+  const confirmButton = document.getElementById("queueModeConfirmBtn");
+  const closeButton = document.getElementById("queueModeCloseBtn");
+  if (blockingCount > 0) {
+    error.textContent = `Cannot switch: ${blockingCount} active tickets. Complete or cancel them first.`;
+    error.style.display = "";
+    cancelButton.style.display = "none";
+    confirmButton.style.display = "none";
+    closeButton.style.display = "";
+  } else {
+    error.textContent = "";
+    error.style.display = "none";
+    cancelButton.style.display = "";
+    confirmButton.style.display = "";
+    closeButton.style.display = "none";
   }
 }
 
-async function toggleQueueMode(officeId, btn) {
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+async function confirmQueueModeChange() {
+  if (!pendingQueueModeChange || queueModeRequestRunning) return;
+  queueModeRequestRunning = true;
+  const confirmButton = document.getElementById("queueModeConfirmBtn");
+  const originalText = confirmButton.textContent;
+  confirmButton.disabled = true;
+  confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
 
-  const data = await ajax({ action: "toggle_queue_mode", office_id: officeId });
+  const { officeId, targetMode } = pendingQueueModeChange;
+  const data = await ajax({
+    action: "set_queue_mode",
+    office_id: officeId,
+    queue_mode: targetMode,
+  });
 
-  btn.disabled = false;
-  btn.innerHTML = '<i class="fas fa-exchange-alt"></i>';
+  if (!data.success) {
+    if (Number(data.blocking_count || 0) > 0) {
+      setQueueModeModalBlocked(Number(data.blocking_count));
+      document.getElementById("queueModeCloseBtn").focus();
+    } else {
+      const error = document.getElementById("queueModeError");
+      error.textContent = data.message || "Could not save the queue mode.";
+      error.style.display = "";
+      confirmButton.disabled = false;
+      confirmButton.textContent = originalText;
+    }
+    queueModeRequestRunning = false;
+    return;
+  }
 
-  if (data.success) {
-    const isServiceBased = data.message.includes("Service-Based");
-    const label = document.getElementById(`office-mode-label-${officeId}`);
-    const desc = document.getElementById(`office-mode-desc-${officeId}`);
-    label.textContent = isServiceBased ? "Service-Based" : "Unified";
-    label.className =
-      "queue-mode-value " + (isServiceBased ? "mode-service" : "mode-unified");
-    desc.textContent = isServiceBased
-      ? "Kiosk shows service selection before issuing a number."
-      : "Kiosk issues a number directly without service selection.";
-    showToast(data.message, "success");
-  } else {
-    showToast(data.message, "error");
+  const select = document.getElementById(`office-mode-select-${officeId}`);
+  select.value = targetMode;
+  select.dataset.currentMode = targetMode;
+  const descriptions = {
+    unified: "Kiosk issues a number directly without service selection.",
+    "service-based": "Kiosk shows service selection before issuing a number.",
+    "level-based": "Kiosk asks for SHS or College; windows serve their assigned level.",
+  };
+  document.getElementById(`office-mode-desc-${officeId}`).textContent =
+    descriptions[targetMode];
+  const levelsButton = document.getElementById(`office-levels-${officeId}`);
+  if (levelsButton) {
+    levelsButton.style.display = targetMode === "level-based" ? "" : "none";
+  }
+
+  const successMessage = data.message || "Queue mode updated.";
+  closeQueueModeModal();
+  showToast(successMessage, "success");
+  setTimeout(() => window.location.reload(), 900);
+  queueModeRequestRunning = false;
+}
+
+function closeQueueModeModal() {
+  const pending = pendingQueueModeChange;
+  pendingQueueModeChange = null;
+  if (pending) {
+    const select = document.getElementById(`office-mode-select-${pending.officeId}`);
+    if (select) select.value = select.dataset.currentMode;
+  }
+  closeModal("queueModeConfirmModal");
+}
+
+async function saveWindowLevels(officeId, windowCount, button) {
+  const windowLevels = {};
+  for (let windowNumber = 1; windowNumber <= windowCount; windowNumber++) {
+    const select = document.getElementById(
+      `office-${officeId}-window-${windowNumber}`,
+    );
+    if (!select) {
+      showToast("Could not read all window assignments.", "error");
+      return;
+    }
+    windowLevels[windowNumber] = select.value;
+  }
+
+  if (button) button.disabled = true;
+  try {
+    const data = await ajax({
+      action: "save_window_levels",
+      office_id: officeId,
+      window_levels: windowLevels,
+    });
+    showToast(
+      data.message ||
+        (data.success
+          ? "Window levels saved."
+          : "Unable to save window levels."),
+      data.success ? "success" : "error",
+    );
+    if (data.success) closeModal(`windowLevelsModal-${officeId}`);
+  } finally {
+    if (button) button.disabled = false;
   }
 }
 
@@ -291,18 +462,31 @@ function openModal(id) {
 
 function closeModal(id) {
   const modal = document.getElementById(id);
+  const focusId = modal.dataset.returnFocusId;
   modal.classList.remove("show");
-  setTimeout(() => (modal.style.display = "none"), 300);
+  setTimeout(() => {
+    modal.style.display = "none";
+    if (focusId) {
+      document.getElementById(focusId)?.focus();
+      delete modal.dataset.returnFocusId;
+    }
+  }, 300);
 }
 
 document.querySelectorAll(".modal").forEach((m) => {
   m.addEventListener("click", (e) => {
-    if (e.target === m) closeModal(m.id);
+    if (e.target === m) {
+      if (m.id === "queueModeConfirmModal") closeQueueModeModal();
+      else closeModal(m.id);
+    }
   });
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
-    document.querySelectorAll(".modal.show").forEach((m) => closeModal(m.id));
+    document.querySelectorAll(".modal.show").forEach((m) => {
+      if (m.id === "queueModeConfirmModal") closeQueueModeModal();
+      else closeModal(m.id);
+    });
   }
 });
 

@@ -7,6 +7,22 @@ function serviceResponse(bool $success, string $message, array $extra = []): arr
     return array_merge(['success' => $success, 'message' => $message], $extra);
 }
 
+function serviceBelongsToOffice(mysqli $conn, int $serviceId, int $officeId): bool
+{
+    $stmt = $conn->prepare("
+        SELECT 1 FROM transaction_types
+        WHERE id = ? AND office_id = ? AND is_deleted = 0
+        LIMIT 1
+    ");
+    if (!$stmt) {
+        return false;
+    }
+    $stmt->bind_param('ii', $serviceId, $officeId);
+    $ok = $stmt->execute() && (bool) $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return $ok;
+}
+
 function cleanStr(string $value): string
 {
     return trim(strip_tags($value));
@@ -70,15 +86,198 @@ function toggleOfficeQueueMode(mysqli $conn, int $officeId): array
     if (!$office) return serviceResponse(false, 'Office not found.');
 
     $newMode = $office['queue_mode'] === 'service-based' ? 'unified' : 'service-based';
+    return setOfficeQueueMode($conn, $officeId, $newMode);
+}
 
-    $stmt = $conn->prepare("UPDATE offices SET queue_mode = ? WHERE id = ?");
-    if (!$stmt) return serviceResponse(false, 'Database error: ' . $conn->error);
+function countBlockingOfficeTickets(mysqli $conn, int $officeId): ?int
+{
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) AS active_count
+        FROM tickets
+        WHERE office_id = ?
+          AND DATE(created_at) = ?
+          AND status IN ('waiting', 'serving', 'on-hold', 'skipped')
+    ");
+    if (!$stmt) {
+        return null;
+    }
 
+    $today = date('Y-m-d');
+    $stmt->bind_param('is', $officeId, $today);
+    if (!$stmt->execute()) {
+        $stmt->close();
+        return null;
+    }
+    $count = (int) ($stmt->get_result()->fetch_assoc()['active_count'] ?? 0);
+    $stmt->close();
+    return $count;
+}
+
+function checkOfficeQueueModeChange(mysqli $conn, int $officeId, string $newMode): array
+{
+    if (!in_array($newMode, ['unified', 'service-based', 'level-based'], true)) {
+        return serviceResponse(false, 'Invalid queue mode.');
+    }
+    if ($officeId <= 0) {
+        return serviceResponse(false, 'Invalid office.');
+    }
+
+    $office = getOfficeById($conn, $officeId);
+    if (!$office) {
+        return serviceResponse(false, 'Office not found.');
+    }
+    $blockingCount = countBlockingOfficeTickets($conn, $officeId);
+    if ($blockingCount === null) {
+        return serviceResponse(false, 'Could not check the active queue.');
+    }
+
+    $assignedWindows = 0;
+    if ($newMode === 'level-based') {
+        $stmt = $conn->prepare('SELECT COUNT(*) AS assigned_count FROM window_levels WHERE office_id = ?');
+        if (!$stmt) {
+            return serviceResponse(false, 'Could not check window level assignments.');
+        }
+        $stmt->bind_param('i', $officeId);
+        if (!$stmt->execute()) {
+            $stmt->close();
+            return serviceResponse(false, 'Could not check window level assignments.');
+        }
+        $assignedWindows = (int) ($stmt->get_result()->fetch_assoc()['assigned_count'] ?? 0);
+        $stmt->close();
+    }
+
+    return serviceResponse(true, 'Queue mode change check complete.', [
+        'office_name' => $office['name'],
+        'current_mode' => $office['queue_mode'],
+        'new_mode' => $newMode,
+        'blocking_count' => $blockingCount,
+        'window_count' => max(1, (int) $office['window_count']),
+        'assigned_window_count' => $assignedWindows,
+    ]);
+}
+
+function setOfficeQueueMode(mysqli $conn, int $officeId, string $newMode): array
+{
+    if (!in_array($newMode, ['unified', 'service-based', 'level-based'], true)) {
+        return serviceResponse(false, 'Invalid queue mode.');
+    }
+    if ($officeId <= 0) {
+        return serviceResponse(false, 'Invalid office.');
+    }
+    $lockName = "ticket_gen_{$officeId}";
+    $lockStmt = $conn->prepare('SELECT GET_LOCK(?, 5) AS acquired');
+    if (!$lockStmt) {
+        return serviceResponse(false, 'Could not acquire the queue mode lock.');
+    }
+    $lockStmt->bind_param('s', $lockName);
+    if (!$lockStmt->execute()) {
+        $lockStmt->close();
+        return serviceResponse(false, 'Could not acquire the queue mode lock.');
+    }
+    $lockRow = $lockStmt->get_result()->fetch_assoc();
+    $lockStmt->close();
+    if (!$lockRow || (int) $lockRow['acquired'] !== 1) {
+        return serviceResponse(false, 'The office queue is busy. Please try again.');
+    }
+
+    try {
+        return setOfficeQueueModeWithLock($conn, $officeId, $newMode);
+    } finally {
+        $unlockStmt = $conn->prepare('SELECT RELEASE_LOCK(?)');
+        if (!$unlockStmt) {
+            error_log('Could not prepare the queue mode lock release statement.');
+        } else {
+            $unlockStmt->bind_param('s', $lockName);
+            if (!$unlockStmt->execute()) {
+                error_log('Could not release the queue mode lock.');
+            }
+            $unlockStmt->close();
+        }
+    }
+}
+
+function setOfficeQueueModeWithLock(mysqli $conn, int $officeId, string $newMode): array
+{
+    if (!$conn->begin_transaction()) {
+        return serviceResponse(false, 'Could not start the queue mode update.');
+    }
+
+    $officeStmt = $conn->prepare("
+        SELECT id, name, code, description, window_count, queue_mode
+        FROM offices
+        WHERE id = ?
+        LIMIT 1
+        FOR UPDATE
+    ");
+    if (!$officeStmt) {
+        $conn->rollback();
+        return serviceResponse(false, 'Could not load office settings.');
+    }
+    $officeStmt->bind_param('i', $officeId);
+    if (!$officeStmt->execute()) {
+        $officeStmt->close();
+        $conn->rollback();
+        return serviceResponse(false, 'Could not load office settings.');
+    }
+    $office = $officeStmt->get_result()->fetch_assoc();
+    $officeStmt->close();
+    if (!$office) {
+        $conn->rollback();
+        return serviceResponse(false, 'Office not found.');
+    }
+
+    if ($office['queue_mode'] !== $newMode) {
+        $activeCount = countBlockingOfficeTickets($conn, $officeId);
+        if ($activeCount === null) {
+            $conn->rollback();
+            return serviceResponse(false, 'Could not check the active queue.');
+        }
+        if ($activeCount > 0) {
+            $conn->rollback();
+            return serviceResponse(false, "Cannot switch: {$activeCount} active tickets. Complete or cancel them first.", [
+                'blocking_count' => $activeCount,
+            ]);
+        }
+    }
+
+    $stmt = $conn->prepare('UPDATE offices SET queue_mode = ? WHERE id = ?');
+    if (!$stmt) {
+        $conn->rollback();
+        return serviceResponse(false, 'Database error: ' . $conn->error);
+    }
     $stmt->bind_param('si', $newMode, $officeId);
-    $ok = $stmt->execute();
+    if (!$stmt->execute()) {
+        $stmt->close();
+        $conn->rollback();
+        return serviceResponse(false, 'Failed to update queue mode.');
+    }
     $stmt->close();
 
-    if (!$ok) return serviceResponse(false, 'Failed to update queue mode.');
+    if ($newMode === 'level-based' && $office['queue_mode'] !== 'level-based') {
+        $levelStmt = $conn->prepare("
+            INSERT INTO window_levels (office_id, window_number, student_level)
+            VALUES (?, ?, 'both')
+            ON DUPLICATE KEY UPDATE office_id = VALUES(office_id)
+        ");
+        if (!$levelStmt) {
+            $conn->rollback();
+            return serviceResponse(false, 'Could not initialize window level assignments.');
+        }
+        for ($window = 1; $window <= max(1, (int) $office['window_count']); $window++) {
+            $levelStmt->bind_param('ii', $officeId, $window);
+            if (!$levelStmt->execute()) {
+                $levelStmt->close();
+                $conn->rollback();
+                return serviceResponse(false, 'Could not initialize window level assignments.');
+            }
+        }
+        $levelStmt->close();
+    }
+
+    if (!$conn->commit()) {
+        $conn->rollback();
+        return serviceResponse(false, 'Could not confirm the queue mode update.');
+    }
 
     logActivity(
         $conn,
@@ -90,8 +289,72 @@ function toggleOfficeQueueMode(mysqli $conn, int $officeId): array
         ['queue_mode' => $newMode]
     );
 
-    $label = $newMode === 'service-based' ? 'Service-Based' : 'Unified';
-    return serviceResponse(true, "Queue mode switched to {$label} for \"{$office['name']}\".");
+    $labels = [
+        'unified' => 'Unified',
+        'service-based' => 'Service-Based',
+        'level-based' => 'Level-Based',
+    ];
+    return serviceResponse(true, "Queue mode set to {$labels[$newMode]} for \"{$office['name']}\".", [
+        'queue_mode' => $newMode,
+    ]);
+}
+
+function saveOfficeWindowLevels(mysqli $conn, int $officeId, array $levels): array
+{
+    $office = getOfficeById($conn, $officeId);
+    if (!$office) {
+        return serviceResponse(false, 'Office not found.');
+    }
+    $windowCount = max(1, (int) $office['window_count']);
+    if (count($levels) !== $windowCount) {
+        return serviceResponse(false, 'Choose a level assignment for every window.');
+    }
+    for ($window = 1; $window <= $windowCount; $window++) {
+        if (!isset($levels[$window]) || !in_array($levels[$window], ['shs', 'college', 'both'], true)) {
+            return serviceResponse(false, 'Invalid window level assignment.');
+        }
+    }
+    if (!$conn->begin_transaction()) {
+        return serviceResponse(false, 'Could not start the window assignment update.');
+    }
+
+    $deleteStmt = $conn->prepare('DELETE FROM window_levels WHERE office_id = ?');
+    if (!$deleteStmt) {
+        $conn->rollback();
+        return serviceResponse(false, 'Could not update window level assignments.');
+    }
+    $deleteStmt->bind_param('i', $officeId);
+    if (!$deleteStmt->execute()) {
+        $deleteStmt->close();
+        $conn->rollback();
+        return serviceResponse(false, 'Could not update window level assignments.');
+    }
+    $deleteStmt->close();
+
+    $insertStmt = $conn->prepare("
+        INSERT INTO window_levels (office_id, window_number, student_level)
+        VALUES (?, ?, ?)
+    ");
+    if (!$insertStmt) {
+        $conn->rollback();
+        return serviceResponse(false, 'Could not update window level assignments.');
+    }
+    foreach ($levels as $window => $level) {
+        $windowNumber = (int) $window;
+        $insertStmt->bind_param('iis', $officeId, $windowNumber, $level);
+        if (!$insertStmt->execute()) {
+            $insertStmt->close();
+            $conn->rollback();
+            return serviceResponse(false, 'Could not update window level assignments.');
+        }
+    }
+    $insertStmt->close();
+
+    if (!$conn->commit()) {
+        $conn->rollback();
+        return serviceResponse(false, 'Could not confirm window level assignments.');
+    }
+    return serviceResponse(true, "Window level assignments saved for \"{$office['name']}\".");
 }
 
 function getAllServicesWithOffice(mysqli $conn, ?int $officeId = null): array

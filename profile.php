@@ -257,7 +257,9 @@ function buildDiffHtml(array $before, array $after): string
                                                 <label for="edit_full_name">Full Name <span class="required">*</span></label>
                                                 <input type="text" id="edit_full_name"
                                                     value="<?php echo htmlspecialchars($currentUser['full_name']); ?>"
-                                                    placeholder="Enter your full name">
+                                                    placeholder="Enter your full name" required minlength="3" maxlength="100"
+                                                    pattern="(?:\p{L}\p{M}*)+(?:(?: +|[\-'])(?:\p{L}\p{M}*)+|\. *(?:\p{L}\p{M}*)+)*\.?"
+                                                    title="Use letters, spaces, periods, hyphens, or apostrophes.">
                                             </div>
                                             <div class="form-group">
                                                 <label for="edit_email">Email Address <span class="required">*</span></label>

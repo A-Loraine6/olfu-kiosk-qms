@@ -19,13 +19,24 @@ function diffSnapshot(array $before, array $after): array
     return [$changedBefore, $changedAfter];
 }
 
+function isDepartmentHeadUser(?array $user = null): bool
+{
+    $role = strtolower(trim((string) (($user['role'] ?? null) ?? ($_SESSION['role'] ?? ''))));
+    return in_array($role, ['department head', 'department_head', 'department-head'], true);
+}
+
 function getAllStaff($db, int $limit = 100, int $offset = 0): array
 {
     $currentUser = getCurrentUser();
     $officeId    = $currentUser['office_id'] ?? null;
     $isAdmin = ($_SESSION['role_id'] ?? null) === 1 || ($_SESSION['role'] ?? '') === 'admin';
+    $isDepartmentHead = isDepartmentHeadUser($currentUser);
 
-    if (!$isAdmin && $officeId) {
+    if ($isDepartmentHead && !$officeId) {
+        return [];
+    }
+
+    if ($isDepartmentHead || (!$isAdmin && $officeId)) {
         $stmt = $db->prepare(
             "SELECT u.id, u.full_name, u.email, u.role, u.role_id, o.name AS office_name,
                 r.name AS role_name, u.window_number, u.is_active, u.created_at, u.created_by
@@ -79,7 +90,7 @@ function getTotalStaffCount($db): int
 function getStaffById($db, int $id): ?array
 {
     $stmt = $db->prepare(
-        "SELECT u.id, u.full_name, u.email, u.office_id, u.role_id,
+        "SELECT u.id, u.full_name, u.email, u.office_id, u.role, u.role_id,
             o.name AS office, u.window_number, u.is_active, u.created_at, u.created_by
             FROM users u
             LEFT JOIN offices o ON u.office_id = o.id
@@ -146,7 +157,7 @@ function beginWindowAssignment($db, int $officeId, ?int $windowNumber, int $excl
 
 function addStaff($db, string $full_name, string $email, string $password, string $office, ?int $window_number, ?int $role_id = null): array
 {
-    $full_name = validName($full_name);
+    $full_name = validFullName($full_name);
     $email     = validEmail($email);
     $office    = trim($office);
     $roleName = 'staff';
@@ -164,7 +175,7 @@ function addStaff($db, string $full_name, string $email, string $password, strin
     $role = $roleName;
 
     if ($full_name === null)
-        return ['success' => false, 'message' => 'Name must contain letters and spaces only, and be 3 to 100 characters.'];
+        return ['success' => false, 'message' => 'Full name must be 3 to 100 characters and use only letters, spaces, periods, hyphens, or apostrophes.'];
     if ($email === null)
         return ['success' => false, 'message' => 'Invalid email address.'];
     if (validPassword($password) === null)
@@ -254,7 +265,7 @@ function addStaff($db, string $full_name, string $email, string $password, strin
 
 function updateStaff($db, int $id, string $full_name, string $email, string $office, ?int $window_number, ?int $role_id = null): array
 {
-    $full_name = validName($full_name);
+    $full_name = validFullName($full_name);
     $email     = validEmail($email);
     $office    = trim($office);
     $roleName = 'staff';
@@ -272,7 +283,7 @@ function updateStaff($db, int $id, string $full_name, string $email, string $off
     $role = $roleName;
 
     if ($full_name === null)
-        return ['success' => false, 'message' => 'Name must contain letters and spaces only, and be 3 to 100 characters.'];
+        return ['success' => false, 'message' => 'Full name must be 3 to 100 characters and use only letters, spaces, periods, hyphens, or apostrophes.'];
     if ($email === null)
         return ['success' => false, 'message' => 'Invalid email address.'];
 
@@ -347,6 +358,134 @@ function updateStaff($db, int $id, string $full_name, string $email, string $off
     );
 
     if (!empty($before)) {
+        logActivity($db, 'STAFF_EDIT', 'USER', $id, "Updated staff member: $full_name", $before, $after);
+    }
+
+    return ['success' => true, 'message' => 'Staff member updated successfully.'];
+}
+
+function updateStaffForDepartmentHead(
+    $db,
+    int $id,
+    int $editorId,
+    int $officeId,
+    string $full_name,
+    string $email,
+    ?int $window_number
+): array {
+    if ($id === $editorId) {
+        return ['success' => false, 'message' => 'You cannot edit your own staff assignment.'];
+    }
+
+    $full_name = validFullName($full_name);
+    $email = validEmail($email);
+    if ($full_name === null) {
+        return ['success' => false, 'message' => 'Full name must be 3 to 100 characters and use only letters, spaces, periods, hyphens, or apostrophes.'];
+    }
+    if ($email === null) {
+        return ['success' => false, 'message' => 'Invalid email address.'];
+    }
+    if ($officeId < 1) {
+        return ['success' => false, 'message' => 'Your account is not assigned to an office.'];
+    }
+
+    $staffStmt = $db->prepare("
+        SELECT id, full_name, email, window_number
+        FROM users
+        WHERE id = ? AND office_id = ? AND role = 'staff' AND is_deleted = 0
+        LIMIT 1
+    ");
+    if (!$staffStmt) {
+        return ['success' => false, 'message' => 'Database error occurred.'];
+    }
+    $staffStmt->bind_param('ii', $id, $officeId);
+    if (!$staffStmt->execute()) {
+        $staffStmt->close();
+        return ['success' => false, 'message' => 'Could not verify staff member.'];
+    }
+    $currentStaff = $staffStmt->get_result()->fetch_assoc();
+    $staffStmt->close();
+    if (!$currentStaff) {
+        return ['success' => false, 'message' => 'Staff member not found in your office.'];
+    }
+
+    $officeStmt = $db->prepare('SELECT window_count, name FROM offices WHERE id = ? LIMIT 1');
+    if (!$officeStmt) {
+        return ['success' => false, 'message' => 'Database error occurred.'];
+    }
+    $officeStmt->bind_param('i', $officeId);
+    if (!$officeStmt->execute()) {
+        $officeStmt->close();
+        return ['success' => false, 'message' => 'Could not validate office window assignment.'];
+    }
+    $office = $officeStmt->get_result()->fetch_assoc();
+    $officeStmt->close();
+    if (!$office) {
+        return ['success' => false, 'message' => 'Your office could not be found.'];
+    }
+    if ($window_number !== null && ($window_number < 1 || $window_number > (int) $office['window_count'])) {
+        return ['success' => false, 'message' => 'Choose a valid window for your office.'];
+    }
+    $emailStmt = $db->prepare('SELECT id FROM users WHERE email = ? AND id <> ? LIMIT 1');
+    if (!$emailStmt) {
+        return ['success' => false, 'message' => 'Database error occurred.'];
+    }
+    $emailStmt->bind_param('si', $email, $id);
+    if (!$emailStmt->execute()) {
+        $emailStmt->close();
+        return ['success' => false, 'message' => 'Could not validate the email address.'];
+    }
+    $emailStmt->store_result();
+    $emailInUse = $emailStmt->num_rows > 0;
+    $emailStmt->close();
+    if ($emailInUse) {
+        return ['success' => false, 'message' => 'Email is already in use.'];
+    }
+
+    $assignmentStatus = beginWindowAssignment($db, $officeId, $window_number, $id);
+    if ($assignmentStatus !== 'available') {
+        return [
+            'success' => false,
+            'message' => $assignmentStatus === 'assigned'
+                ? 'That window is already assigned to another staff member.'
+                : 'Database error occurred while checking the window assignment.',
+        ];
+    }
+
+    $updateStmt = $db->prepare("
+        UPDATE users
+        SET full_name = ?, email = ?, window_number = ?
+        WHERE id = ? AND office_id = ? AND role = 'staff' AND is_deleted = 0
+    ");
+    if (!$updateStmt) {
+        $db->rollback();
+        return ['success' => false, 'message' => 'Database error occurred.'];
+    }
+    $updateStmt->bind_param('ssiii', $full_name, $email, $window_number, $id, $officeId);
+    if (!$updateStmt->execute()) {
+        $updateStmt->close();
+        $db->rollback();
+        return ['success' => false, 'message' => 'Failed to update staff member.'];
+    }
+    $updateStmt->close();
+    if (!$db->commit()) {
+        $db->rollback();
+        return ['success' => false, 'message' => 'Failed to update staff member.'];
+    }
+
+    [$before, $after] = diffSnapshot(
+        [
+            'full_name' => $currentStaff['full_name'],
+            'email' => $currentStaff['email'],
+            'window_number' => $currentStaff['window_number'],
+        ],
+        [
+            'full_name' => $full_name,
+            'email' => $email,
+            'window_number' => $window_number,
+        ]
+    );
+    if ($before) {
         logActivity($db, 'STAFF_EDIT', 'USER', $id, "Updated staff member: $full_name", $before, $after);
     }
 

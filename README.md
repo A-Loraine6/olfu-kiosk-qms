@@ -2,6 +2,73 @@
 
 Welcome to our group project repository!  
 
+## Project Overview
+
+OLFU Kiosk QMS is a PHP and MySQL queue management system. Students get a
+ticket at the kiosk and can track it; staff manage queues from their queue
+page, while administrators configure offices, services, staff, and windows.
+
+Offices can use one of three queue modes:
+
+- **Unified:** issue tickets without asking the student to choose a service.
+- **Service-based:** the student selects a service, and window/service
+  assignments determine which staff can serve the ticket.
+- **Level-based:** the kiosk asks whether the student is SHS or College.
+  Office windows are assigned SHS, College, or Both and serve matching tickets.
+
+Department heads are scoped to their own office. Staff queue and dashboard
+views are personal where appropriate; administrators retain cross-office
+access. Queue history records ticket events, and a scheduled cleanup can
+cancel active tickets left over from a previous day.
+
+### Recent Changes to Review
+
+- Added the level-based queue mode, per-window level assignments, and the
+  assignment modal on the Services page.
+- Added level selection and level labels to the kiosk, queue, public display,
+  and tracker. Queue eligibility, transfers, positions, and estimates account
+  for the ticket's level.
+- Queue mode changes now require confirmation and are blocked while any
+  current-day waiting, serving, on-hold, or skipped tickets remain. Queue
+  filters and tab counts honor the selected student level.
+- Restricted department-head staff editing and staff lists to their office,
+  and adjusted role-specific dashboard/queue access.
+- Updated queue history and stale-ticket cleanup behavior. Services search,
+  office/category/status filters, and pagination are loaded asynchronously.
+
+### Database Setup for These Changes
+
+Apply these migrations to the application database before testing the related
+features:
+
+- `migrations/20261015_create_ticket_events.sql` for ticket event history.
+- `migrations/20261016_add_level_based_queue_mode.sql` for level-based queues.
+
+The queue-history migration is safe to rerun. Verify the level-mode migration
+against the target database before deploying, and take a backup before schema
+changes.
+
+### Manual Test Cases
+
+Use test accounts for admin, department head, and staff roles, plus test
+offices in each queue mode. Reset test data or use fresh tickets between cases.
+
+| ID | Area | Test | Expected result |
+|---|---|---|---|
+| T1 | Services filters | Search by a service name, then combine office, category, and status filters. Change page size/page; clear the search. | Each selection refreshes the rows and result count; combined filters narrow results; clearing restores matching rows. No results shows an empty state. |
+| T2 | Services filter permissions | As a department head, try changing the office filter in the request or browser. | Results remain limited to the signed-in user's office. |
+| T3 | Staff scope | As a department head, list staff, edit a staff member in the office, then attempt to edit a staff member from another office. Try posting role/office/status fields as well. | Only own-office staff are listed and editable; foreign-office edits are rejected; only name, email, and window assignment can change. Admin retains cross-office controls. |
+| T4 | Role access | Sign in as staff and department head with their configured queue permissions. Try direct navigation and submit a queue-management API request from a view-only account. | Authorized queue pages load; view-only users cannot call, skip, or otherwise manage tickets through either the UI or a crafted request. |
+| T5 | Personal dashboard | Compare staff dashboard metrics and average service time with department-head metrics. | Staff metrics/average reflect that staff member; department-head office summaries cover their office only. |
+| T6 | Existing queue modes | Issue and serve tickets in unified and service-based offices, including services assigned to specific windows and services available at all windows. | Existing ticket issuance and routing still work; an unassigned service remains available to all eligible windows. |
+| T7 | Queue mode confirmation and configuration | As admin, choose each different queue mode and Save. Test the confirmation modal with waiting, serving, on-hold, and skipped tickets; then test completed/cancelled and previous-day tickets. Switch an empty office to level-based, review the window-assignment warning, assign SHS/College/Both, save, reopen, and verify selections. | The modal shows office, old/new modes, and impact. Active current-day tickets block every mode transition and the count is shown; completed, cancelled, and previous-day tickets do not block. Confirm rechecks the queue, and assignments persist. |
+| T8 | Level-mode issuance and routing | Issue SHS and College tickets. Use SHS-only, College-only, and Both windows to view/call next. Attempt issuance without a level. | Level is required and stored; each window only sees/calls matching tickets; Both can serve either level. Ticket numbering remains one sequence per office. |
+| T9 | Level-mode tracking and transfer | Check SHS and College badges on the queue list, serving card, public display, and tracker at narrow widths, including long ticket numbers. Compare position/estimate with tickets in the other level. Transfer a ticket into a level-based office and out to another mode. | Badges remain aligned, spaced, unwrapped, and visible; position and estimate count only the same level lane in queue order; transfer requires/selects a destination level where applicable and keeps ticket data valid. |
+| T13 | Level filter and live mode updates | Leave a staff Queue page open while an admin changes its office mode. In level-based mode, choose All Levels, SHS, and College on each status tab; allow auto-refresh and compare the list with the counts. | The page reloads itself when the mode changes. All Levels includes both student levels; SHS/College filter the list and exact tab/waiting counts, including window eligibility, and the selection persists through refresh. |
+| T10 | Peak Hours and completed history | Enable Peak Hours, serve a ticket whose service is not assigned to the staff member's window, then check the completed tab. | The ticket is served according to Peak Hours and remains visible in that staff member's completed history. |
+| T11 | Ticket lifecycle/history | Put a ticket on hold, resume it, skip it, cancel it, and complete it. Inspect the relevant queue tabs/history. | Tickets remain visible in the appropriate state/tab and event history reflects each transition. |
+| T12 | Stale-ticket cleanup | In a test database, create active tickets dated before today and run `scripts/cancel_stale_tickets.php`. | Prior-day active tickets are cancelled; current-day tickets and already completed/cancelled tickets remain unchanged. |
+
 ## How to Set Up the Project (First Time)  
 
 ### 1. Clone the Repository  
@@ -24,6 +91,30 @@ Go to File → Open Folder.
 Choose the folder SugarScoop.
 
 ## Commands  
+
+### Queue history schema
+
+Before deploying the queue history changes, apply
+`migrations/20261015_create_ticket_events.sql` to the application database.
+The migration is safe to rerun: it adds/backfills `original_created_at` only
+when needed and creates `ticket_events` if it does not already exist.
+
+### Expire Queue Tickets (Hostinger Cron)
+
+Tickets still waiting, on hold, skipped, or serving from a previous day are
+marked cancelled by `scripts/cancel_stale_tickets.php`. In Hostinger hPanel,
+open **Advanced → Cron Jobs** and create a daily job shortly after midnight
+(for example, 12:05 AM). Use a command like:
+
+```sh
+/usr/bin/php /home/USERNAME/domains/DOMAIN/public_html/scripts/cancel_stale_tickets.php
+```
+
+Replace `USERNAME`, `DOMAIN`, and the script path with the absolute paths for
+your Hostinger account and deployment. If Hostinger specifies a different PHP
+CLI path, use that path instead. Set the schedule to `5 0 * * *` (server time)
+and check the cron job output/logs after its first run. The cleanup uses the
+database session timezone configured by the application.
 
 ### Making Changes and Uploading to GitHub  
 Check your current branch  
@@ -61,5 +152,3 @@ Paste this in your terminal
 ### 5. Switching Back to Main
 `git checkout main`  
 `git pull origin main`  
-
-
