@@ -942,15 +942,32 @@ kbd {
 .ticket-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .ticket-student {
-  font-size: 12.5px;
-  font-weight: 600;
+  font-size: 13.5px;
+  font-weight: 700;
   color: var(--text-1);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.ticket-student i {
+  font-size: 10px;
+  margin-right: 4px;
+  color: var(--primary);
+}
+
+.ticket-type {
+  font-size: 12px;
+}
+
+.serving-card.has-ticket #servingStudent {
+  flex-basis: 100%;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
 }
 
 .ticket-type {

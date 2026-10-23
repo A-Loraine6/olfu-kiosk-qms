@@ -881,6 +881,7 @@ INSERT INTO `staff_feedback` (`id`, `staff_id`, `office_id`, `ticket_id`, `ticke
 CREATE TABLE `tickets` (
   `id` int(11) NOT NULL,
   `ticket_number` varchar(50) NOT NULL,
+  `visitor_name` varchar(100) DEFAULT NULL,
   `tracking_token` char(64) DEFAULT NULL,
   `office_id` int(11) NOT NULL,
   `is_priority` tinyint(1) NOT NULL DEFAULT 0,

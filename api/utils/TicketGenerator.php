@@ -70,7 +70,7 @@ class TicketGenerator
         ];
     }
 
-    public function issueTicket(int $office_id, string $service_name = '', bool $is_priority = false): array
+    public function issueTicket(int $office_id, string $service_name = '', bool $is_priority = false, ?string $visitor_name = null): array
     {
         $office = $this->fetchOffice($office_id);
         if (!$office) {
@@ -119,11 +119,11 @@ class TicketGenerator
 
             $insert = $this->db->prepare("
                 INSERT INTO tickets
-                    (office_id, is_priority, transaction_type, ticket_number, tracking_token, window_id, status, created_at)
+                    (office_id, is_priority, transaction_type, ticket_number, tracking_token, window_id, visitor_name, status, created_at)
                 VALUES
-                    (?, ?, ?, ?, ?, ?, 'waiting', NOW())
+                    (?, ?, ?, ?, ?, ?, ?, 'waiting', NOW())
             ");
-            $insert->bind_param('iisssi', $office_id, $isPriorityInt, $transaction_type, $ticketNumber, $trackingToken, $window_id);
+            $insert->bind_param('iisssis', $office_id, $isPriorityInt, $transaction_type, $ticketNumber, $trackingToken, $window_id, $visitor_name);
 
             if (!$insert->execute()) {
                 throw new RuntimeException('Failed to insert ticket: ' . $insert->error);
@@ -140,6 +140,7 @@ class TicketGenerator
             'success'        => true,
             'ticket_number'  => $ticketNumber,
             'tracking_token' => $trackingToken,
+            'visitor_name'   => $visitor_name,
             'people_ahead'   => $recheck['people_ahead'],
             'waiting_count'  => $recheck['people_ahead'] + 1,
             'window_id'      => $window_id,

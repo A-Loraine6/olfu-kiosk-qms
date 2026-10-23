@@ -73,7 +73,7 @@ olfu-kiosk-qms/
 
 | File | Purpose |
 |---|---|
-| `index.php` | Kiosk touch-screen interface. 4-step wizard (priority → office → service → confirm), issues ticket with QR code, idle screen overlay with auto-reset countdown. |
+| `index.php` | Kiosk touch-screen interface. Queue selection wizard (priority → office → service → confirm), optional visitor name for people who cannot scan the QR code, ticket screen with QR tracking and a shortcut back to step 1. |
 | `track.php` | Customer ticket tracking via QR code (64-char hex token). Shows queue position, estimated wait, now-serving number, cancel option, campus map tab, push notification subscription. |
 | `display.php` | Public display monitor. Shows "Now Serving", "Next Up", and "Recently Done" per office. Auto-refreshes every 5 seconds. |
 
@@ -115,6 +115,8 @@ Password recovery uses PHPMailer over SMTP to send a six-digit OTP. Configure th
 If environment variables are not available, edit the matching `MAIL_*` constants directly in the ignored `config/config.php` file. Use `config/mail.example.php` as a template. For Gmail, use a Google app password, not the normal account password. Never commit real SMTP credentials.
 
 The database dump already includes the `users.password_reset_token` and `users.password_reset_expires` columns used by the flow. OTPs are stored as SHA-256 hashes and expire after 10 minutes.
+
+For existing databases, run [`migrations/add_ticket_visitor_name.sql`](./migrations/add_ticket_visitor_name.sql) before deploying the kiosk visitor-name field. The migration can be run repeatedly.
 
 ---
 

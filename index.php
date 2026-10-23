@@ -252,7 +252,7 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
                     <i class="fas fa-arrow-left"></i> Back
                 </button>
                 <div style="text-align:center">
-                    <div class="eyebrow">Step 3 of 4</div>
+                    <div class="eyebrow">Step</div>
                     <h1 class="screen-title">Select a Service</h1>
                     <div style="margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
                         <div class="office-label-pill">
@@ -278,7 +278,7 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
                     <i class="fas fa-arrow-left"></i> Back
                 </button>
                 <div style="text-align:center">
-                    <div class="eyebrow">Step 3 of 3</div>
+                    <div class="eyebrow">Step</div>
                     <h1 class="screen-title">Confirm Your Queue</h1>
                 </div>
             </div>
@@ -296,12 +296,38 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
                         <div class="confirm-number" id="s3QueuePreview">—</div>
                         <div class="confirm-wait" id="s3WaitEstimate"></div>
                     </div>
+                    <div class="confirm-name-field">
+                        <label for="visitorName">Your name <span>(optional)</span></label>
+                        <div class="visitor-name-input-wrap">
+                            <input type="text" id="visitorName" maxlength="100" autocomplete="off" readonly
+                                inputmode="none" aria-readonly="true" aria-describedby="visitorNameHint"
+                                placeholder="Tap here to enter your name">
+                            <span class="visitor-name-caret" id="visitorNameCaret" aria-hidden="true"></span>
+                        </div>
+                        <div class="confirm-name-hint" id="visitorNameHint">Staff can use your name to identify you when calling your ticket.</div>
+                    </div>
                 </div>
             </div>
             <div class="screen-foot">
                 <button class="btn btn-primary" id="confirmBtn" onclick="confirmQueue()">
                     <i class="fas fa-check-circle"></i> Confirm &amp; Get Ticket
                 </button>
+            </div>
+
+            <!-- Keyboard is a direct child of #screen3 so it anchors to the screen -->
+            <div class="name-keyboard" id="nameKeyboard" role="group" aria-label="On-screen keyboard" hidden>
+                <div class="keyboard-row" id="keyboardRow1"></div>
+                <div class="keyboard-row keyboard-row-inset" id="keyboardRow2"></div>
+                <div class="keyboard-row" id="keyboardRow3"></div>
+                <div class="keyboard-row keyboard-row-special">
+                    <button class="keyboard-key keyboard-key-clear" type="button" data-key="clear">Clear</button>
+                    <button class="keyboard-key" type="button" data-key="apostrophe">'</button>
+                    <button class="keyboard-key" type="button" data-key="hyphen">-</button>
+                    <button class="keyboard-key" type="button" data-key="comma">,</button>
+                    <button class="keyboard-key keyboard-key-space" type="button" data-key="space">space</button>
+                    <button class="keyboard-key" type="button" data-key="period">.</button>
+                    <button class="keyboard-key keyboard-key-done" type="button" data-key="done">Done</button>
+                </div>
             </div>
         </div>
 
@@ -313,6 +339,7 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
                         <div class="ticket-body">
                             <div class="ticket-office" id="s4OfficeName"></div>
                             <div class="ticket-service" id="s4ServiceName"></div>
+                            <div class="ticket-visitor" id="s4VisitorName" style="display:none"></div>
                             <div class="priority-pill" id="s4PriorityPill" style="display:none;margin:0 auto 12px">
                                 <i class="fas fa-star" style="font-size:12px"></i>
                                 Priority Lane
@@ -349,6 +376,12 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div class="screen-foot">
+                <button class="btn btn-primary" type="button" onclick="backToStep1()">
+                    <i class="fas fa-check-circle"></i> Done
+                </button>
             </div>
         </div>
 
