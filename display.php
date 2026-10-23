@@ -106,13 +106,17 @@ if (!empty($officeIds)) {
 
         let offices = DATA;
 
-        let lastServing = {}; // "officeId:windowId" -> last announced ticket_number
-        const flashUntil = {}; // "officeId:windowId" -> timestamp
+        // Track announcements per TICKET (not per window) so that several
+        // "serving" tickets sharing a window can't overwrite each other and
+        // cause endless re-announcements.
+        const announced = {};  // "officeId:ticketNumber" -> served_at already announced
+        const flashUntil = {}; // "officeId:ticketNumber" -> timestamp
         const FLASH_MS = 10000;
+        const ticketKey = (o, t) => `${o.id}:${t.ticket_number}`;
 
         // Seed so a page load / hourly reload doesn't re-announce everything
         DATA.forEach(o => (o.now_serving || []).forEach(t => {
-            lastServing[`${o.id}:${t.window_id ?? 'unassigned'}`] = t.ticket_number;
+            announced[ticketKey(o, t)] = t.served_at || '';
         }));
 
         let audioUnlocked = false;
@@ -238,11 +242,18 @@ if (!empty($officeIds)) {
 
         function announceNewCalls(newOffices) {
             newOffices.forEach(o => {
-                (o.now_serving || []).forEach(current => {
-                    const key = `${o.id}:${current.window_id ?? 'unassigned'}`;
-                    if (current.ticket_number === lastServing[key]) return;
+                // oldest call first, so several new calls are spoken in order
+                const serving = [...(o.now_serving || [])].sort((a, b) =>
+                    String(a.served_at || '').localeCompare(String(b.served_at || '')));
 
-                    lastServing[key] = current.ticket_number;
+                serving.forEach(current => {
+                    const key = ticketKey(o, current);
+                    const stamp = current.served_at || '';
+
+                    // already announced this exact call -> skip
+                    if (key in announced && announced[key] === stamp) return;
+
+                    announced[key] = stamp;
                     flashUntil[key] = Date.now() + FLASH_MS;
 
                     const spoken = spellTicketNumber(current.ticket_number);
@@ -357,7 +368,7 @@ if (!empty($officeIds)) {
                         <div class="c-noticket-txt">No ticket called</div>
                    </div>`
                 : active.map(current => {
-                    const key = `${o.id}:${current.window_id ?? 'unassigned'}`;
+                    const key = ticketKey(o, current);
                     const flashing = (flashUntil[key] || 0) > Date.now();
                     const label = current.window_id ? `Window ${esc(String(current.window_id))}` : 'Now Serving';
 
