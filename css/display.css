@@ -327,6 +327,29 @@ body {
   font-size: clamp(22px, 14cqw, 40px);
 }
 
+.window-tile .c-hero-name {
+  margin-top: 6px;
+  color: var(--ink);                       /* darker for contrast (was ink-2) */
+  font-size: clamp(18px, 1.8vw, 30px);     /* was clamp(11px, 1.1vw, 16px) */
+  font-weight: 800;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 1 window: the name can be much bigger, it's the hero tile */
+.office-windows.one .window-tile .c-hero-name {
+  font-size: clamp(26px, 5cqw, 52px);
+  margin-top: 8px;
+}
+
+/* 5+ windows: compact tiles, keep it readable but contained */
+.office-windows.many .window-tile .c-hero-name {
+  font-size: clamp(14px, 1.3vw, 20px);
+  margin-top: 2px;
+}
+
 /* 1 window: big hero */
 .office-windows.one .window-tile .c-hero-num {
   font-size: clamp(40px, 18cqw, 90px);

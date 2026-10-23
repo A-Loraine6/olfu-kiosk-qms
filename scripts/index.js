@@ -886,7 +886,7 @@ function confirmQueue() {
 	fetch("api/issue_ticket.php", {
 		method: "POST",
 		headers: { "Content-Type": "application/x-www-form-urlencoded" },
-		body: `office_id=${o.id}&service_name=${encodeURIComponent(s ? s.name : "")}&is_priority=${state.isPriority ? 1 : 0}&visitor_name=${encodeURIComponent(document.getElementById("visitorName").value.trim())}&csrf_token=${encodeURIComponent(CSRF_TOKEN)}`,
+		body: `office_id=${o.id}&service_name=${encodeURIComponent(s ? s.name : "")}&student_level=${encodeURIComponent(studentLevel || "")}&is_priority=${state.isPriority ? 1 : 0}&visitor_name=${encodeURIComponent(document.getElementById("visitorName").value.trim())}&csrf_token=${encodeURIComponent(CSRF_TOKEN)}`,
 	})
 		.then((r) => r.json())
 		.then((data) => {

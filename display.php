@@ -19,7 +19,7 @@ if (!empty($officeIds)) {
     $types = str_repeat('i', count($officeIds));
 
     $stmt = $db->prepare("
-        SELECT t.office_id, t.ticket_number, t.transaction_type, t.student_level,
+        SELECT t.office_id, t.ticket_number, t.visitor_name, t.transaction_type, t.student_level,
                t.window_id, t.status, t.served_at, t.created_at
         FROM tickets t
         WHERE t.office_id IN ($placeholders)
@@ -294,6 +294,12 @@ if (!empty($officeIds)) {
             return d.innerHTML;
         }
 
+        function displayName(name) {
+            const words = String(name || '').trim().split(/\s+/u).filter(Boolean);
+            if (words.length < 2) return words[0] || '';
+            return `${words[0]} ${words.slice(1).map(word => `${Array.from(word)[0]}.`).join(' ')}`;
+        }
+
         function buildNextUp(o) {
             const nu = Array.isArray(o.next_up) ? o.next_up : [];
             if (nu.length === 0) {
@@ -375,6 +381,7 @@ if (!empty($officeIds)) {
                     return `<div class="window-tile active${flashing ? ' flash' : ''}">
                         <div class="window-label">${label}</div>
                         <div class="c-hero-num">${esc(current.ticket_number)}</div>
+                        ${current.visitor_name ? `<div class="c-hero-name">${esc(displayName(current.visitor_name))}</div>` : ''}
                     </div>`;
                 }).join('');
             const wc = o.waiting_count || 0;

@@ -107,7 +107,13 @@ class TicketGenerator
         ];
     }
 
-    public function issueTicket(int $office_id, string $service_name = '', bool $is_priority = false, ?string $visitor_name = null): array
+    public function issueTicket(
+        int $office_id,
+        string $service_name = '',
+        bool $is_priority = false,
+        ?string $visitor_name = null,
+        ?string $student_level = null
+    ): array
     {
         $office = $this->fetchOffice($office_id);
         if (!$office) {

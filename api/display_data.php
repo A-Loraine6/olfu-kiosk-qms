@@ -32,6 +32,7 @@ try {
         SELECT
             t.office_id,
             t.ticket_number,
+            t.visitor_name,
             t.transaction_type,
             t.student_level,
             t.window_id,

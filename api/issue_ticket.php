@@ -36,6 +36,10 @@ $visitor_name = $visitorNameInput === '' || $visitorNameInput === null
 if ($visitor_name !== null) {
     $visitor_name = trim($visitor_name);
 }
+$studentLevelInput = requestString($_POST, 'student_level', 20);
+$student_level = ($studentLevelInput === null || $studentLevelInput === '')
+    ? null
+    : requestEnum(['student_level' => $studentLevelInput], 'student_level', ['shs', 'college']);
 $is_priority  = requestBool($_POST, 'is_priority', false);
 
 if (
@@ -44,6 +48,8 @@ if (
     || $visitorNameInput === null
     || ($visitorNameInput !== '' && preg_match("~^[\\p{L}\\s'.,-]*$~u", $visitorNameInput) !== 1)
     || ($visitorNameInput !== '' && $visitor_name === null)
+    || ($studentLevelInput === null)
+    || ($studentLevelInput !== '' && $student_level === null)
     || $is_priority === null
 ) {
     ob_end_clean();
@@ -54,7 +60,7 @@ if (
 
 try {
     $generator = new TicketGenerator($db);
-    $result    = $generator->issueTicket($office_id, $service_name, $is_priority, $visitor_name);
+    $result    = $generator->issueTicket($office_id, $service_name, $is_priority, $visitor_name, $student_level);
 
     ob_end_clean();
     echo json_encode($result);
