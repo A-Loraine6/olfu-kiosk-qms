@@ -1,25 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * QMS database backup (CLI only).
- *
- * Usage:
- *   php scripts/backup_database.php [/path/to/qms-backup.sh]
- *
- * Settings come from environment variables, or from a private file given as
- * the first argument (lines like  export QMS_DB_NAME="value" ; everything else
- * in that file is ignored). Keep that file OUTSIDE public_html.
- *
- *   QMS_DB_NAME, QMS_DB_USER, QMS_DB_PASS   (required)
- *   QMS_DB_HOST (localhost), QMS_DB_PORT (3306)
- *   QMS_BACKUP_DIR   folder for backups, OUTSIDE public_html (required)
- *   QMS_BACKUP_KEY   if set, backups are AES-256-GCM encrypted (.enc)
- *   QMS_MYSQLDUMP    path to mysqldump; used only if proc_open is available,
- *                    otherwise the built-in PHP dump is used automatically
- *   QMS_KEEP_DAILY_DAYS (14), QMS_KEEP_MONTHLY_MONTHS (6)
- */
-
 if (PHP_SAPI !== 'cli') {
     http_response_code(403);
     exit("CLI only.\n");

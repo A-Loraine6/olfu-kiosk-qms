@@ -1,22 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/**
- * QMS database restore (CLI only, pure PHP: no mysql client or proc_open needed).
- *
- * Usage:
- *   php scripts/restore_database.php <backup-file> --target=<db_name> --confirm
- *        [--settings=/path/to/qms-backup.sh] [--allow-live]
- *
- * The target database must already exist (create an empty one in your hosting
- * panel). Same settings as backup_database.php (QMS_DB_USER, QMS_DB_PASS,
- * QMS_DB_HOST, QMS_BACKUP_KEY). QMS_DB_NAME is treated as the LIVE database and
- * is protected unless you pass --allow-live.
- *
- * Handles backups made by backup_database.php (PHP mode or mysqldump mode).
- * Triggers/routines in mysqldump-mode files are skipped.
- */
-
 if (PHP_SAPI !== 'cli') {
     http_response_code(403);
     exit("CLI only.\n");
