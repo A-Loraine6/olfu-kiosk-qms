@@ -1,9 +1,46 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * QMS database backup (CLI only).
+ *
+ * Usage:  php scripts/backup_database.php
+ *
+ * Required environment variables (set them for the Task Scheduler / cron job,
+ * NOT in a web-reachable file):
+ *   QMS_DB_NAME, QMS_DB_USER, QMS_DB_PASS
+ * Optional:
+ *   QMS_DB_HOST (127.0.0.1), QMS_DB_PORT (3306)
+ *   QMS_MYSQLDUMP  (D:\xampp\mysql\bin\mysqldump.exe)
+ *   QMS_BACKUP_DIR (D:\qms-backups)  -- must be OUTSIDE htdocs/public_html
+ *   QMS_BACKUP_KEY (if set, backups are AES-256-GCM encrypted -> .enc)
+ *   QMS_KEEP_DAILY_DAYS (14), QMS_KEEP_MONTHLY_MONTHS (6)
+ */
+
 if (PHP_SAPI !== 'cli') {
     http_response_code(403);
     exit("CLI only.\n");
+}
+
+// Optional: load settings from a private file given as the first argument,
+// e.g. php backup_database.php /home/user/domains/site.com/qms-backup.sh
+// Lines like  export QMS_DB_NAME="value"  (or QMS_DB_NAME=value) are read;
+// everything else in the file is ignored. Keep that file OUTSIDE public_html.
+$cfgFile = $argv[1] ?? '';
+if ($cfgFile !== '') {
+    if (!is_file($cfgFile)) {
+        fwrite(STDERR, "Settings file not found: $cfgFile\n");
+        exit(1);
+    }
+    foreach (file($cfgFile, FILE_IGNORE_NEW_LINES) as $line) {
+        if (preg_match('/^\s*(?:export\s+)?(QMS_[A-Z_]+)=(.*)$/', $line, $m)) {
+            $v = trim($m[2]);
+            if (strlen($v) >= 2 && ($v[0] === '"' || $v[0] === "'") && substr($v, -1) === $v[0]) {
+                $v = substr($v, 1, -1);
+            }
+            putenv($m[1] . '=' . $v);
+        }
+    }
 }
 
 $host    = getenv('QMS_DB_HOST') ?: '127.0.0.1';
