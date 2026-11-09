@@ -3,3 +3,6 @@ config/mail.example.php
 backup-before-security/
 \!db/
 migrations/
+*.sql
+qms-backup.sh
+qms-backups/
