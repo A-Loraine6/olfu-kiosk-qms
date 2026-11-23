@@ -1,4 +1,6 @@
 <?php
+header('Cache-Control: no-store, no-cache, must-revalidate');
+
 require_once __DIR__ . '/includes/config_loader.php';
 require_once 'includes/db.php';
 require_once 'includes/auth.php';
@@ -393,7 +395,7 @@ $idleTimeout  = (int)($kioskSettings['idle_timeout'] ?? 60);
         const KIOSK_ENABLED = <?php echo json_encode($kioskEnabled); ?>;
         const IDLE_TIMEOUT_MS = <?php echo $idleTimeout * 1000; ?>;
     </script>
-    <script src="scripts/index.js"></script>
+    <script src="scripts/index.js?v=<?php echo filemtime(__DIR__ . '/scripts/index.js'); ?>"></script>
 </body>
 
 </html>
