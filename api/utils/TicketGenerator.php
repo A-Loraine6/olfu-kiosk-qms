@@ -208,11 +208,11 @@ class TicketGenerator
 
             $insert = $this->db->prepare("
                 INSERT INTO tickets
-                    (office_id, is_priority, transaction_type, ticket_number, tracking_token, window_id, visitor_name, status, created_at)
+                    (office_id, is_priority, transaction_type, ticket_number, tracking_token, window_id, visitor_name, student_level, status, created_at)
                 VALUES
-                    (?, ?, ?, ?, ?, ?, ?, 'waiting', NOW())
+                    (?, ?, ?, ?, ?, ?, ?, ?, 'waiting', NOW())
             ");
-            $insert->bind_param('iisssis', $office_id, $isPriorityInt, $transaction_type, $ticketNumber, $trackingToken, $window_id, $visitor_name);
+            $insert->bind_param('iisssiss', $office_id, $isPriorityInt, $transaction_type, $ticketNumber, $trackingToken, $window_id, $visitor_name, $student_level);
 
             if (!$insert->execute()) {
                 throw new RuntimeException('Failed to insert ticket: ' . $insert->error);

@@ -590,6 +590,7 @@ function showScreen(n) {
 	if (body) body.scrollTop = 0;
 	state.screen = n;
 	updateStepLabels();
+	if (n === 1) refreshOfficeQueueCounts();
 	resetIdle();
 }
 
@@ -702,6 +703,39 @@ function renderOffices() {
 		grid.appendChild(btn);
 	});
 }
+
+async function refreshOfficeQueueCounts() {
+	try {
+		const response = await fetch("api/kiosk_queue_counts.php", {
+			cache: "no-store",
+		});
+		if (!response.ok) {
+			throw new Error(`Queue count refresh failed (${response.status}).`);
+		}
+
+		const data = await response.json();
+		if (!data.success || !Array.isArray(data.offices)) {
+			throw new Error(data.message || "Invalid queue count response.");
+		}
+
+		let changed = false;
+		data.offices.forEach((updatedOffice) => {
+			const office = OFFICES.find((item) => item.id == updatedOffice.id);
+			if (office && office.waiting !== updatedOffice.waiting) {
+				office.waiting = updatedOffice.waiting;
+				changed = true;
+			}
+		});
+
+		if (changed && state.screen === 1) renderOffices();
+	} catch (error) {
+		console.warn("Could not refresh kiosk queue counts:", error);
+	}
+}
+
+setInterval(() => {
+	if (state.screen === 1) refreshOfficeQueueCounts();
+}, 5000);
 
 function selectOffice(o) {
 	state.office = o;
@@ -895,9 +929,13 @@ function confirmQueue() {
 				'<i class="fas fa-check-circle"></i> Confirm &amp; Get Ticket';
 
 			if (data.success) {
-				const oo = OFFICES.find((x) => x.id == o.id);
-				if (oo) oo.waiting = data.waiting_count ?? oo.waiting + 1;
+				const queuedOffice = OFFICES.find((office) => office.id == o.id);
+				if (queuedOffice) {
+					queuedOffice.waiting = Number(queuedOffice.waiting || 0) + 1;
+					renderOffices();
+				}
 				showTicket(data);
+				refreshOfficeQueueCounts();
 			} else {
 				const msg = data.message || "Unable to issue a ticket at this time.";
 				const code = data.code || inferErrorCode(msg);
