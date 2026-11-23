@@ -6,6 +6,6 @@ migrations/
 *.sql
 qms-backup.sh
 qms-backups/
-!migrations/
-!migrations/backfill_ticket_student_levels.sql
+migrations/
+migrations/backfill_ticket_student_levels.sql
 PROJECT_OVERVIEW.md
